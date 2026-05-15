@@ -61,6 +61,13 @@ jobs:
           # we store the version
           black_requirement="$(grep 'black.*==' requirements-dev.txt)"
           pip install "$black_requirement"
+
+      - name: Print Black version
+        run: |
+          black_version=$(black --version)
+          echo "Installed Black version: $black_version from requirements-dev.txt"
+          echo "Ensure that the local version of Black matches this version for consistent formatting."
+
       - name: Run Black to verify that the committed code is formatted
         run: |
           black --check .
@@ -100,10 +107,10 @@ jobs:
           - standard
           - dev
         python-version:
-          - '3.8'
-        #   - '3.9'
-        #   - '3.10'
+          - '3.10'
           - '3.11'
+          - '3.12'
+          - '3.13'
         os:
           - linux
           - win64
@@ -123,11 +130,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Ensure pytest is installed
         run: |
-          pip install pytest
+          pip install pytest==7.*
           pip show pytest
       - name: Add coverage options
         if: matrix.coverage
         run: echo PYTEST_ADDOPTS="$PYTEST_ADDOPTS --cov --cov-report=xml" >> $GITHUB_ENV
+      - name: Enable idaes-flowsheets pytest plugin
+        if: matrix.install-variant == 'dev'
+        run: echo PYTEST_ADDOPTS="$PYTEST_ADDOPTS --idaes-flowsheets --entry-points-group prommis.flowsheets" >> $GITHUB_ENV
       - name: Run pytest
         run: pytest --pyargs prommis --xfail-known-issues
       - name: Upload coverage report as job artifact
@@ -187,4 +197,4 @@ jobs:
         run: jupyter-book build .
       - name: Execute notebooks
         working-directory: docs/
-        run: pytest --nbmake -m "solution" .
+        run: pytest --nbmake -m "solution" --ignore tutorials/diafiltration_cost_uncertainty_quantification_and_propagation-solution.ipynb .

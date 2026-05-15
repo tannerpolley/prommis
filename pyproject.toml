@@ -1,8 +1,5 @@
 [build-system]
-requires = [
-    "setuptools >= 64",
-    "setuptools_scm >= 7",
-]
+requires = ["setuptools >= 64", "setuptools_scm >= 7"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -19,31 +16,37 @@ classifiers = [
     "Operating System :: Unix",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-keywords = ["IDAES", "energy systems", "chemical engineering", "process modeling"]
+keywords = [
+    "IDAES",
+    "energy systems",
+    "chemical engineering",
+    "process modeling",
+]
 dynamic = ["version"]
-dependencies = [
-    "idaes-pse==2.5.0",
-    "pyomo >= 6.7.0",
-]
+dependencies = ["idaes-pse>=2.11.0", "pyomo >=6.9.5"]
 [project.optional-dependencies]
-watertap = [
-    # TODO: update once watertap 1.0.0 is available
-    "watertap >= 1.0.0rc0",
-]
+watertap = ["watertap >= 1.6.0"]
+
+
+flowsheet-processor = ["idaes-flowsheet-processor >=0.2"]
 
 [tool.setuptools_scm]
+# https://setuptools-scm.readthedocs.io/en/v8.1.0/extending/
+version_scheme = "only-version"
+local_scheme = "node-and-date"
 
 [tool.pylint.main]
-py-version = "3.8"
+py-version = "3.11"
+load-plugins = ["custom_pylint.silent_exception_checker"]
 
 [tool.pylint."messages control"]
 disable = [
@@ -64,6 +67,7 @@ enable = [
     "implicit-str-concat",
     "dangerous-default-value",
     "invalid-name",
+    "silent-exception-handling",
 ]
 module-naming-style = "snake_case"
 const-naming-style = "any"
@@ -79,10 +83,15 @@ inlinevar-naming-style = "any"
 [project.entry-points.pytest11]
 known_issues = "prommis._testing_utils.known_issues"
 
+[project.entry-points."prommis.flowsheets"]
+"UKy" = "prommis.uky.uky_flowsheet_ui"
+
 [tool.pytest.ini_options]
 addopts = """
 --pyargs prommis
 --import-mode=importlib
+--cov=prommis
+--cov-config .coveragerc
 -rsx
 """
 
@@ -96,15 +105,26 @@ sections = "FUTURE,STDLIB,PYOMO,IDAES,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
 extend-exclude = [
     "*.svg",
     "*.json",
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "uky_example.ipynb",
+    "custom_pylint",
 ]
 
 [tool.typos.default.extend-words]
 # Ignore IDAES
 IDAES = "IDAES"
+# ignore phase_equil
+phase_equil = "phase_equil"
+# ignore author last name Theis
+Theis = "Theis"
 # Atomic elements
 Nd = "Nd"
+Ba = "Ba"
+
 [tool.typos.default]
 extend-ignore-re = [
     # Jupyter notebooks: ignore hexadecimal values in "id" cell metadata field
-    '"id": "[0-9a-f]+",'
+    '"id": "[0-9a-f]+",',
 ]

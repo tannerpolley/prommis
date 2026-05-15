@@ -10,8 +10,8 @@ Leaching
 
    prommis.leaching.leach_train
    prommis.leaching.leach_reactions
-   prommis.leaching.leach_solids_properties
-   prommis.leaching.leach_solution_properties
+   prommis.properties.coal_refuse_properties
+   prommis.properties.sulfuric_acid_leaching_properties
 
 Roasting
 --------
@@ -30,9 +30,9 @@ Solvent Extraction
    :toctree: _autosummary
    :template: autosummary/module-with-contents.rst
 
-   prommis.solvent_extraction.ree_aq_distribution
    prommis.solvent_extraction.ree_og_distribution
    prommis.solvent_extraction.solvent_extraction
+   prommis.solvent_extraction.solvent_extraction_reaction_package
 
 Precipitate
 -----------
@@ -45,13 +45,23 @@ Precipitate
    prommis.precipitate.precipitate_liquid_properties
    prommis.precipitate.precipitate_solids_properties
 
+Crusher
+-------
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: autosummary/module-with-contents.rst
+
+   prommis.solid_handling.crusher
+   prommis.solid_handling.crusher_solids_properties
+
 Evaporation Ponds
 -----------------
 
 .. autosummary::
    :toctree: _autosummary
    :template: autosummary/module-with-contents.rst
-
+   
    prommis.evaporation_pond.evaporation_pond
 
 Flowsheets
@@ -62,3 +72,30 @@ Flowsheets
    :template: autosummary/module-with-contents.rst
 
    prommis.uky.uky_flowsheet
+
+Nanofiltration
+--------------
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: autosummary/module-with-contents.rst
+
+   prommis.nanofiltration.diafiltration_flowsheet_two_salt
+   prommis.nanofiltration.diafiltration_properties
+   prommis.nanofiltration.diafiltration
+   prommis.nanofiltration.multi_component_diafiltration_solute_properties
+   prommis.nanofiltration.multi_component_diafiltration_stream_properties
+   prommis.nanofiltration.multi_component_diafiltration
+   prommis.nanofiltration.nf_brine_plot
+   prommis.nanofiltration.nf_brine
+
+CMI Precipitator 
+----------------
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: autosummary/module-with-contents.rst
+
+   prommis.cmi_precipitator.opt_based_precipitator
+   prommis.cmi_precipitator.aqueous_properties
+   prommis.cmi_precipitator.precipitate_properties
