@@ -38,10 +38,9 @@ def test_build_one_stage_pcsaft_poc_model():
     assert calib['kappa_li'] > calib['kappa_na']
     assert degrees_of_freedom(m) == 0
 
-    stage = m.fs.solex.mscontactor.elements.first()
-    li_default = m.fs.solex.mass_transfer_constraint[0, stage, 'aqueous', 'organic', 'Li']
-    assert not li_default.active
     assert m.fs.li_mass_transfer_constraint[0].active
+    assert m.fs.na_mass_transfer_constraint[0].active
+    assert m.fs.cl_mass_transfer_constraint[0].active
 
     m.fs.k_li.fix(0.52)
     m.fs.li_extraction_efficiency.fix(52.0)

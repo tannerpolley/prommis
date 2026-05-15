@@ -39,6 +39,7 @@ if str(_SRC_ROOT) not in sys.path:
 
 from prommis.solvent_extraction.pcsaft_integration.li_na_cl_aq_properties import LiNaClAqParameters
 from prommis.solvent_extraction.pcsaft_integration.li_na_cl_og_properties import LiNaClOgParameters
+from prommis.solvent_extraction.pcsaft_integration.li_na_cl_transfer_reactions import LiNaClTransferReactions
 from prommis.solvent_extraction.pcsaft_integration.sx_li_na_cl_pcsaft_poc import (
     _constant_surrogate_model,
     ensure_epcsaft_pse_imports,
@@ -220,6 +221,7 @@ def build_gando_2025_stage_model(
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.prop_aq = LiNaClAqParameters()
     m.fs.prop_og = LiNaClOgParameters()
+    m.fs.transfer_reactions = LiNaClTransferReactions()
 
     m.fs.solex = SolventExtraction(
         number_of_finite_elements=1,
@@ -236,13 +238,11 @@ def build_gando_2025_stage_model(
             "has_energy_balance": False,
             "has_pressure_balance": False,
         },
-        aqueous_to_organic=True,
+        heterogeneous_reaction_package=m.fs.transfer_reactions,
     )
 
     stage = m.fs.solex.mscontactor.elements.first()
-    m.fs.solex.partition_coefficient[stage, "aqueous", "organic", "Li"] = 0.0
-    m.fs.solex.partition_coefficient[stage, "aqueous", "organic", "Na"] = float(calibration["kappa_na"])
-    m.fs.solex.partition_coefficient[stage, "aqueous", "organic", "Cl"] = float(calibration["kappa_cl"])
+    aq_phase = m.fs.solex.mscontactor.aqueous.phase_list.first()
 
     aq_in = m.fs.solex.mscontactor.aqueous_inlet_state[0]
     aq_in.conc_mass_comp["Li"].fix(li_feed_mg_L)
@@ -284,14 +284,23 @@ def build_gando_2025_stage_model(
     m.fs.k_li = Var(initialize=float(calibration["kappa_li"]), bounds=(0.0, 0.999999))
     m.fs.k_li_from_eta_constraint = Constraint(expr=m.fs.k_li == m.fs.li_extraction_efficiency / 100.0)
 
-    for t in m.fs.time:
-        m.fs.solex.mass_transfer_constraint[t, stage, "aqueous", "organic", "Li"].deactivate()
-
     @m.fs.Constraint(m.fs.time)
     def li_mass_transfer_constraint(b, t):
         return b.solex.mscontactor.material_transfer_term[t, stage, ("aqueous", "organic", "Li")] == -b.solex.mscontactor.aqueous_inlet_state[t].get_material_flow_terms(
-            b.solex.mscontactor.aqueous.phase_list, "Li"
+            aq_phase, "Li"
         ) * b.k_li
+
+    @m.fs.Constraint(m.fs.time)
+    def na_mass_transfer_constraint(b, t):
+        return b.solex.mscontactor.material_transfer_term[t, stage, ("aqueous", "organic", "Na")] == -b.solex.mscontactor.aqueous_inlet_state[t].get_material_flow_terms(
+            aq_phase, "Na"
+        ) * float(calibration["kappa_na"])
+
+    @m.fs.Constraint(m.fs.time)
+    def cl_mass_transfer_constraint(b, t):
+        return b.solex.mscontactor.material_transfer_term[t, stage, ("aqueous", "organic", "Cl")] == -b.solex.mscontactor.aqueous_inlet_state[t].get_material_flow_terms(
+            aq_phase, "Cl"
+        ) * float(calibration["kappa_cl"])
 
     return m, calibration
 
