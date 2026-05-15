@@ -1,0 +1,128 @@
+{
+  "feed_basis": {
+    "li_mg_L": 60.0,
+    "na_mg_L": 10900.0,
+    "o_to_a_ratio": 1.0,
+    "top_mol_L": 0.015,
+    "cl_mg_L": 17114.177837158542
+  },
+  "truth": {
+    "eta_li_pct": 52.00472287377231,
+    "eta_na_pct": 0.906746516991823,
+    "D_li": 1.0835383393453435,
+    "kappa_li": 0.5200472287377231,
+    "kappa_na": 0.009067465169918229,
+    "kappa_cl": 0.0045337325849591145,
+    "li_na_selectivity": 118.41384257588953
+  },
+  "calibration": {
+    "kappa_li": 0.5200472287377231,
+    "kappa_na": 0.009067465169918229,
+    "kappa_cl": 0.0045337325849591145,
+    "eta_li_pct": 52.00472287377231,
+    "eta_na_pct": 0.906746516991823,
+    "li_na_selectivity": 118.41384257588953,
+    "d_li": 1.0835383393453435
+  },
+  "constraint_status": {
+    "default_li_mass_transfer_active": false,
+    "replacement_li_mass_transfer_active": true,
+    "k_li_from_eta_active": true,
+    "replacement_li_expression": "fs.solex.mscontactor.material_transfer_term[0.0,1,aqueous,organic,Li]  ==  - 1e-06*(kg/mg)*(fs.solex.mscontactor.aqueous_inlet_state[0.0].flow_vol*fs.solex.mscontactor.aqueous_inlet_state[0.0].conc_mass_comp[Li]/fs.prop_aq.mw[Li])*fs.k_li"
+  },
+  "summary": {
+    "eta_li_pct": 52.00472287377231,
+    "d_li": 1.0835383059340244,
+    "k_li": 0.5200472287377231,
+    "li_aq_out_mg_L": 28.797166275736615,
+    "na_aq_out_mg_L": 10801.164629647892,
+    "cl_aq_out_mg_L": 17036.58673143343
+  },
+  "comparison": [
+    {
+      "Quantity": "Li extraction efficiency",
+      "Direct PC-SAFT stage": 52.00472287377231,
+      "Integrated PrOMMiS model": 52.00472287377231,
+      "Absolute difference": 0.0
+    },
+    {
+      "Quantity": "Li distribution ratio",
+      "Direct PC-SAFT stage": 1.0835383393453435,
+      "Integrated PrOMMiS model": 1.0835383059340244,
+      "Absolute difference": 3.341131904477379e-08
+    },
+    {
+      "Quantity": "Li partition coefficient",
+      "Direct PC-SAFT stage": 0.5200472287377231,
+      "Integrated PrOMMiS model": 0.5200472287377231,
+      "Absolute difference": 0.0
+    }
+  ],
+  "sensitivity": [
+    {
+      "O/A ratio": 0.5,
+      "Li extraction (%)": 26.002361436886154,
+      "Na extraction (%)": 0.4533732584959115,
+      "D_Li": 0.3513944761184277
+    },
+    {
+      "O/A ratio": 0.75,
+      "Li extraction (%)": 39.003542155329235,
+      "Na extraction (%)": 0.6800598877438672,
+      "D_Li": 0.639439461462711
+    },
+    {
+      "O/A ratio": 1.0,
+      "Li extraction (%)": 52.00472287377231,
+      "Na extraction (%)": 0.906746516991823,
+      "D_Li": 1.0835383393453435
+    },
+    {
+      "O/A ratio": 1.25,
+      "Li extraction (%)": 65.00590359221539,
+      "Na extraction (%)": 1.1334331462397784,
+      "D_Li": 1.8576248643401034
+    },
+    {
+      "O/A ratio": 1.5,
+      "Li extraction (%)": 78.00708431065847,
+      "Na extraction (%)": 1.3601197754877343,
+      "D_Li": 3.546918717487886
+    },
+    {
+      "O/A ratio": 1.75,
+      "Li extraction (%)": 91.00826502910155,
+      "Na extraction (%)": 1.5868064047356902,
+      "D_Li": 10.121324229823026
+    },
+    {
+      "O/A ratio": 2.0,
+      "Li extraction (%)": 99.99989999999998,
+      "Na extraction (%)": 1.8734293154559165,
+      "D_Li": 999998.9999290326
+    }
+  ],
+  "solver_termination": "optimal",
+  "stream_focus": [
+    {
+      "Stream": "Aqueous In",
+      "Li": 60.0,
+      "Na": 10900.0
+    },
+    {
+      "Stream": "Aqueous Out",
+      "Li": 28.797166275736615,
+      "Na": 10801.164629647892
+    },
+    {
+      "Stream": "Organic In",
+      "Li": 1e-09,
+      "Na": 1e-09
+    },
+    {
+      "Stream": "Organic Out",
+      "Li": 31.202833725263392,
+      "Na": 98.8353703531087
+    }
+  ]
+}

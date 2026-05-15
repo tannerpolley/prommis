@@ -1,0 +1,114 @@
+# HBTA/TOPO Produced-Water Case Study for PrOMMiS
+
+## Basis
+
+- Paper: Influence Mechanism of Coexisting Ions on the Extraction Efficiency of Lithium from Oil and Gas Field Water
+- DOI: 10.3390/w17152258
+- Basis feed (raw): Li+=60, Na+=10900, K+=560, Mg+2=820, Ca+2=8600, Ba+2=560, Cl-=47220, TOP=0, Hexane=0
+- Process scale anchor: 15 L actual oil-and-gas field water train with filtering, pretreatment, extraction, back-extraction, concentration, and Li2CO3 precipitation
+
+## Pretreatment
+
+- The paper filters produced water, removes suspended matter, and applies impurity-removal (especially Ca/Mg control) before solvent extraction.
+- Applied assumptions: Ca+2 removal 98.0%, Mg+2 removal 95.0%
+- Inlet: Li+=60, Na+=10900, K+=560, Mg+2=820, Ca+2=8600, Ba+2=560, Cl-=47220, TOP=0, Hexane=0
+- Outlet: Li+=60, Na+=10900, K+=560, Mg+2=41, Ca+2=172, Ba+2=560, Cl-=47220, TOP=0, Hexane=0
+
+## Stage-wise MSContactor Material Balance
+
+| Stage | Species | Aq feed (mg/L) | Aq outlet (mg/L) | Org outlet (mg/L) | ηstage (%) | MB ratio |
+|---:|---|---:|---:|---:|---:|---:|
+| 1 | Li+ | 60 | 0 | 60 | 100.0000 | 1.000000 |
+| 1 | Na+ | 10900 | 10886.9 | 13.1444 | 0.1206 | 1.000000 |
+| 1 | K+ | 560 | 535.613 | 24.3867 | 4.3548 | 1.000000 |
+| 1 | Mg+2 | 41 | 38.2207 | 2.77928 | 6.7787 | 1.000000 |
+| 1 | Ca+2 | 172 | 170.5 | 1.49987 | 0.8720 | 1.000000 |
+| 1 | Ba+2 | 560 | 431.518 | 128.482 | 22.9432 | 1.000000 |
+| 1 | Cl- | 47220 | 47219.7 | 0.326753 | 0.0007 | 1.000000 |
+| 1 | TOP | 0 | 0 | 5744.1 | 0.0000 | 1.000000 |
+| 1 | Hexane | 0 | 0 | 654800 | 0.0000 | 1.000000 |
+| 2 | Li+ | 0 | 0 | 0 | 0.0000 | 0.000000 |
+| 2 | Na+ | 10886.9 | 10873.4 | 13.4137 | 0.1232 | 1.000000 |
+| 2 | K+ | 535.613 | 511.782 | 23.8313 | 4.4493 | 1.000000 |
+| 2 | Mg+2 | 38.2207 | 35.5736 | 2.64715 | 6.9259 | 1.000000 |
+| 2 | Ca+2 | 170.5 | 168.981 | 1.51908 | 0.8910 | 1.000000 |
+| 2 | Ba+2 | 431.518 | 330.364 | 101.154 | 23.4415 | 1.000000 |
+| 2 | Cl- | 47219.7 | 47219.7 | 0.0206838 | 0.0000 | 1.000000 |
+| 2 | TOP | 0 | 0 | 5744.1 | 0.0000 | 1.000000 |
+| 2 | Hexane | 0 | 0 | 654800 | 0.0000 | 1.000000 |
+| 3 | Li+ | 0 | 0 | 0 | 0.0000 | 0.000000 |
+| 3 | Na+ | 10873.4 | 10859.8 | 13.6393 | 0.1254 | 1.000000 |
+| 3 | K+ | 511.782 | 488.6 | 23.1825 | 4.5298 | 1.000000 |
+| 3 | Mg+2 | 35.5736 | 33.0652 | 2.50834 | 7.0511 | 1.000000 |
+| 3 | Ca+2 | 168.981 | 167.448 | 1.53276 | 0.9071 | 1.000000 |
+| 3 | Ba+2 | 330.364 | 251.522 | 78.842 | 23.8652 | 1.000000 |
+| 3 | Cl- | 47219.7 | 47219.6 | 0.0210317 | 0.0000 | 1.000000 |
+| 3 | TOP | 0 | 0 | 5744.1 | 0.0000 | 1.000000 |
+| 3 | Hexane | 0 | 0 | 654800 | 0.0000 | 1.000000 |
+
+## Costing Hooks
+
+| Unit | Input proxy | Formula | Units | Status | Notes |
+|---|---|---|---|---|---|
+| pretreatment | Q=1000 L/h, Ca removal fraction=0.980, Mg removal fraction=0.950 | m_removal = Q * C_in * x_remove * MW * 1e-6 | kg/h (for Ca, Mg as separate species) | bridge_gap | No integrated pretreatment reactor is wired yet; this row preserves handoff inputs for the unit model. |
+| extraction_contacting | Stages=3, oa_ratio=1.000, Q=1000 L/h, Li extracted=6e+04 mg/h | η_stage from bridge/fallback + stage mass balance to populate extracted loads | kg/h equivalent species loads | bridge_backed | This is staged MSContactor extraction/contacting handoff data; refine unit-level utility with solvent circulation model. |
+| stripping | No explicit strip solvent, pH swing, or temperature policy yet represented | m_strip_agent and energy = model placeholders | kg/h, MJ/h | gap | Gap: back-extraction/recover-and-regenerate flows are required before product solvent recycle claims. |
+| solvent_makeup_loss | Extracted TOP proxy=5744.1 mg/L, final TOP proxy=5744.1 mg/L | loss proxy = max(0, TOP_in - TOP_out) * flow | kg/h | bridge_gap | No solvent makeup/loss correlations are embedded; use this as explicit CAPEX/OPEX hook inputs. |
+| concentration | captured Li proxy=60000 mg/h across 3 stages; final raffinate Li=1e-30 mg/L | concentrator duty and recycle ratios require explicit strip liquor flow and target Li concentration | kg/h, L/h | bridge_gap | Concentrator/crystallizer block is outside current bridge path; hook captures captured-Li basis for later equipment sizing. |
+| li2co3_precipitation | Target purity=99.28%; Li2CO3 proxy=0.317109 kg/h | n_Li2CO3 = 0.5 * n_Li,captured; m_Li2CO3 = n_Li2CO3 * 73.89e-3 | kg/h | bridge_gap | Paper anchor: Li2CO3 purity 99.28% from field train; precipitation yields not yet coupled. |
+
+## Paper Anchors
+
+- Three-stage cross-flow Li extraction after impurity removal: 97.17%
+- Average Li transfer efficiency in 15 L process: 91.35%
+- Li2CO3 product purity: 99.28%
+- Na+ can promote Li extraction; Li/K separation factor stayed above 13 in the paper's K+ sweep.
+- Ca2+ and Mg2+ strongly suppress Li extraction and should be removed before extraction.
+
+## Bridge Status
+
+- Bridge mode: bridge_attempted
+- Requested attempt label: shan_2025_hbta_topo
+
+## Table Notes
+
+Rows in this table mirror the stage-level unit inputs/outputs and explicitly retain assumptions where support is missing.
+- Bridge-backed rows are those emitted from `epcsaft_pse` stage evaluation.
+- Rows marked with `gap`/`bridge_gap` rely on explicit deterministic fallback assumptions.
+- A bridge-derived cumulative recovery above the paper anchor is a calibration signal, not a claim that the process beats the reported experiment.
+
+## Transfer and Stage Summary
+
+| Section | Item | Bridge proxy | Literature | Units | Notes |
+|---|---|---|---|---|---|
+| feed | Simulated oil-and-gas field water basis | Li+=60, Na+=10900, K+=560, Mg+2=820, Ca+2=8600, Ba+2=560, Cl-=47220, TOP=0, Hexane=0 | Li 60, K 560, Na 10900, Ca 8600, Mg 820, Ba 560, Cl 47220; pH 6.0 | mg/L | HBTA/TOPO reported composition for the Shan paper feed case, retained as primary literature anchor. |
+| pretreatment | Pretreatment / impurity removal (Ca+2, Mg+2) | Ca+2 removed 98.0%, Mg+2 removed 95.0% | The paper filters produced water, removes suspended matter, and applies impurity-removal (especially Ca/Mg control) before solvent extraction. | mg/L | Assumed staged ion-reduction pretreatment: Ca/Mg reduction implemented to mirror paper direction; no unit model is integrated in this artifact yet. |
+| pretreatment | Feed after pretreatment | Li+=60, Na+=10900, K+=560, Mg+2=41, Ca+2=172, Ba+2=560, Cl-=47220, TOP=0, Hexane=0 | Assumed retained composition for stage 1 feed; Ca and Mg reductions are explicitly labeled as process assumptions. | mg/L | These values are now passed into Stage 1 as aqueous feed for staged MSContactor bridging. |
+| solvent | Extraction solvent basis | TOP proxy at 0.015 mol/L with O/A = 1:1 | 0.15 mol/L HBTA + 0.15 mol/L TOPO in sulfonated kerosene, 100% saponification with 2 mol/L NaOH, O/A = 1:1, 6 min extraction. | mol/L | The paper first reports the 0.15 mol/L HBTA + 0.15 mol/L TOPO extraction basis, then a dilute three-stage polishing case at 0.015 mol/L each. |
+| solvent | Polishing mode basis | Top/TOPO in each polishing step=0.015 mol/L | After impurity removal, the paper also reports a three-stage cross-flow polishing case using 0.015 mol/L HBTA + 0.015 mol/L TOPO, 100% saponification, and O/A = 1:1. | mol/L | Stage-wise artifact is generated as three fresh-organic, equal-o/a cross-flow passes. |
+| mscontactor | Stage 1 source | shan_2025_hbta_topo [bridge_backed] | source_status=bridge_backed, model=shan_2025_hbta_topo | status | Aqueous/organic coupling uses stage-wise bridge handoff; metadata key=shan_2025_hbta_topo. |
+| mscontactor | Stage 1 aqueous feed (mg/L) | Li+=60, Na+=10900, K+=560, Mg+2=41, Ca+2=172, Ba+2=560, Cl-=47220, TOP=0, Hexane=0 | MSContactor input profile for stage feed | mg/L | Feeds are passed stage-to-stage from preceding stage aqueous outlet. |
+| mscontactor | Stage 1 aqueous outlet (mg/L) | Li+=0, Na+=10886.9, K+=535.613, Mg+2=38.2207, Ca+2=170.5, Ba+2=431.518, Cl-=47219.7, TOP=0, Hexane=0 | Stage 1 and subsequent aqueous outlet states available for stage chaining. | mg/L | Used as feed for the next stage when building the staged profile. |
+| mscontactor | Stage 1 organic outlet loadings (mg/L) | Li+=60, Na+=13.1444, K+=24.3867, Mg+2=2.77928, Ca+2=1.49987, Ba+2=128.482, Cl-=0.326753, TOP=5744.1, Hexane=654800 | Organic loadings carry stage-wise competition across ions and are bridge-back when available. | mg/L | Solvent basis source note: requested HBTA/TOPO non-ionic stage model. |
+| mscontactor | Stage 1 extraction performance | Li 100.0000%, Na 0.1206%, K 4.3548%, Mg 6.7787%, Ca 0.8720%, Ba 22.9432% | Published benchmark context: >90% Li after pretreatment and 97.17% across 3 stages. | % | Selection preference vector: Li+=8.35, Na+=0.55, K+=0.60, Mg+2=0.11, Ca+2=0.04, Ba+2=0.90. |
+| mscontactor | Stage 1 mass balance gap | Li+=1, Na+=1, K+=1, Mg+2=1, Ca+2=1 | Gap metric = (m_out,mg/h)/(m_in,mg/h) for species-by-species mass closure check. | dimensionless | Absolute mass-balance deviations are expected at this stage where species-specific fallback assumptions apply. |
+| mscontactor | Stage 2 source | shan_2025_hbta_topo [bridge_backed] | source_status=bridge_backed, model=shan_2025_hbta_topo | status | Aqueous/organic coupling uses stage-wise bridge handoff; metadata key=shan_2025_hbta_topo. |
+| mscontactor | Stage 2 aqueous feed (mg/L) | Li+=0, Na+=10886.9, K+=535.613, Mg+2=38.2207, Ca+2=170.5, Ba+2=431.518, Cl-=47219.7, TOP=0, Hexane=0 | MSContactor input profile for stage feed | mg/L | Feeds are passed stage-to-stage from preceding stage aqueous outlet. |
+| mscontactor | Stage 2 aqueous outlet (mg/L) | Li+=0, Na+=10873.4, K+=511.782, Mg+2=35.5736, Ca+2=168.981, Ba+2=330.364, Cl-=47219.7, TOP=0, Hexane=0 | Stage 1 and subsequent aqueous outlet states available for stage chaining. | mg/L | Used as feed for the next stage when building the staged profile. |
+| mscontactor | Stage 2 organic outlet loadings (mg/L) | Li+=0, Na+=13.4137, K+=23.8313, Mg+2=2.64715, Ca+2=1.51908, Ba+2=101.154, Cl-=0.0206838, TOP=5744.1, Hexane=654800 | Organic loadings carry stage-wise competition across ions and are bridge-back when available. | mg/L | Solvent basis source note: requested HBTA/TOPO non-ionic stage model. |
+| mscontactor | Stage 2 extraction performance | Li 0.0000%, Na 0.1232%, K 4.4493%, Mg 6.9259%, Ca 0.8910%, Ba 23.4415% | Published benchmark context: >90% Li after pretreatment and 97.17% across 3 stages. | % | Selection preference vector: Li+=8.34, Na+=0.55, K+=0.57, Mg+2=0.10, Ca+2=0.04, Ba+2=0.69. |
+| mscontactor | Stage 2 mass balance gap | Li+=0, Na+=1, K+=1, Mg+2=1, Ca+2=1 | Gap metric = (m_out,mg/h)/(m_in,mg/h) for species-by-species mass closure check. | dimensionless | Absolute mass-balance deviations are expected at this stage where species-specific fallback assumptions apply. |
+| mscontactor | Stage 3 source | shan_2025_hbta_topo [bridge_backed] | source_status=bridge_backed, model=shan_2025_hbta_topo | status | Aqueous/organic coupling uses stage-wise bridge handoff; metadata key=shan_2025_hbta_topo. |
+| mscontactor | Stage 3 aqueous feed (mg/L) | Li+=0, Na+=10873.4, K+=511.782, Mg+2=35.5736, Ca+2=168.981, Ba+2=330.364, Cl-=47219.7, TOP=0, Hexane=0 | MSContactor input profile for stage feed | mg/L | Feeds are passed stage-to-stage from preceding stage aqueous outlet. |
+| mscontactor | Stage 3 aqueous outlet (mg/L) | Li+=0, Na+=10859.8, K+=488.6, Mg+2=33.0652, Ca+2=167.448, Ba+2=251.522, Cl-=47219.6, TOP=0, Hexane=0 | Stage 1 and subsequent aqueous outlet states available for stage chaining. | mg/L | Used as feed for the next stage when building the staged profile. |
+| mscontactor | Stage 3 organic outlet loadings (mg/L) | Li+=0, Na+=13.6393, K+=23.1825, Mg+2=2.50834, Ca+2=1.53276, Ba+2=78.842, Cl-=0.0210317, TOP=5744.1, Hexane=654800 | Organic loadings carry stage-wise competition across ions and are bridge-back when available. | mg/L | Solvent basis source note: requested HBTA/TOPO non-ionic stage model. |
+| mscontactor | Stage 3 extraction performance | Li 0.0000%, Na 0.1254%, K 4.5298%, Mg 7.0511%, Ca 0.9071%, Ba 23.8652% | Published benchmark context: >90% Li after pretreatment and 97.17% across 3 stages. | % | Selection preference vector: Li+=8.34, Na+=0.55, K+=0.55, Mg+2=0.10, Ca+2=0.04, Ba+2=0.53. |
+| mscontactor | Stage 3 mass balance gap | Li+=0, Na+=1, K+=1, Mg+2=1, Ca+2=1 | Gap metric = (m_out,mg/h)/(m_in,mg/h) for species-by-species mass closure check. | dimensionless | Absolute mass-balance deviations are expected at this stage where species-specific fallback assumptions apply. |
+| cumulative | Cumulative Li extraction | 100.00000000% | Paper 3-stage polishing anchor: 97.17% | % | Computed from staged bridge outputs; if this differs from the paper anchor, treat it as a bridge-calibration gap rather than a final process claim. |
+| costing | Costing readiness summary | Pretreatment/extraction/contact/stripping/solvent/co-precip hooks populated as explicit placeholders. | Paper also includes concentration and Li2CO3 precipitation references. | status | Hook tables in this artifact are intentionally labeled with bridge/knowledge gaps. |
+| costing | pretreatment | Q=1000 L/h, Ca removal fraction=0.980, Mg removal fraction=0.950 | m_removal = Q * C_in * x_remove * MW * 1e-6 | kg/h (for Ca, Mg as separate species) | [bridge_gap] No integrated pretreatment reactor is wired yet; this row preserves handoff inputs for the unit model. |
+| costing | extraction_contacting | Stages=3, oa_ratio=1.000, Q=1000 L/h, Li extracted=6e+04 mg/h | η_stage from bridge/fallback + stage mass balance to populate extracted loads | kg/h equivalent species loads | [bridge_backed] This is staged MSContactor extraction/contacting handoff data; refine unit-level utility with solvent circulation model. |
+| costing | stripping | No explicit strip solvent, pH swing, or temperature policy yet represented | m_strip_agent and energy = model placeholders | kg/h, MJ/h | [gap] Gap: back-extraction/recover-and-regenerate flows are required before product solvent recycle claims. |
+| costing | solvent_makeup_loss | Extracted TOP proxy=5744.1 mg/L, final TOP proxy=5744.1 mg/L | loss proxy = max(0, TOP_in - TOP_out) * flow | kg/h | [bridge_gap] No solvent makeup/loss correlations are embedded; use this as explicit CAPEX/OPEX hook inputs. |
+| costing | concentration | captured Li proxy=60000 mg/h across 3 stages; final raffinate Li=1e-30 mg/L | concentrator duty and recycle ratios require explicit strip liquor flow and target Li concentration | kg/h, L/h | [bridge_gap] Concentrator/crystallizer block is outside current bridge path; hook captures captured-Li basis for later equipment sizing. |
+| costing | li2co3_precipitation | Target purity=99.28%; Li2CO3 proxy=0.317109 kg/h | n_Li2CO3 = 0.5 * n_Li,captured; m_Li2CO3 = n_Li2CO3 * 73.89e-3 | kg/h | [bridge_gap] Paper anchor: Li2CO3 purity 99.28% from field train; precipitation yields not yet coupled. |
