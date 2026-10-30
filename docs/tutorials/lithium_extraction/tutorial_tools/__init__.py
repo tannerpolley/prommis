@@ -10,8 +10,8 @@ import os
 
 # One BLAS/OpenMP thread for the Engine, in this kernel and in the IPOPT processes it starts: the conda Engine links a
 # threaded OpenBLAS, whose threads would use up IPOPT's CPU-time limit on these small equilibrium problems.
-os.environ.setdefault('OPENBLAS_NUM_THREADS', '1')
-os.environ.setdefault('OMP_NUM_THREADS', '1')
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
 
 import sys
 import tempfile
