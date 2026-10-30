@@ -1,0 +1,58 @@
+{
+  "component_ids": ["water", "tbp", "domim-tf2n2", "dcm", "lithium-cation", "magnesium-cation", "chloride-anion"],
+  "molar_mass_kg_mol": [0.01801528, 0.26632, 0.83669, 0.08493, 0.00694, 0.02431, 0.03545],
+  "charge_number": [0, 0, 0, 0, 1, 2, -1],
+  "segment_count": [1.2047, 10.796, 27.552, 2.2632, 1.0, 1.0, 1.0],
+  "segment_diameter_angstrom": [
+    {"form": "constant_plus_sum_of_exponentials", "constant": 2.7927, "terms": [{"amplitude": 10.11, "exponent_coefficient_per_k": -0.01775}, {"amplitude": -1.417, "exponent_coefficient_per_k": -0.01146}]},
+    {"form": "constant", "value": 3.251},
+    {"form": "constant", "value": 3.09},
+    {"form": "constant", "value": 3.338},
+    {"form": "constant", "value": 2.845},
+    {"form": "constant", "value": 3.133},
+    {"form": "constant", "value": 2.756}
+  ],
+  "dispersion_energy_over_k_k": [353.95, 217.09, 255.79, 274.20, 360.0, 1500.0, 170.0],
+  "association_scheme": ["2B", "2B", "2B", null, "2B", null, null],
+  "association_energy_over_k_k": [2425.7, 5000.0, 5000.0, null, 0.0, null, null],
+  "association_volume": [0.0451, 0.01, 0.1, null, 1.0, null, null],
+  "relative_permittivity": [
+    {"form": "a_ln_temperature_plus_b", "a": -105.2, "b": 677.480},
+    {"form": "constant", "value": 11.0},
+    {"form": "constant", "value": 11.0},
+    {"form": "source-omitted", "value": null},
+    {"form": "constant", "value": 8.0},
+    {"form": "constant", "value": 8.0},
+    {"form": "constant", "value": 8.0}
+  ],
+  "dipole_moment_debye": [0.0, 0.0, 0.0, 1.1, 0.0, 0.0, 0.0],
+  "binary_k_ij": [
+    [0.0, -0.0475, -0.0065, 0.02, 0.0, 0.0, 0.0],
+    [-0.0475, 0.0, 0.0, 0.0, -0.01, 0.0, -0.01],
+    [-0.0065, 0.0, 0.0, 0.0, -0.035, 0.0, -0.035],
+    [0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, -0.01, -0.035, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, -0.01, -0.035, 0.0, 0.0, 0.0, 0.0]
+  ],
+  "binary_k_hb_ij": [
+    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, -0.68, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [1.0, -0.68, 1.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  ],
+  "ion_diameter_basis": {
+    "status": "missing_source_parameter",
+    "required_fields": ["debye_huckel_diameter", "born_diameter"],
+    "source_note": "Yu et al. (2025) print ion segment diameters but do not print the Debye-Huckel/Born diameter mapping needed by the current public Engine. No value is transferred from another paper."
+  },
+  "source_locators": {
+    "pure_parameters": "Yu et al. (2025), Article Table 1",
+    "binary_parameters": "Yu et al. (2025), Article Table 2",
+    "dielectric_constants": "Yu et al. (2025), Supporting Information Table S2",
+    "dcm_dipole": "Yu et al. (2025), Article Table 1 footnote b"
+  }
+}

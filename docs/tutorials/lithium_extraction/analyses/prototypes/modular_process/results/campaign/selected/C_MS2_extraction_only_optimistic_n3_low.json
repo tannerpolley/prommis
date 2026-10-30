@@ -1,0 +1,292 @@
+{
+  "candidate": {
+    "case": "optimistic",
+    "end": "low",
+    "id": "C_MS2_extraction_only_optimistic_n3_low",
+    "parent_id": "C_MS2_extraction_only_optimistic_n3_low",
+    "phase": "selected",
+    "scope": "extraction_only",
+    "site": "MS2",
+    "solvent": "C",
+    "stages": 3
+  },
+  "claim": "model prediction; no physical validation",
+  "elapsed_wall_s": 261.6291683390009,
+  "engine": {
+    "filename": "epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl",
+    "sha256": "da5a2b65668ab5647e51b917a659614bdcb4afbe7e5c3149aee2294b86a4c1bd",
+    "source_commit": "36485a88d7867928e7033036dbddc18ea416e7ca",
+    "version": "0.2.0.dev0"
+  },
+  "exception_traceback": "Traceback (most recent call last):\n  File \"/home/tnnrpolley21/.t3/worktrees/Lithium_Extraction/t3-lithium-201-pr-7-optimization-and-camp-c520f16b/analyses/prototypes/modular_process/scripts/run_campaign.py\", line 287, in worker\n    model, _ = set_c.solve(model, directory / 'released', started=started, connect_units=connect)\n               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tnnrpolley21/.t3/worktrees/Lithium_Extraction/t3-lithium-201-pr-7-optimization-and-camp-c520f16b/lithium_extraction/prototypes/produced_water_sx_prototype/set_c.py\", line 171, in solve\n    stage.solve(model, Path(directory) / str(rebuild), wall_seconds=remaining)\n    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/tnnrpolley21/.t3/worktrees/Lithium_Extraction/t3-lithium-201-pr-7-optimization-and-camp-c520f16b/lithium_extraction/prototypes/produced_water_sx_prototype/stage.py\", line 200, in solve\n    raise RuntimeError(f'IPOPT unresolved: {result.solver.termination_condition}')\nRuntimeError: IPOPT unresolved: optimal\n",
+  "execution": {
+    "mode": "parallel",
+    "parallel_runner_sha256": "7157ea6694384b0cf8bc8c3c5f704f4c04a0e25b3fb4b33669408776dc404b1c",
+    "threads_per_worker": 1,
+    "workers": 16
+  },
+  "last_algebraic_margins": {
+    "fs.design.diluent": {
+      "lower": 0.0,
+      "upper": 0.0
+    },
+    "fs.design.engine_extractant": {
+      "lower": -2.3361867995674857e-13,
+      "upper": 2.3361867995674857e-13
+    },
+    "fs.design.free_extractant": {
+      "lower": 1.49741330446318e-14,
+      "upper": -1.49741330446318e-14
+    },
+    "fs.design.free_topo": {
+      "lower": 2.3245294578089215e-16,
+      "upper": -2.3245294578089215e-16
+    },
+    "fs.design.li_target": {
+      "lower": 0.025170632434786233,
+      "upper": null
+    },
+    "fs.design.loading[1]": {
+      "lower": null,
+      "upper": 0.048396965262339844
+    },
+    "fs.design.loading[2]": {
+      "lower": null,
+      "upper": 0.062272079918973516
+    },
+    "fs.design.loading[3]": {
+      "lower": null,
+      "upper": 0.06966768212051255
+    },
+    "fs.design.physical_raffinate[hydrogen-cation]": {
+      "lower": -2.4769260971156247e-07,
+      "upper": null
+    },
+    "fs.design.physical_raffinate[water]": {
+      "lower": 50.23308542442022,
+      "upper": null
+    },
+    "fs.design.saponified_extractant": {
+      "lower": 6.874639746357047e-13,
+      "upper": -6.874639746357047e-13
+    },
+    "fs.stage[1].balance[0]": {
+      "lower": -5.053410814803705e-12,
+      "upper": 5.053410814803705e-12
+    },
+    "fs.stage[1].balance[1]": {
+      "lower": -2.3592239273284576e-15,
+      "upper": 2.3592239273284576e-15
+    },
+    "fs.stage[1].balance[2]": {
+      "lower": 6.96218111723087e-09,
+      "upper": -6.96218111723087e-09
+    },
+    "fs.stage[1].balance[3]": {
+      "lower": 7.781219245328597e-13,
+      "upper": -7.781219245328597e-13
+    },
+    "fs.stage[1].inlet_link[extractant_mol_l]": {
+      "lower": 8.049116928532385e-16,
+      "upper": -8.049116928532385e-16
+    },
+    "fs.stage[1].inlet_link[hbta]": {
+      "lower": -6.962958949002784e-09,
+      "upper": 6.962958949002784e-09
+    },
+    "fs.stage[1].inlet_link[hydrogen-cation]": {
+      "lower": -6.96284297714821e-09,
+      "upper": 6.96284297714821e-09
+    },
+    "fs.stage[1].inlet_link[lithium-carrier]": {
+      "lower": 2.912399488241846e-12,
+      "upper": -2.912399488241846e-12
+    },
+    "fs.stage[1].inlet_link[lithium-cation]": {
+      "lower": 3.068496845504143e-12,
+      "upper": -3.068496845504143e-12
+    },
+    "fs.stage[1].inlet_link[sodium-carrier]": {
+      "lower": -1.6102397193407114e-13,
+      "upper": 1.6102397193407114e-13
+    },
+    "fs.stage[1].inlet_link[sodium-cation]": {
+      "lower": -4.884981308350689e-15,
+      "upper": 4.884981308350689e-15
+    },
+    "fs.stage[2].balance[0]": {
+      "lower": -1.4851701032186915e-11,
+      "upper": 1.4851701032186915e-11
+    },
+    "fs.stage[2].balance[1]": {
+      "lower": -8.396061623727746e-16,
+      "upper": 8.396061623727746e-16
+    },
+    "fs.stage[2].balance[2]": {
+      "lower": 3.6417872744731366e-08,
+      "upper": -3.6417872744731366e-08
+    },
+    "fs.stage[2].balance[3]": {
+      "lower": 7.461123732732666e-13,
+      "upper": -7.461123732732666e-13
+    },
+    "fs.stage[2].inlet_link[bta-anion]": {
+      "lower": 3.212013988118656e-14,
+      "upper": -3.212013988118656e-14
+    },
+    "fs.stage[2].inlet_link[extractant_mol_l]": {
+      "lower": 8.368306048112117e-15,
+      "upper": -8.368306048112117e-15
+    },
+    "fs.stage[2].inlet_link[hbta]": {
+      "lower": -3.6418618346717446e-08,
+      "upper": 3.6418618346717446e-08
+    },
+    "fs.stage[2].inlet_link[hydrogen-cation]": {
+      "lower": -3.1424300707777694e-08,
+      "upper": 3.1424300707777694e-08
+    },
+    "fs.stage[2].inlet_link[hydroxide-anion]": {
+      "lower": 3.641865168553445e-08,
+      "upper": -3.641865168553445e-08
+    },
+    "fs.stage[2].inlet_link[lithium-carrier]": {
+      "lower": 9.83041295934961e-12,
+      "upper": -9.83041295934961e-12
+    },
+    "fs.stage[2].inlet_link[lithium-cation]": {
+      "lower": 9.798288916340603e-12,
+      "upper": -9.798288916340603e-12
+    },
+    "fs.stage[2].inlet_link[sodium-carrier]": {
+      "lower": 3.0156432906380815e-14,
+      "upper": -3.0156432906380815e-14
+    },
+    "fs.stage[2].inlet_link[sodium-cation]": {
+      "lower": -2.220446049250313e-15,
+      "upper": 2.220446049250313e-15
+    },
+    "fs.stage[3].balance[0]": {
+      "lower": -5.294421845380981e-11,
+      "upper": 5.294421845380981e-11
+    },
+    "fs.stage[3].balance[1]": {
+      "lower": 4.163336342344337e-16,
+      "upper": -4.163336342344337e-16
+    },
+    "fs.stage[3].balance[2]": {
+      "lower": 2.47695195882825e-07,
+      "upper": -2.47695195882825e-07
+    },
+    "fs.stage[3].balance[3]": {
+      "lower": 3.942159099157294e-16,
+      "upper": -3.942159099157294e-16
+    },
+    "fs.stage[3].inlet_link[bta-anion]": {
+      "lower": 7.461089038263147e-13,
+      "upper": -7.461089038263147e-13
+    },
+    "fs.stage[3].inlet_link[extractant_mol_l]": {
+      "lower": 2.2440382885235977e-13,
+      "upper": -2.2440382885235977e-13
+    },
+    "fs.stage[3].inlet_link[hbta]": {
+      "lower": -2.4769517958239673e-07,
+      "upper": 2.4769517958239673e-07
+    },
+    "fs.stage[3].inlet_link[hydrogen-cation]": {
+      "lower": -2.1177544017165113e-07,
+      "upper": 2.1177544017165113e-07
+    },
+    "fs.stage[3].inlet_link[hydroxide-anion]": {
+      "lower": 2.476959264628798e-07,
+      "upper": -2.476959264628798e-07
+    },
+    "fs.stage[3].inlet_link[lithium-cation]": {
+      "lower": 3.8092518288984634e-11,
+      "upper": -3.8092518288984634e-11
+    },
+    "fs.stage[3].inlet_link[sodium-carrier]": {
+      "lower": 7.455008832479848e-13,
+      "upper": -7.455008832479848e-13
+    },
+    "fs.stage[3].inlet_link[sodium-cation]": {
+      "lower": -4.440892098500626e-16,
+      "upper": 4.440892098500626e-16
+    }
+  },
+  "last_decision_values": {
+    "extractant_mol_l": 0.10000000032602127,
+    "organic_to_aqueous_ratio": 1.0,
+    "saponification_ratio": 0.7
+  },
+  "last_li_extraction_fraction": 0.9751706324347862,
+  "last_stage_amounts": [
+    {
+      "bta-anion": 0.003779336781921464,
+      "chloride-anion": 2.8123987152425927,
+      "diluent": 4.327698750059318,
+      "hbta": 0.030041466304423222,
+      "hydrogen-cation": 3.541932303644517e-08,
+      "hydroxide-anion": 2.0071296035980633e-05,
+      "lithium-carrier": 0.02360303497239546,
+      "lithium-cation": 0.010328890524885464,
+      "sodium-carrier": 0.03878726329005849,
+      "sodium-cation": 2.805869211292469,
+      "topo": 0.03760970206730123,
+      "water": 55.50797993566691
+    },
+    {
+      "bta-anion": 0.006057374358063454,
+      "chloride-anion": 2.8123986613255334,
+      "diluent": 4.327698750059317,
+      "hbta": 0.030019731182436653,
+      "hydrogen-cation": 2.1389181554898448e-07,
+      "hydroxide-anion": 3.244931261613065e-05,
+      "lithium-carrier": 0.009727920315761793,
+      "lithium-cation": 0.0029332883084947263,
+      "sodium-carrier": 0.056463449849822066,
+      "sodium-cation": 2.8155550870313633,
+      "topo": 0.03380863017329136,
+      "water": 55.507967587106
+    },
+    {
+      "bta-anion": 0.007568235761371168,
+      "chloride-anion": 2.8123983061269735,
+      "diluent": 4.327698750059317,
+      "hbta": 0.03000749522047627,
+      "hydrogen-cation": 1.4505510427501836e-06,
+      "hydroxide-anion": 4.093339930235928e-05,
+      "lithium-carrier": 0.0023323181142227566,
+      "lithium-cation": 0.0006009701413277513,
+      "sodium-carrier": 0.06614932558871736,
+      "sodium-cation": 2.8194057616715487,
+      "topo": 0.031518356672983874,
+      "water": 55.50795931429589
+    }
+  ],
+  "reason": "RuntimeError: IPOPT unresolved: optimal",
+  "runner_sha256": "be710e3cd4f037098cc7177fd32db0bc7440527991996194ffed3d5f1af85f86",
+  "solver_exit": "Solved To Acceptable Level.",
+  "solver_log": "build/modular_campaign/C_MS2_extraction_only_optimistic_n3_low/released/0/ipopt.log",
+  "solver_log_sha256": "91bfb325d73b10ce381d088a5685857c1652ec715e5a99901b3b32ff64d4aaed",
+  "source_sha256": {
+    "lithium_extraction/prototypes/produced_water_sx_prototype/brines.py": "ac7423f1d962e5820327c45f38ae6351ea7f204d7688c306fae5b4158bc64a54",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/carbonation.py": "cade7a16a12a341cfea7b792d2811773527becaf6ef99746886f67266d9ee36b",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/cascade.py": "1f4012b4d150ea3edcf36b6aa7cf3f763b05ec7c5eaf50fe11bb149368283823",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/d2_stage.py": "f48b24cfd27f18a2abe626d26fc76b6150a9864a1c08a71e783161937c0084c3",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/d2ehdtpa_buphen.py": "c48d87e48c1bce0fbda8fecd52a241498e0b9059782e55f9945d74b8c99a82d6",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/flowsheet.py": "1b2624c8561b9731c38d229bdac145f60ad3efe863e8737d7e8e162d0e20627c",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/fresh.py": "24952a851a52a960b13a01e8b9da2923739b8ef2aa9d52da3d009f188b2b3de5",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/full_process.py": "71f36a9b32c4cd66a6aa3ee3976b8c5fcff3435a4ba950ae862f97d3e8d6ccd1",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/optimization.py": "62552d1531e2add350cb3372dd8292654cc5b252b2fe6319823f716229e422e3",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/records.py": "88d9076ca296175936a1e290e2ff50d56028243bfaf8f3348e780056bccebc99",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/references.py": "107e8cd803efed4463507b1b3abfbeae0f4c9067051f8d83db181a2dfda0fa6d",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/set_a.py": "f015e11e0e16f0cb18fd95b5f8b073e0be546245ca21d816fd6efa7e1781ccbc",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/set_c.py": "08edb4588f07ab0073c2f96d2ab315a9b2b6379f9880c07960629c55ad8895ce",
+    "lithium_extraction/prototypes/produced_water_sx_prototype/stage.py": "bdf392aaebe80df51a8ed985b85793df75485dc0371a8defd2af5d353e57db1c"
+  },
+  "status": "unresolved",
+  "stopping_point": "selected",
+  "type": "prototype"
+}

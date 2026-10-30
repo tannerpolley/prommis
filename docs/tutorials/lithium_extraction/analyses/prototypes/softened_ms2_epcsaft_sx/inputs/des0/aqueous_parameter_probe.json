@@ -1,0 +1,1398 @@
+{
+  "schema": "epcsaft.parameters",
+  "schema_version": 1,
+  "document_id": "rezaee-2025-measured-data-scaffold",
+  "document_version": 1,
+  "purpose": "user-provided",
+  "sources": [
+    {
+      "source_id": "held-2008",
+      "citation": "Held, Cameretti, and Sadowski, Fluid Phase Equilibria 2008",
+      "doi": "10.1016/j.fluid.2008.06.010",
+      "use_basis": "Fixed aqueous Strategy 1 parameters."
+    },
+    {
+      "source_id": "rezaee-2026",
+      "citation": "Rezaee, Feyzi, and Miri, Fluid Phase Equilibria 2026",
+      "doi": "10.1016/j.fluid.2026.114737",
+      "use_basis": "Organic comparator coordinates; not fitted in this study."
+    },
+    {
+      "source_id": "issue-77-model-form",
+      "citation": "Declared downstream sensitivity scaffold.",
+      "use_basis": "NH3 and dilute RLi/RNa residual-coordinate scaffolds."
+    }
+  ],
+  "domains": [
+    {
+      "domain_id": "held-strategy-1-aqueous",
+      "kind": "unknown"
+    },
+    {
+      "domain_id": "rezaee-organic-scaffold",
+      "kind": "unknown"
+    },
+    {
+      "domain_id": "sensitivity-only",
+      "kind": "unknown"
+    }
+  ],
+  "components": [
+    {
+      "component_id": "water",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.01801528,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 0,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/water/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.2047,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/water/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.797059952289552,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/water/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 353.9449,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/water/relative_permittivity",
+          "family": "relative_permittivity",
+          "value": {
+            "magnitude": 78.09,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "lithium-cation",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.006941,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/lithium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 1.8177,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 2697.2795,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 1.599576,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 1.599576,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "sodium-cation",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.02298977,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/sodium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.4122,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 646.0504,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.1227359999999997,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.1227359999999997,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "chloride-anion",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.035453,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": -1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/chloride-anion/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.0575,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 47.2878,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.6906000000000003,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.6906000000000003,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "hydronium-cation",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.00100794,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/hydronium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.274,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 1616.4939,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.0011200000000002,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.0011200000000002,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "hydroxide-anion",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.01700734,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": -1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/hydroxide-anion/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydroxide-anion/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 1.6401,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydroxide-anion/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 2444.7555,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydroxide-anion/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 1.443288,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/hydroxide-anion/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 1.443288,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "ammonia",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.01703052,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 0,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/ammonia/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 2.44608,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        },
+        {
+          "identity": "component/ammonia/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.3709,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        },
+        {
+          "identity": "component/ammonia/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 213.57063,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "ammonium-cation",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.01803846,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/ammonium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/ammonium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.4755,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/ammonium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 212.3632,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/ammonium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 3.05844,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        },
+        {
+          "identity": "component/ammonium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 3.05844,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "component_id_a": "lithium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/lithium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "sodium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/sodium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "hydronium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/hydronium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "hydroxide-anion",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/hydroxide-anion/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonia",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/ammonia/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/ammonium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "lithium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/lithium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "hydroxide-anion",
+      "component_id_b": "lithium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/hydroxide-anion/lithium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonia",
+      "component_id_b": "lithium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/ammonia/lithium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "sodium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/sodium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "hydroxide-anion",
+      "component_id_b": "sodium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/hydroxide-anion/sodium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonia",
+      "component_id_b": "sodium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/ammonia/sodium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "hydronium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/hydronium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonia",
+      "component_id_b": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "pair/ammonia/chloride-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonium-cation",
+      "component_id_b": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "pair/ammonium-cation/chloride-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "hydronium-cation",
+      "component_id_b": "hydroxide-anion",
+      "coefficients": [
+        {
+          "identity": "pair/hydronium-cation/hydroxide-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonia",
+      "component_id_b": "hydronium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/ammonia/hydronium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonia",
+      "component_id_b": "hydroxide-anion",
+      "coefficients": [
+        {
+          "identity": "pair/ammonia/hydroxide-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonium-cation",
+      "component_id_b": "hydroxide-anion",
+      "coefficients": [
+        {
+          "identity": "pair/ammonium-cation/hydroxide-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2008",
+            "locator": "Table 2 and Eqs. 2-10",
+            "domain_id": "held-strategy-1-aqueous"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "ammonia",
+      "component_id_b": "ammonium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/ammonia/ammonium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-77-model-form",
+            "locator": "dilute-complex and neutral-ammonia scaffold",
+            "domain_id": "sensitivity-only"
+          }
+        }
+      ]
+    }
+  ],
+  "model_families": [
+    {
+      "family_id": "model/association",
+      "kind": "association",
+      "choice": "general-site",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      }
+    },
+    {
+      "family_id": "model/base",
+      "kind": "base",
+      "choice": "pc-saft",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      }
+    },
+    {
+      "family_id": "model/electrolyte",
+      "kind": "electrolyte",
+      "choice": "fully-dissociated-debye-huckel",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      },
+      "ionic_dispersion": "exclude-same-sign-ion-pairs"
+    },
+    {
+      "family_id": "model/relative_permittivity",
+      "kind": "permittivity",
+      "choice": "solvent-only",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      }
+    },
+    {
+      "family_id": "model/polar",
+      "kind": "polar",
+      "choice": "none",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      }
+    }
+  ],
+  "model_coefficients": [],
+  "correlations": [],
+  "topology": {
+    "presets": [],
+    "sites": [
+      {
+        "component_id": "water",
+        "site_id": "a",
+        "site_role": "donor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "held-2008",
+          "locator": "Table 2 and Eqs. 2-10",
+          "domain_id": "held-strategy-1-aqueous"
+        }
+      },
+      {
+        "component_id": "water",
+        "site_id": "b",
+        "site_role": "acceptor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "held-2008",
+          "locator": "Table 2 and Eqs. 2-10",
+          "domain_id": "held-strategy-1-aqueous"
+        }
+      },
+      {
+        "component_id": "ammonia",
+        "site_id": "a",
+        "site_role": "donor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "issue-77-model-form",
+          "locator": "DES-0 declared water/ammonia cross association; Esper NH3 pure tuple",
+          "domain_id": "sensitivity-only"
+        }
+      },
+      {
+        "component_id": "ammonia",
+        "site_id": "b",
+        "site_role": "acceptor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "issue-77-model-form",
+          "locator": "DES-0 declared water/ammonia cross association; Esper NH3 pure tuple",
+          "domain_id": "sensitivity-only"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "endpoint_a": {
+          "component_id": "water",
+          "site_id": "a"
+        },
+        "endpoint_b": {
+          "component_id": "water",
+          "site_id": "b"
+        },
+        "energy_over_k": {
+          "identity": "association/water/a/water/b/energy_over_k",
+          "value": {
+            "magnitude": 2425.7,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "association/water/a/water/b/volume",
+          "value": {
+            "magnitude": 0.0451,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "held-2008",
+              "locator": "Table 2 and Eqs. 2-10",
+              "domain_id": "held-strategy-1-aqueous"
+            }
+          ]
+        }
+      },
+      {
+        "endpoint_a": {
+          "component_id": "ammonia",
+          "site_id": "a"
+        },
+        "endpoint_b": {
+          "component_id": "ammonia",
+          "site_id": "b"
+        },
+        "energy_over_k": {
+          "identity": "assoc/ammonia/ammonia/e",
+          "value": {
+            "magnitude": 200.0,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "assoc/ammonia/ammonia/k",
+          "value": {
+            "magnitude": 0.0001,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "issue-77-model-form",
+              "locator": "DES-0 declared water/ammonia cross association; Esper NH3 pure tuple",
+              "domain_id": "sensitivity-only"
+            }
+          ]
+        }
+      },
+      {
+        "endpoint_a": {
+          "component_id": "water",
+          "site_id": "a"
+        },
+        "endpoint_b": {
+          "component_id": "ammonia",
+          "site_id": "b"
+        },
+        "energy_over_k": {
+          "identity": "assoc/water/ammonia/e",
+          "value": {
+            "magnitude": 1312.85,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "assoc/water/ammonia/k",
+          "value": {
+            "magnitude": 0.002102051524263266,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "issue-77-model-form",
+              "locator": "DES-0 declared water/ammonia cross association; Esper NH3 pure tuple",
+              "domain_id": "sensitivity-only"
+            }
+          ]
+        }
+      },
+      {
+        "endpoint_a": {
+          "component_id": "ammonia",
+          "site_id": "a"
+        },
+        "endpoint_b": {
+          "component_id": "water",
+          "site_id": "b"
+        },
+        "energy_over_k": {
+          "identity": "assoc/ammonia/water/e",
+          "value": {
+            "magnitude": 1312.85,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "assoc/ammonia/water/k",
+          "value": {
+            "magnitude": 0.002102051524263266,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "issue-77-model-form",
+              "locator": "DES-0 declared water/ammonia cross association; Esper NH3 pure tuple",
+              "domain_id": "sensitivity-only"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

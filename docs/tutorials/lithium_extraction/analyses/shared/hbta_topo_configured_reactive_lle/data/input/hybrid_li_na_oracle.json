@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "identity": "hybrid-li-na-carrier-exchange-oracle",
+  "claim_class": "manufactured_engine_capability_oracle",
+  "temperature_k": 298.15,
+  "pressure_pa": 100000.0,
+  "phase_ids": [
+    "aqueous",
+    "organic"
+  ],
+  "species_ids": [
+    "water",
+    "dcm",
+    "lithium-cation",
+    "sodium-cation",
+    "chloride-anion",
+    "sodium-carrier",
+    "lithium-carrier"
+  ],
+  "phase_supports": {
+    "aqueous": [
+      "water",
+      "dcm",
+      "lithium-cation",
+      "sodium-cation",
+      "chloride-anion"
+    ],
+    "organic": [
+      "water",
+      "dcm",
+      "sodium-carrier",
+      "lithium-carrier"
+    ]
+  },
+  "source_backed_ions": {
+    "source_identity": "figiel-2025-reference-electrolytes/2",
+    "source_commit": "64094d7f8f33df3af1c9ac298ce31feac6f23047",
+    "packet_fingerprint": "sha256:6d92f0e136eafcf4805d1c553207ba701fd272a58e06db0fbc081e204c93f78a",
+    "citation": "Figiel, Yu, and Held, Industrial & Engineering Chemistry Research 2025, DOI 10.1021/acs.iecr.5c00475.",
+    "domain": "298.15 K, 1 bar, reported ion mole fraction no greater than 0.38",
+    "components": {
+      "lithium-cation": {
+        "molar_mass_kg_mol": 0.00694,
+        "charge_number": 1,
+        "segment_count": 1.0,
+        "segment_diameter_angstrom": 2.8449,
+        "dispersion_energy_over_k_k": 360.0,
+        "packing_diameter_angstrom": 2.503512,
+        "debye_huckel_diameter_angstrom": 2.503512,
+        "born_diameter_angstrom": 2.784,
+        "solvation_factor": 1.0,
+        "locator": "Table 3, Li+ row; d_pack = d_DH = 0.88 sigma"
+      },
+      "sodium-cation": {
+        "molar_mass_kg_mol": 0.02298977,
+        "charge_number": 1,
+        "segment_count": 1.0,
+        "segment_diameter_angstrom": 2.8232,
+        "dispersion_energy_over_k_k": 230.0,
+        "packing_diameter_angstrom": 2.484416,
+        "debye_huckel_diameter_angstrom": 2.484416,
+        "born_diameter_angstrom": 3.445,
+        "solvation_factor": 1.0,
+        "locator": "Table 3, Na+ row; d_pack = d_DH = 0.88 sigma"
+      },
+      "chloride-anion": {
+        "molar_mass_kg_mol": 0.03545,
+        "charge_number": -1,
+        "segment_count": 1.0,
+        "segment_diameter_angstrom": 2.756,
+        "dispersion_energy_over_k_k": 170.0,
+        "packing_diameter_angstrom": 2.42528,
+        "debye_huckel_diameter_angstrom": 2.42528,
+        "born_diameter_angstrom": 4.1,
+        "solvation_factor": 1.0,
+        "locator": "Table 3, Cl- row; d_pack = d_DH = 0.88 sigma"
+      }
+    },
+    "binary_k_ij": {
+      "chloride-anion/lithium-cation": {
+        "value": 0.8,
+        "locator": "Table 4, Cl-/Li+ row"
+      },
+      "chloride-anion/sodium-cation": {
+        "value": 0.8,
+        "locator": "Table 4, Cl-/Na+ row"
+      },
+      "chloride-anion/water": {
+        "value": -0.3,
+        "locator": "Table 5, Cl-/water row"
+      },
+      "lithium-cation/water": {
+        "value": -0.4,
+        "locator": "Table 5, Li+/water row"
+      },
+      "sodium-cation/water": {
+        "value": -0.3,
+        "locator": "Table 5, Na+/water row"
+      }
+    },
+    "electrolyte_model": {
+      "choice": "born",
+      "c_shell": 1.0,
+      "c_dielectric": 1.0,
+      "permittivity_choice": "ion-fraction-suppression",
+      "ionic_region_relative_permittivity": 8.0,
+      "ion_fraction_suppression_coefficient": 7.01,
+      "locator": "Eq. 11 and Table 1"
+    }
+  },
+  "source_backed_neutral_lle": {
+    "source_identity": "yu-2025-water-dcm",
+    "citation": "Yu et al., AIChE Journal 2025, DOI 10.1002/aic.18907.",
+    "parameter_path": "../../yu_2025_epcsaft_benchmark/data/input/yu_2025_parameters.json",
+    "tie_line_path": "../../yu_2025_epcsaft_benchmark/data/input/binary_lle.csv",
+    "locator": "Article Tables 1-2 and Supporting Information Table S4",
+    "paper_organic_water_mole_fraction": 0.0094,
+    "accepted_engine_organic_water_mole_fraction": 0.009430664020172804,
+    "acceptance_atol": 0.001
+  },
+  "manufactured_inputs": {
+    "purpose": "Conditioned non-predictive capability proof only",
+    "dcm_relative_permittivity": 8.93,
+    "carrier_components": {
+      "sodium-carrier": {
+        "molar_mass_kg_mol": 0.32298977,
+        "segment_count": 4.0,
+        "segment_diameter_angstrom": 4.0,
+        "dispersion_energy_over_k_k": 300.0,
+        "relative_permittivity": 5.0,
+        "solvation_factor": 1.0
+      },
+      "lithium-carrier": {
+        "molar_mass_kg_mol": 0.30694,
+        "segment_count": 4.0,
+        "segment_diameter_angstrom": 4.0,
+        "dispersion_energy_over_k_k": 300.0,
+        "relative_permittivity": 5.0,
+        "solvation_factor": 1.0
+      }
+    },
+    "binary_k_ij": {
+      "dcm/lithium-carrier": -0.8,
+      "dcm/sodium-carrier": 0.05,
+      "lithium-carrier/sodium-carrier": 0.0,
+      "lithium-carrier/water": 0.2,
+      "sodium-carrier/water": 0.2,
+      "dcm/lithium-cation": 0.0,
+      "dcm/sodium-cation": 0.0,
+      "chloride-anion/dcm": 0.0
+    },
+    "ln_equilibrium_constant_sweep": [
+      -4.0,
+      0.0,
+      4.0
+    ],
+    "phase_start_amounts_mol": {
+      "aqueous": {
+        "water": 55.5,
+        "dcm": 0.05,
+        "lithium-cation": 0.5,
+        "sodium-cation": 0.5,
+        "chloride-anion": 1.0
+      },
+      "organic": {
+        "water": 0.01,
+        "dcm": 10.0,
+        "sodium-carrier": 0.5,
+        "lithium-carrier": 0.5
+      }
+    }
+  },
+  "regression": {
+    "active_parameter_identity": "pair/dcm/lithium-carrier/k_ij",
+    "truth_value": -0.78,
+    "bounds": [
+      -0.9,
+      -0.7
+    ],
+    "origin": -0.8,
+    "scale": 0.05,
+    "start": -0.84,
+    "target_ln_equilibrium_constant": 0.0
+  },
+  "acceptance": {
+    "balance_inf_norm_max": 1E-9,
+    "charge_inf_norm_max": 1E-10,
+    "affinity_inf_norm_max": 1E-7,
+    "pressure_relative_max": 1E-7,
+    "exact_absence_atol": 0.0,
+    "derivative_scaled_error_max": 0.00002,
+    "regression_parameter_atol": 2E-7
+  }
+}

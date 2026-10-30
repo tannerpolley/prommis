@@ -1,0 +1,627 @@
+{
+  "R7": {
+    "charge_eq_l": -6.641784392163574e-16,
+    "extraction_charge_change_eq_per_raw_l": -1.6934856769397315e-16,
+    "failures": [
+      "physical raffinate is negative or nonfinite"
+    ],
+    "feed_charge_eq_per_raw_l": -4.948298715223842e-16,
+    "physical_raffinate": {
+      "B": 0.0150786308973173,
+      "BTA": 0.0033869647530421127,
+      "Ba": 0.0,
+      "Br": 0.033790548658390075,
+      "CO2": 0.001549400138205493,
+      "Ca": 0.0,
+      "Cl": 2.833601826639055,
+      "H": -1.6977595062241248e-06,
+      "K": 0.058826087067724166,
+      "Li": 1.5540741529609936e-05,
+      "Mg": 0.0,
+      "Na": 2.815795291632663,
+      "OH": 2.5145902923875496e-05,
+      "SO4": 0.0019153678645001543,
+      "Sr": 0.0,
+      "water": 50.23310096422141
+    }
+  },
+  "balance_residuals_mol_per_nominal_l": {
+    "global/0": 0.0,
+    "global/1": 1.942890293094024e-16,
+    "global/2": 2.0828540172983245e-18,
+    "global/3": 1.2576745200831851e-17,
+    "stage1/0": 0.0,
+    "stage1/1": -2.7755575615628914e-17,
+    "stage1/2": 8.75683836695177e-18,
+    "stage1/3": -4.7704895589362195e-18,
+    "stage2/0": 0.0,
+    "stage2/1": 2.220446049250313e-16,
+    "stage2/2": -6.674027363045299e-18,
+    "stage2/3": 1.6588293239028218e-17
+  },
+  "balance_residuals_mol_per_raw_l": {
+    "global/0": 0.0,
+    "global/1": 1.942890293094024e-16,
+    "global/2": 2.0828540172983245e-18,
+    "global/3": 1.2576745200831851e-17,
+    "stage1/0": 0.0,
+    "stage1/1": -2.7755575615628914e-17,
+    "stage1/2": 8.75683836695177e-18,
+    "stage1/3": -4.7704895589362195e-18,
+    "stage2/0": 0.0,
+    "stage2/1": 2.220446049250313e-16,
+    "stage2/2": -6.674027363045299e-18,
+    "stage2/3": 1.6588293239028218e-17
+  },
+  "calibration_coverage": [
+    {
+      "basis": "projected nominal aqueous inlet",
+      "comparison": "physical calibration coverage unverified",
+      "quantity": "projected Li",
+      "source_owner": "analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:inventory",
+      "unit": "mol/L aqueous",
+      "value": 0.024204005186572543
+    },
+    {
+      "basis": "projected nominal aqueous inlet",
+      "comparison": "physical calibration coverage unverified",
+      "quantity": "projected Na",
+      "source_owner": "analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:inventory",
+      "unit": "mol/L aqueous",
+      "value": 2.7881930247327076
+    }
+  ],
+  "candidate": {
+    "case": "optimistic",
+    "end": "high",
+    "id": "C_MS2_extraction_only_optimistic_n2_high",
+    "phase": "fixed",
+    "scope": "extraction_only",
+    "site": "MS2",
+    "solvent": "C",
+    "stages": 2
+  },
+  "claim": "model prediction; no physical validation",
+  "conserved_quantity_names": [
+    "Li",
+    "Na",
+    "H",
+    "BTA"
+  ],
+  "cost_basis": "Li transferred to loaded organic (kg/y)",
+  "cost_usd_kg_li": 1350.7135119683785,
+  "cost_usd_m3_raw_brine": 226.7414991722222,
+  "costs": {
+    "can_minimize_total": true,
+    "completeness": "complete",
+    "completeness_basis": "listed scope accounts only; exclusions remain unpriced",
+    "excluded": [
+      "capital",
+      "labour",
+      "unquantified nominal acidity-conditioning HCl and buffering"
+    ],
+    "li_denominator": "Li transferred to loaded organic (kg/y)",
+    "lines": {
+      "electricity": {
+        "price_source": "data/reference/tea/hbta_topo_screening_cost_assumptions.csv; base; R1/R2 source-period nominal USD",
+        "usd_y": 409.0577777777778
+      },
+      "organic_makeup": {
+        "price_source": "data/reference/tea/hbta_topo_screening_cost_assumptions.csv; base; R1/R2 source-period nominal USD; 0.015 M formulation anchor, marginal HBTA/TOPO 100 USD/kg each (R1 screening)",
+        "usd_y": 1784772.372
+      },
+      "saponification_NaOH": {
+        "price_source": "data/reference/tea/hbta_topo_screening_cost_assumptions.csv; base; R1/R2 source-period nominal USD; naoh_price (Zhang 2026 Table 8)",
+        "usd_y": 19150.563599999998
+      },
+      "stage_operation": {
+        "price_source": "data/reference/tea/hbta_topo_screening_cost_assumptions.csv; base; R1/R2 source-period nominal USD",
+        "usd_y": 9600.0
+      }
+    },
+    "missing_items": [],
+    "priced_subtotal_usd_kg_li": 1350.7135119683785,
+    "priced_subtotal_usd_m3_raw_brine": 226.7414991722222,
+    "priced_subtotal_usd_y": 1813931.9933777777,
+    "total_usd_y": 1813931.9933777777
+  },
+  "elapsed_wall_s": 27.675850718999754,
+  "engine": {
+    "filename": "epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl",
+    "sha256": "da5a2b65668ab5647e51b917a659614bdcb4afbe7e5c3149aee2294b86a4c1bd",
+    "source_commit": "36485a88d7867928e7033036dbddc18ea416e7ca",
+    "version": "0.2.0.dev0"
+  },
+  "feed": {
+    "assumed_conditioning_input_mol_per_raw_l": {},
+    "basis": "mol per raw litre",
+    "labels": [
+      "support selected per stage by existing owner",
+      "several fixed stage supports share Engine #452 records",
+      "#158 recovery requires unsupported aqueous HBTA dissolution",
+      "projected Li = 0.024204005186572543 mol/L aqueous: physical calibration coverage unverified for arbitrary brine; owner analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:network/solve",
+      "projected Na = 2.7881930247327076 mol/L aqueous: physical calibration coverage unverified for arbitrary brine; owner analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:network/solve",
+      "process pH = 5.7699999999999996 dimensionless: physical calibration coverage unverified for arbitrary brine; owner analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:network/solve"
+    ],
+    "model_composition_adjustment": {
+      "B": -0.0150786308973173,
+      "BTA": 0.0,
+      "Ba": 0.0,
+      "Br": -0.033790548658390075,
+      "CO2": -0.001549400138205493,
+      "Ca": 0.0,
+      "Cl": -0.02120310443668183,
+      "H": 1.698243652461746e-06,
+      "K": -0.058826087067724166,
+      "Li": 0.0,
+      "Mg": 0.0,
+      "Na": 0.0,
+      "OH": 0.0,
+      "SO4": -0.0019153678645001543,
+      "Sr": 0.0,
+      "water": 5.274873889875671
+    },
+    "model_feed": {
+      "BTA": 0.0,
+      "Cl": 2.8123987281629326,
+      "H": 1.698243652461746e-06,
+      "Li": 0.024204005186572543,
+      "Na": 2.7881930247327076,
+      "OH": 0.0,
+      "water": 55.508
+    },
+    "pH_basis": "process assumption, not measured feed pH",
+    "physical_feed": {
+      "B": 0.0150786308973173,
+      "Ba": 0.0,
+      "Br": 0.033790548658390075,
+      "CO2": 0.001549400138205493,
+      "Ca": 0.0,
+      "Cl": 2.8336018325996144,
+      "K": 0.058826087067724166,
+      "Li": 0.024204005186572543,
+      "Mg": 0.0,
+      "Na": 2.7881930247327076,
+      "SO4": 0.0019153678645001543,
+      "Sr": 0.0,
+      "water": 50.23312611012433
+    },
+    "process_pH": 5.77,
+    "raw_brine": {
+      "T_C": 61.67,
+      "ca_mg_li_mass_ratio": 239.3452380952381,
+      "charge_closure_mol_l": 0.08378921053208366,
+      "charge_closure_percent_anion_eq": 1.6942421224810271,
+      "dic_mg_c_l": 18.61,
+      "divalent_scale": 1.0,
+      "labels": [],
+      "measured_pH": 5.77,
+      "mol": {
+        "B": 0.0150786308973173,
+        "Ba": 6.109371586688997e-05,
+        "Br": 0.033790548658390075,
+        "CO2": 0.001549400138205493,
+        "Ca": 0.9206586826347305,
+        "Cl": 4.991695452599045,
+        "K": 0.058826087067724166,
+        "Li": 0.024204005186572543,
+        "Mg": 0.13618596996502777,
+        "Na": 2.7881930247327076,
+        "SO4": 0.0019153678645001543,
+        "Sr": 0.022141063684090388
+      },
+      "name": "MS2",
+      "omitted": [],
+      "pH": 5.77,
+      "pH_basis": "process assumption, not measured feed pH",
+      "printed_mg_l": {
+        "B": 163.0,
+        "Ba": 8.39,
+        "Br": 2700.0,
+        "Ca": 36900.0,
+        "Cl": 174000.0,
+        "K": 2300.0,
+        "Li": 168.0,
+        "Mg": 3310.0,
+        "Na": 64100.0,
+        "SO4": 184.0,
+        "Sr": 1940.0
+      },
+      "source_locator": "data/reference/smackover_sar_li/input/usgs_southAR/southAR_brines_2022.txt: SITEID=MS-2; IDDB=AR2022",
+      "source_row": {
+        "Acetate": "15.18",
+        "Al": "<0.732",
+        "As": "<0.305",
+        "B": "163",
+        "BASIN": "Arkla",
+        "Ba": "8.39",
+        "Be": "<0.0427",
+        "Br": "2700",
+        "COND": "239.8",
+        "COUNTY": "Columbia",
+        "Ca": "36900",
+        "Cd": "<0.0366",
+        "Cl": "174000",
+        "Co": "<0.122",
+        "Cr": "<0.244",
+        "Cu": "<0.122",
+        "DATESAMPLE": "8/24/2022",
+        "DEPTHLOWER": "7495.0",
+        "DEPTHUPPER": "7493.0",
+        "DIC": "18.61",
+        "DSOURCE": "AR2022",
+        "FIELD": "Magnolia Smackover Production Unit",
+        "FORMATION": "Smackover",
+        "FRM_GRP": "Smackover",
+        "FeTot": "<0.438",
+        "H2S": "196.4",
+        "Hg": "<0.244",
+        "IDDB": "AR2022",
+        "K": "2300",
+        "LATITUDE": "33.24815266",
+        "LOCSAMPLE": "WH",
+        "LONGITUDE": "-93.09944731",
+        "Li": "168",
+        "Mg": "3310",
+        "Mn": "2.48",
+        "Mo": "<0.244",
+        "NPOC": "27.73",
+        "Na": "64100",
+        "Ni": "<0.183",
+        "PH": "5.77",
+        "PHT": "29.5",
+        "PROVINCE": "Louisiana-Mississippi Salt Basins",
+        "Pb": "<0.488",
+        "REGION": "Gulf Coast",
+        "SG": "1.21",
+        "SITEID": "MS-2",
+        "SO4": "184",
+        "STATE": "Arkansas",
+        "Si": "9.69",
+        "Sr": "1940",
+        "TDS": "305000.0",
+        "TEMP": "61.67",
+        "TYPESAMPLE": "sample",
+        "U": "<1.83",
+        "V": "<0.122",
+        "WELLNAME": "MSPU 4-W1",
+        "WELLTYPE": "Oil",
+        "Zn": "<0.305",
+        "d18O_H2O": "5.13",
+        "dD_H2O": "0.64"
+      },
+      "water_kg": 0.905
+    },
+    "removed_at_no_cost": {
+      "Ba": 6.109371586688997e-05,
+      "Ca": 0.9206586826347305,
+      "Cl": 2.158093619999431,
+      "Mg": 0.13618596996502777,
+      "Sr": 0.022141063684090388
+    },
+    "water_mass_basis": "Reaktoro pitzer.dat H2O molar mass 0.018016 kg/mol"
+  },
+  "fixed_design": {
+    "extractant_mol_l": 0.3,
+    "ln_k": {
+      "R1": -13.17592701069739,
+      "R2": -19.064874184545708,
+      "R5": -23.55969544590264
+    },
+    "organic_to_aqueous_ratio": 1.0,
+    "saponification_ratio": 0.7
+  },
+  "hbta_lost_fraction": 0.011289882510140375,
+  "labels": [
+    "support selected per stage by existing owner",
+    "several fixed stage supports share Engine #452 records",
+    "#158 recovery requires unsupported aqueous HBTA dissolution",
+    "projected Li = 0.024204005186572543 mol/L aqueous: physical calibration coverage unverified for arbitrary brine; owner analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:network/solve",
+    "projected Na = 2.7881930247327076 mol/L aqueous: physical calibration coverage unverified for arbitrary brine; owner analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:network/solve",
+    "process pH = 5.7699999999999996 dimensionless: physical calibration coverage unverified for arbitrary brine; owner analyses.shared.hbta_topo_configured_reactive_lle.scripts.mechanism_candidates:network/solve",
+    "model prediction; no physical validation; local solution, no global optimum claim"
+  ],
+  "li_extraction_fraction": 0.9993579268633511,
+  "na_metric": {
+    "name": "loaded-organic Na/(Li+Na)",
+    "value": 0.8829134534035664
+  },
+  "outlet_li_loading_fractions": [
+    0.08062821481680978,
+    0.0021607215869404728
+  ],
+  "outlet_mol_per_nominal_l": {
+    "bta-anion": 0.0033869647530421127,
+    "chloride-anion": 2.812398722202373,
+    "diluent": 4.3276987500593185,
+    "hbta": 0.09002683770187016,
+    "hydrogen-cation": 4.841462376211783e-10,
+    "hydroxide-anion": 2.5145902923875496e-05,
+    "lithium-carrier": 0.024188464445042933,
+    "lithium-cation": 1.5540741529609326e-05,
+    "sodium-carrier": 0.1823977331000448,
+    "sodium-cation": 2.815795291632663,
+    "topo": 0.09341380245491235,
+    "water": 55.50797485409708
+  },
+  "product_recovery_fraction": null,
+  "reason": "Fixed design is infeasible under the declared nominal-acidity composition mapping: reconstructed hydrogen is negative. Buffered-brine behavior and additional acidity conditioning were not evaluated.",
+  "solve": {
+    "kkt": {
+      "complementarity": 0.0,
+      "feasibility": 7.105427357601002e-15,
+      "multiplier_sign": -0.0,
+      "stationarity": 0.0
+    },
+    "options": {
+      "acceptable_iter": 0,
+      "bound_frac": 1e-08,
+      "bound_push": 1e-08,
+      "bound_relax_factor": 0,
+      "compl_inf_tol": 1e-07,
+      "constr_viol_tol": 1e-08,
+      "dual_inf_tol": 1e-07,
+      "hessian_approximation": "exact",
+      "max_cpu_time": 279.19013712299966,
+      "max_iter": 200,
+      "mu_init": 1e-06,
+      "nlp_scaling_method": "none",
+      "print_user_options": "yes",
+      "tol": 1e-09
+    },
+    "solve_and_kkt_s": 15.772623855999882,
+    "termination": "optimal"
+  },
+  "solvent": "C",
+  "stages": [
+    {
+      "balance_residuals_mol_per_nominal_l": {
+        "0": 0.0,
+        "1": -2.7755575615628914e-17,
+        "2": 8.75683836695177e-18,
+        "3": -4.7704895589362195e-18
+      },
+      "balance_residuals_mol_per_raw_l": {
+        "0": 0.0,
+        "1": -2.7755575615628914e-17,
+        "2": 8.75683836695177e-18,
+        "3": -4.7704895589362195e-18
+      },
+      "certificate": {
+        "absence_inf_norm": 0.0,
+        "active_reactions": [
+          "RW",
+          "R1",
+          "R2",
+          "R5"
+        ],
+        "aqueous_bta_mol": 0.002878553964083529,
+        "balance_inf_norm": 1.6499700369008996e-14,
+        "charge_inf_norm": 4.020510819306835e-17,
+        "direction_rank": 4,
+        "hbta_lost_to_aqueous_fraction": 0.00961146846115639,
+        "identity": "generic set C inlet",
+        "inventory_equivalence_mol_per_nominal_l": {
+          "BTA": -1.3877787807814457e-17,
+          "Cl": 0.0,
+          "H": -1.3877787807814457e-17,
+          "Li": 0.0,
+          "Na": 0.0,
+          "O": 0.0,
+          "TOPO": 1.3877787807814457e-17,
+          "diluent": 0.0
+        },
+        "kkt_stationarity_inf_norm": 3.113951736595255e-12,
+        "li_distribution": 36.44173472354185,
+        "li_extraction_percent": 97.32918357714009,
+        "na_distribution": 0.06480333883703701,
+        "neutral_li_fraction": 0.0,
+        "outlet_max_difference_mol_per_nominal_l": 7.105427357601002e-15,
+        "outlet_max_difference_mol_per_raw_l": 7.105427357601002e-15,
+        "ph": 9.199412072388839,
+        "phase_amounts_mol": [
+          {
+            "bta-anion": 0.002878553964083529,
+            "chloride-anion": 2.8123987222023734,
+            "diluent": 0.0,
+            "hbta": 0.0,
+            "hydrogen-cation": 5.71858094954061e-10,
+            "hydroxide-anion": 2.128861538126704e-05,
+            "lithium-carrier": 0.0,
+            "lithium-cation": 0.000663757217611731,
+            "sodium-carrier": 0.0,
+            "sodium-cation": 2.8146348069923683,
+            "topo": 0.0,
+            "water": 55.50797871138464
+          },
+          {
+            "bta-anion": 0.0,
+            "chloride-anion": 0.0,
+            "diluent": 4.327698750059316,
+            "hbta": 0.0900268377018701,
+            "hydrogen-cation": 0.0,
+            "hydroxide-anion": 0.0,
+            "lithium-carrier": 0.02418846444504294,
+            "lithium-cation": 0.0,
+            "sodium-carrier": 0.1823977331000447,
+            "sodium-cation": 0.0,
+            "topo": 0.09341380245491232,
+            "water": 0.0
+          }
+        ],
+        "pressure_relative_inf_norm": 4.970612810240027e-11,
+        "reaction_affinity_inf_norm": 1.1368683772161603e-13,
+        "reaction_set": "C",
+        "reduced_hessian_min_eigenvalue": 5.719926328811049e-10,
+        "seed": "guess",
+        "status": "evaluated",
+        "support_matches": true,
+        "wall_time_seconds": 0.11877619099959702
+      },
+      "inlet_mol_per_nominal_l": {
+        "bta-anion": 0.0,
+        "chloride-anion": 2.8123987222023725,
+        "diluent": 4.3276987500593185,
+        "extractant_mol_l": 0.3,
+        "hbta": 0.09000385737525442,
+        "hydrogen-cation": 1.6922830925071546e-06,
+        "hydroxide-anion": 0.0,
+        "lithium-carrier": 0.0006482164760821418,
+        "lithium-cation": 0.024204005186572543,
+        "sodium-carrier": 0.2088395153597047,
+        "sodium-cation": 2.7881930247327076,
+        "topo": 0.09051226816421316,
+        "water": 55.508
+      },
+      "outlet_mol_per_nominal_l": {
+        "bta-anion": 0.0028785539640833664,
+        "chloride-anion": 2.8123987222023725,
+        "diluent": 4.3276987500593185,
+        "hbta": 0.09002683770187016,
+        "hydrogen-cation": 5.718580423961227e-10,
+        "hydroxide-anion": 2.1288615381266717e-05,
+        "lithium-carrier": 0.024188464445042933,
+        "lithium-cation": 0.0006637572176117511,
+        "sodium-carrier": 0.1823977331000448,
+        "sodium-cation": 2.8146348069923675,
+        "topo": 0.09341380245491235,
+        "water": 55.50797871138463
+      },
+      "phase_charge_eq_per_nominal_l": [
+        9.024689210027669e-17,
+        0.0
+      ],
+      "phase_charge_eq_per_raw_l": [
+        9.024689210027669e-17,
+        0.0
+      ],
+      "stage": 1
+    },
+    {
+      "balance_residuals_mol_per_nominal_l": {
+        "0": 0.0,
+        "1": 2.220446049250313e-16,
+        "2": -6.674027363045299e-18,
+        "3": 1.6588293239028218e-17
+      },
+      "balance_residuals_mol_per_raw_l": {
+        "0": 0.0,
+        "1": 2.220446049250313e-16,
+        "2": -6.674027363045299e-18,
+        "3": 1.6588293239028218e-17
+      },
+      "certificate": {
+        "absence_inf_norm": 0.0,
+        "active_reactions": [
+          "RW",
+          "R1",
+          "R2",
+          "R5"
+        ],
+        "aqueous_bta_mol": 0.0033869647530425278,
+        "balance_inf_norm": 7.771561172376096e-16,
+        "charge_inf_norm": 1.1794821790261193e-16,
+        "direction_rank": 4,
+        "hbta_lost_to_aqueous_fraction": 0.01128988251014176,
+        "identity": "generic set C inlet",
+        "inventory_equivalence_mol_per_nominal_l": {
+          "BTA": 0.0,
+          "Cl": 0.0,
+          "H": 1.7520862555282366e-17,
+          "Li": 0.0,
+          "Na": -8.326672684688674e-17,
+          "O": 0.0,
+          "TOPO": -1.3877787807814457e-17,
+          "diluent": 0.0
+        },
+        "kkt_stationarity_inf_norm": 2.839398964158871e-12,
+        "li_distribution": 41.71078161534946,
+        "li_extraction_percent": 97.65867080353168,
+        "na_distribution": 0.07416715127704272,
+        "neutral_li_fraction": 0.0,
+        "outlet_max_difference_mol_per_nominal_l": 1.7763568394002505e-15,
+        "outlet_max_difference_mol_per_raw_l": 1.7763568394002505e-15,
+        "ph": 9.271721920955995,
+        "phase_amounts_mol": [
+          {
+            "bta-anion": 0.0033869647530425278,
+            "chloride-anion": 2.812398722202372,
+            "diluent": 0.0,
+            "hbta": 0.0,
+            "hydrogen-cation": 4.841462478752731e-10,
+            "hydroxide-anion": 2.51459029238781e-05,
+            "lithium-carrier": 0.0,
+            "lithium-cation": 1.554074152960969e-05,
+            "sodium-carrier": 0.0,
+            "sodium-cation": 2.8157952916326625,
+            "topo": 0.0,
+            "water": 55.50797485409708
+          },
+          {
+            "bta-anion": 0.0,
+            "chloride-anion": 0.0,
+            "diluent": 4.327698750059317,
+            "hbta": 0.0900038573752544,
+            "hydrogen-cation": 0.0,
+            "hydroxide-anion": 0.0,
+            "lithium-carrier": 0.0006482164760821417,
+            "lithium-cation": 0.0,
+            "sodium-carrier": 0.2088395153597043,
+            "sodium-cation": 0.0,
+            "topo": 0.09051226816421354,
+            "water": 0.0
+          }
+        ],
+        "pressure_relative_inf_norm": 7.383227362822709e-11,
+        "reaction_affinity_inf_norm": 1.7053025658242404e-13,
+        "reaction_set": "C",
+        "reduced_hessian_min_eigenvalue": 4.843127794078529e-10,
+        "seed": "guess",
+        "status": "evaluated",
+        "support_matches": true,
+        "wall_time_seconds": 0.12507448199994542
+      },
+      "inlet_mol_per_nominal_l": {
+        "bta-anion": 0.0028785539640833664,
+        "chloride-anion": 2.8123987222023725,
+        "diluent": 4.327698750059317,
+        "extractant_mol_l": 0.3,
+        "hbta": 0.09000000000000001,
+        "hydrogen-cation": 5.718580423961227e-10,
+        "hydroxide-anion": 2.1288615381266717e-05,
+        "lithium-carrier": 0.0,
+        "lithium-cation": 0.0006637572176117511,
+        "sodium-carrier": 0.21,
+        "sodium-cation": 2.8146348069923675,
+        "topo": 0.09000000000000001,
+        "water": 55.50797871138463
+      },
+      "outlet_mol_per_nominal_l": {
+        "bta-anion": 0.0033869647530421127,
+        "chloride-anion": 2.812398722202373,
+        "diluent": 4.3276987500593185,
+        "hbta": 0.09000385737525442,
+        "hydrogen-cation": 4.841462376211783e-10,
+        "hydroxide-anion": 2.5145902923875496e-05,
+        "lithium-carrier": 0.0006482164760821418,
+        "lithium-cation": 1.5540741529609326e-05,
+        "sodium-carrier": 0.2088395153597047,
+        "sodium-cation": 2.815795291632663,
+        "topo": 0.09051226816421316,
+        "water": 55.50797485409708
+      },
+      "phase_charge_eq_per_nominal_l": [
+        -1.5501937584535993e-16,
+        0.0
+      ],
+      "phase_charge_eq_per_raw_l": [
+        -1.5501937584535993e-16,
+        0.0
+      ],
+      "stage": 2
+    }
+  ],
+  "status": "infeasible",
+  "strict_certificate": true,
+  "type": "prototype"
+}

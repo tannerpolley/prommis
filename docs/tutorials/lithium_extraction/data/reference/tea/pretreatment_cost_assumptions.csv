@@ -1,0 +1,25 @@
+parameter,low_value,base_value,high_value,units,distribution,evidence_class,source_basis,notes
+assumed_tss_kg_m3,0.01,0.05,0.2,kg/m3,triangular,screening_assumption,missing-source-field sensitivity,The MS-2 source does not report TSS; values are scenario inputs and never measurements.
+assumed_oil_grease_kg_m3,0.005,0.02,0.1,kg/m3,triangular,screening_assumption,missing-source-field sensitivity,The MS-2 source does not report oil and grease; values are scenario inputs and never measurements.
+divalent_removal_fraction,0.98,0.995,0.999,fraction,triangular,screening_assumption,reference softening surrogate,Shared Mg Ca Sr and Ba removal fraction for the cost-first surrogate.
+h2s_removal_fraction,0.9,0.95,0.99,fraction,triangular,screening_assumption,physical-conditioning sensitivity,Physical conditioning removal assumption for reported H2S.
+npoc_removal_fraction,0.5,0.8,0.95,fraction,triangular,screening_assumption,physical-conditioning sensitivity,Physical conditioning removal assumption for reported NPOC.
+tss_removal_fraction,0.9,0.95,0.99,fraction,triangular,screening_assumption,physical-conditioning sensitivity,Removal assumption applied only to the declared TSS scenario input.
+oil_grease_removal_fraction,0.8,0.9,0.98,fraction,triangular,screening_assumption,physical-conditioning sensitivity,Removal assumption applied only to the declared oil and grease scenario input.
+li_loss_fraction,0.02,0.05,0.1,fraction,triangular,screening_assumption,pretreatment entrainment sensitivity,Pretreatment Li loss is separate from downstream extraction recovery.
+naoh_excess_factor,1.02,1.1,1.25,x stoichiometric,triangular,screening_assumption,reference softening surrogate,Total NaOH input divided by the Mg hydroxide stoichiometric lower bound.
+na2co3_excess_factor,1.02,1.1,1.25,x stoichiometric,triangular,screening_assumption,reference softening surrogate,Total Na2CO3 input divided by the Ca Sr and Ba carbonate stoichiometric lower bound.
+sludge_moisture_fraction,0.6,0.7,0.8,wet-mass fraction,triangular,screening_assumption,solids-handling sensitivity,Retained liquid fraction of disposed wet sludge.
+electricity_kwh_m3,0.25,0.5,1.0,kWh/m3,triangular,screening_assumption,conditioning and mixing allowance,Auxiliary electricity for conditioning mixing clarification and filtration.
+caustic_soda_usd_kg,0.45,0.7,1.1,USD_2021/kg,triangular,screening_assumption,chemical-price sensitivity,Screening delivered NaOH price.
+pretreatment_soda_ash_usd_kg,0.2,0.35,0.55,USD_2021/kg,triangular,screening_assumption,chemical-price sensitivity,Screening delivered Na2CO3 price for pretreatment only.
+sludge_disposal_usd_kg,0.03,0.05,0.1,USD_2021/kg wet sludge,triangular,screening_assumption,disposal-price sensitivity,Disposal cost is applied to solved wet sludge mass.
+conditioning_allowance_usd_m3,0.1,0.25,0.75,USD_2021/m3,triangular,screening_assumption,unknown-contaminant allowance,Named H2S oil and solids conditioning allowance while source TSS and oil data remain missing.
+final_conditioning_reagent_kg_m3,0.05,0.15,0.4,kg/m3,triangular,screening_assumption,pH-conditioning sensitivity,Generic final conditioning reagent demand because source pH is context only and outlet pH is not predicted.
+final_conditioning_reagent_usd_kg,0.25,0.5,1.0,USD_2021/kg,triangular,screening_assumption,chemical-price sensitivity,Screening delivered price for the generic final conditioning reagent.
+capital_intensity_usd_per_m3_y,1.5,3.0,6.0,USD_2021 per m3/y,triangular,screening_assumption,capacity-factor estimate,Screening installed-capital factor on annual raw-brine capacity.
+fixed_opex_fraction,0.03,0.04,0.06,1/y,triangular,screening_assumption,fixed-cost estimate,Annual fixed OPEX as a fraction of installed pretreatment capital.
+residual_divalent_li_limit,2.0,2.0,2.0,kg/kg,fixed,screening_assumption,extraction handoff guardrail,Downstream use is refused above this residual divalent to Li mass ratio.
+basis_flow_m3_h,1000.0,1000.0,1000.0,m3/h,fixed,screening_assumption,case-study flow basis,Raw-brine throughput basis shared with the screening TEA.
+annual_operating_hours,8000.0,8000.0,8000.0,h/y,fixed,screening_assumption,case-study annualization,Annual operating basis shared with the screening TEA.
+reference_li2co3_price_usd_kg,10.0,15.0,25.0,USD_2021/kg,triangular,screening_assumption,screening profitability hypothesis,Reference price is used only to test the screening profitability hypothesis.

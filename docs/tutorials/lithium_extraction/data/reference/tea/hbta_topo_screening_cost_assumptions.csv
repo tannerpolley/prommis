@@ -1,0 +1,24 @@
+assumption_id,parameter,base,low,high,units,currency_year,distribution,evidence_class,source_or_basis,rationale,cost_account_owner
+annual_hours,annual_operating_hours,8000,7200,8400,h/y,not_applicable,triangular,assumption,project screening convention,Not measured HBTA/TOPO availability,application
+hcl_price,hcl_31pct_solution_price,0.100,0.050,0.200,source_period_nominal_USD/kg,2024-2026 average,triangular,analogue,Zhang 2026 Table 8,No currency escalation applied,IDAES registered flow
+naoh_price,naoh_price,0.285,0.143,0.570,source_period_nominal_USD/kg,2024-2026 average,triangular,analogue,Zhang 2026 Table 8,Applied to pure NaOH mass,IDAES registered flow
+organic_price,formulated_organic_price,5.70,2.85,11.40,source_period_nominal_USD/kg,2024-2026 average,triangular,analogue,Zhang 2026 Table 8,HBNA/TRPO blended-formulation analogue,IDAES registered flow
+hbta_price,hbta_price,,,,source_period_nominal_USD/kg,unknown,unknown,unknown,no defensible source,Explicitly omitted pending a bulk delivered quote,application omitted account
+topo_price,topo_price,,,,source_period_nominal_USD/kg,unknown,unknown,unknown,no defensible source,Explicitly omitted pending a bulk delivered quote,application omitted account
+diluent_price,sulfonated_kerosene_price,,,,source_period_nominal_USD/kg,unknown,unknown,unknown,no defensible source,Explicitly omitted pending a bulk delivered quote,application omitted account
+organic_density,formulated_organic_density,0.90,0.80,1.00,kg/L,not_applicable,triangular,assumption,screening physical-property surrogate,Required because circuit diluent is a bookkeeping carrier,application
+electricity,electricity_price,0.10,0.05,0.20,source_period_nominal_USD/kWh,screening nominal,triangular,assumption,screening industrial power range,Applied to connected mixer and pump power,IDAES registered flow
+stage_operation_aux,extraction_stage_operation_auxiliary,0.60,0.35,0.90,source_period_nominal_USD/m3 feed,screening nominal,triangular,assumption,local screening register,Non-electric stage operation allowance,IDAES registered flow
+acid_cycle_aux,scrub_strip_regeneration_auxiliary,0.45,0.20,0.90,source_period_nominal_USD/m3 feed,screening nominal,triangular,assumption,local screening register,Separate from chemical purchases,IDAES registered flow
+waste,waste_handling_allowance,0.30,0.12,0.75,source_period_nominal_USD/m3 feed,screening nominal,triangular,assumption,local screening register,No waste classification established,IDAES registered flow
+settler_depth,settler_depth,1.0,0.5,1.5,m,not_applicable,triangular,assumption,hydraulic screening geometry,Converts connected settler area to active volume,application design equation
+mixer_power_density,mixer_power_density,0.50,0.20,1.00,kW/m3,not_applicable,triangular,assumption,screening mixer duty range,Converts connected mixing holdup to mixer power,application design equation
+pump_head,pump_head,20,10,40,m,not_applicable,triangular,assumption,screening hydraulic duty,Used with connected liquid rate to compute pump power,application design equation
+pump_efficiency,pump_efficiency,0.70,0.55,0.85,dimensionless,not_applicable,triangular,assumption,screening pump efficiency range,Used with connected liquid rate and pump head,application design equation
+acid_recovery,acid_recovery_fraction,0.90,0.00,0.99,fraction,not_applicable,triangular,literature-bounded surrogate,declared acid-recovery sensitivity,Steady-state recycle fraction; recovery-unit performance and cost are not modeled,application balance
+organic_entrainment,organic_entrainment_loss_fraction,0.005,0.001,0.020,fraction/pass,not_applicable,triangular,assumption,screening assumption; not from Cha 2025,"Not measured HBTA/TOPO produced-water performance. Cha 2025 reports 0.72 % dissolved HBTA loss per extraction stage (626 ppm; Sect. 3.2, Fig. 4), not an entrainment fraction or this range",application
+organic_degradation,organic_degradation_loss_fraction,0.000,0.000,0.010,fraction/pass,not_applicable,triangular,assumption,declared solvent stability sensitivity,Not measured HBTA/TOPO produced-water performance,application
+organic_purge,organic_purge_fraction,0.005,0.000,0.020,fraction/pass,not_applicable,triangular,assumption,declared quality-control sensitivity,Not measured HBTA/TOPO produced-water performance,application
+fixed_opex,fixed_opex_fraction,0.04,0.02,0.08,1/y,not_applicable,triangular,assumption,screening convention,Fraction of native PrOMMiS installed capital,IDAES unit costing
+contingency,capital_contingency_fraction,0.20,0.10,0.40,dimensionless,not_applicable,triangular,assumption,screening convention,Applied explicitly to native PrOMMiS bare erected cost,IDAES unit costing
+capital_recovery,capital_recovery_factor,0.16,0.10,0.24,1/y,not_applicable,triangular,assumption,local screening register,Annualization only,application

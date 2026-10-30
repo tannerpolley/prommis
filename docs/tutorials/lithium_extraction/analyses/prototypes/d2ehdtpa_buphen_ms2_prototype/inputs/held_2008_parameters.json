@@ -1,0 +1,1166 @@
+{
+  "schema": "epcsaft.parameters",
+  "schema_version": 1,
+  "document_id": "held-cameretti-sadowski-2008",
+  "document_version": 2,
+  "purpose": "external-document",
+  "sources": [
+    {
+      "source_id": "held-cameretti-sadowski-2008",
+      "citation": "Held, C.; Cameretti, L. F.; Sadowski, G. Modeling Aqueous Electrolyte Solutions. Part 1. Fully Dissociated Electrolytes. Fluid Phase Equilibria 2008, 270, 87-96.",
+      "doi": "10.1016/j.fluid.2008.06.010",
+      "use_basis": "Eqs. (1)-(7), Table 1 water model, all 29 Table 2 ion rows, one-segment ion convention, water-only constant dielectric rule, and excluded ion-ion dispersion; inspected PDF SHA-256 20855b3de708fd529b29c7c4d8f6d0a1270802b610408606db1488b32d9c97e8"
+    },
+    {
+      "source_id": "figiel-yu-held-2025",
+      "citation": "Figiel, P.; Yu, G.; Held, C. Predicting Thermodynamic Properties of Ions in Single Solvents and in Mixed Solvents Using a Modified Born Term within the ePC-SAFT Framework. Industrial & Engineering Chemistry Research 2025, 64, 9406-9418.",
+      "doi": "10.1021/acs.iecr.5c00475",
+      "use_basis": "numeric water relative permittivity 78.09 used to instantiate the Held 2008 concentration-independent solvent dielectric; main PDF SHA-256 a3c940895c530f72f47f22f8c0f4796b5ad37918a4edd274f85497c6dd81ad1f"
+    },
+    {
+      "source_id": "nist-srd-69-water",
+      "citation": "NIST Chemistry WebBook, SRD 69, Water, CAS 7732-18-5.",
+      "use_basis": "water identity and molecular weight"
+    }
+  ],
+  "domains": [
+    {
+      "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar",
+      "kind": "reported-conditions",
+      "temperature_min": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "temperature_max": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "pressure_min": {
+        "magnitude": 1,
+        "unit": "bar"
+      },
+      "pressure_max": {
+        "magnitude": 1,
+        "unit": "bar"
+      }
+    },
+    {
+      "domain_id": "nist-water-identity",
+      "kind": "unknown"
+    }
+  ],
+  "components": [
+    {
+      "component_id": "calcium-cation",
+      "aliases": [
+        "Ca2+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 2,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/calcium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.542232,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Ca2+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 2146.9794,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Ca2+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.542232,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Ca2+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion segment number is one",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.8889,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Ca2+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "calcium cation",
+      "formula": "Ca2+"
+    },
+    {
+      "component_id": "chloride-anion",
+      "aliases": [
+        "Cl-"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": -1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/chloride-anion/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.6906,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Cl- row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 47.2878,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Cl- row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.6906,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Cl- row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion segment number is one",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.0575,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Cl- row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "chloride anion",
+      "formula": "Cl-"
+    },
+    {
+      "component_id": "lithium-cation",
+      "aliases": [
+        "Li+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/lithium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 1.599576,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Li+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 2697.2795,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Li+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 1.599576,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Li+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion segment number is one",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 1.8177,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Li+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "lithium cation",
+      "formula": "Li+"
+    },
+    {
+      "component_id": "magnesium-cation",
+      "aliases": [
+        "Mg2+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 2,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/magnesium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.044152,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Mg2+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 8145.3298,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Mg2+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.044152,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Mg2+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion segment number is one",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.3229,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Mg2+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "magnesium cation",
+      "formula": "Mg2+"
+    },
+    {
+      "component_id": "potassium-cation",
+      "aliases": [
+        "K+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/potassium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.613424,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, K+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 271.0518,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, K+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.613424,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, K+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion segment number is one",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.9698,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, K+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "potassium cation",
+      "formula": "K+"
+    },
+    {
+      "component_id": "sodium-cation",
+      "aliases": [
+        "Na+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/sodium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.122736,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Na+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 646.0504,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Na+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.122736,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Na+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion segment number is one",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.4122,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Na+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "sodium cation",
+      "formula": "Na+"
+    },
+    {
+      "component_id": "strontium-cation",
+      "aliases": [
+        "Sr2+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 2,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/strontium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.629616,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Sr2+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/strontium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 1677.6061,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Sr2+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/strontium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.629616,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Sr2+ row; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/strontium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion segment number is one",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/strontium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.9882,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 2, Sr2+ row",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "strontium cation",
+      "formula": "Sr2+"
+    },
+    {
+      "component_id": "water",
+      "aliases": [],
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 18.01528,
+            "unit": "gram / mole"
+          },
+          "provenance": {
+            "source_id": "nist-srd-69-water",
+            "locator": "Water record, molecular weight",
+            "domain_id": "nist-water-identity"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 0,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, water is the neutral solvent",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/water/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 353.9449,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 1, dispersion energy",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/water/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.204659,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Table 1, segment number",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ],
+      "name": "water",
+      "cas": "7732-18-5",
+      "formula": "H2O"
+    }
+  ],
+  "pairs": [
+    {
+      "component_id_a": "calcium-cation",
+      "component_id_b": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "pair/calcium-cation/chloride-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion-ion dispersion is neglected; k_ij=1 suppresses the geometric-mean dispersion term",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "calcium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/calcium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Eqs. (5)-(6), geometric-mean dispersion applied to water-ion pairs; no fitted binary correction",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "lithium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/lithium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion-ion dispersion is neglected; k_ij=1 suppresses the geometric-mean dispersion term",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "magnesium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/magnesium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion-ion dispersion is neglected; k_ij=1 suppresses the geometric-mean dispersion term",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "potassium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/potassium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion-ion dispersion is neglected; k_ij=1 suppresses the geometric-mean dispersion term",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "sodium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/sodium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion-ion dispersion is neglected; k_ij=1 suppresses the geometric-mean dispersion term",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "strontium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/strontium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Section 2, ion-ion dispersion is neglected; k_ij=1 suppresses the geometric-mean dispersion term",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Eqs. (5)-(6), geometric-mean dispersion applied to water-ion pairs; no fitted binary correction",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "lithium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/lithium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Eqs. (5)-(6), geometric-mean dispersion applied to water-ion pairs; no fitted binary correction",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "magnesium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/magnesium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Eqs. (5)-(6), geometric-mean dispersion applied to water-ion pairs; no fitted binary correction",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "potassium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/potassium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Eqs. (5)-(6), geometric-mean dispersion applied to water-ion pairs; no fitted binary correction",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "sodium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/sodium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Eqs. (5)-(6), geometric-mean dispersion applied to water-ion pairs; no fitted binary correction",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "strontium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/strontium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-cameretti-sadowski-2008",
+            "locator": "Eqs. (5)-(6), geometric-mean dispersion applied to water-ion pairs; no fitted binary correction",
+            "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+          }
+        }
+      ]
+    }
+  ],
+  "model_families": [
+    {
+      "family_id": "model/association",
+      "kind": "association",
+      "choice": "general-site",
+      "provenance": {
+        "source_id": "held-cameretti-sadowski-2008",
+        "locator": "Table 1 and Section 2, 2B association scheme expanded as one A site",
+        "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+      }
+    },
+    {
+      "family_id": "model/base",
+      "kind": "base",
+      "choice": "pc-saft",
+      "provenance": {
+        "source_id": "held-cameretti-sadowski-2008",
+        "locator": "Table 1, segment number",
+        "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+      }
+    },
+    {
+      "family_id": "model/electrolyte",
+      "kind": "electrolyte",
+      "choice": "fully-dissociated-debye-huckel",
+      "ionic_dispersion": "exclude-same-sign-ion-pairs",
+      "provenance": {
+        "source_id": "held-cameretti-sadowski-2008",
+        "locator": "Eqs. (1)-(7) and Sections 2-3, strong electrolytes fully dissociated with Debye-Huckel ion term, water-ion dispersion, and no ion-ion dispersion. Held, Cameretti & Sadowski 2008 states that dispersion between two ions is neglected in this work",
+        "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+      }
+    },
+    {
+      "family_id": "model/relative_permittivity",
+      "kind": "permittivity",
+      "choice": "solvent-only",
+      "provenance": {
+        "source_id": "held-cameretti-sadowski-2008",
+        "locator": "Eq. (2), concentration-independent water dielectric in a uniform continuum",
+        "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+      }
+    }
+  ],
+  "model_coefficients": [],
+  "correlations": [
+    {
+      "correlation_id": "component/water/relative_permittivity/constant",
+      "component_id": "water",
+      "family": "relative_permittivity",
+      "form": "constant",
+      "independent_variables": [],
+      "constant": {
+        "identity": "component/water/relative_permittivity/constant/constant",
+        "value": {
+          "magnitude": 78.09,
+          "unit": "dimensionless"
+        }
+      },
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Table 1, water dielectric constant; Held 2008 Eq. (2) uses a concentration-independent solvent dielectric",
+        "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+      }
+    },
+    {
+      "correlation_id": "component/water/segment_diameter/constant-plus-sum-of-exponentials",
+      "component_id": "water",
+      "family": "segment_diameter",
+      "form": "constant-plus-sum-of-exponentials",
+      "independent_variables": [
+        "temperature"
+      ],
+      "constant": {
+        "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/constant",
+        "value": {
+          "magnitude": 2.7927,
+          "unit": "angstrom"
+        }
+      },
+      "provenance": {
+        "source_id": "held-cameretti-sadowski-2008",
+        "locator": "Table 1 and Eq. (7), water temperature-dependent segment-diameter correlation",
+        "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+      },
+      "terms": [
+        {
+          "amplitude": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-0/amplitude",
+            "value": {
+              "magnitude": 10.11,
+              "unit": "angstrom"
+            }
+          },
+          "exponent_coefficient": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-0/exponent_coefficient",
+            "value": {
+              "magnitude": -0.01775,
+              "unit": "1 / kelvin"
+            }
+          }
+        },
+        {
+          "amplitude": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-1/amplitude",
+            "value": {
+              "magnitude": -1.417,
+              "unit": "angstrom"
+            }
+          },
+          "exponent_coefficient": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-1/exponent_coefficient",
+            "value": {
+              "magnitude": -0.01146,
+              "unit": "1 / kelvin"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "topology": {
+    "presets": [],
+    "sites": [
+      {
+        "component_id": "water",
+        "site_id": "a",
+        "site_role": "donor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "held-cameretti-sadowski-2008",
+          "locator": "Table 1 and Section 2, 2B association scheme expanded as one A site",
+          "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+        }
+      },
+      {
+        "component_id": "water",
+        "site_id": "b",
+        "site_role": "acceptor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "held-cameretti-sadowski-2008",
+          "locator": "Table 1 and Section 2, 2B association scheme expanded as one B site",
+          "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "endpoint_a": {
+          "component_id": "water",
+          "site_id": "a"
+        },
+        "endpoint_b": {
+          "component_id": "water",
+          "site_id": "b"
+        },
+        "energy_over_k": {
+          "identity": "association/water/a/water/b/energy_over_k",
+          "value": {
+            "magnitude": 2425.6714,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "association/water/a/water/b/volume",
+          "value": {
+            "magnitude": 0.0450989,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "held-cameretti-sadowski-2008",
+              "locator": "Table 1, association energy",
+              "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+            },
+            {
+              "source_id": "held-cameretti-sadowski-2008",
+              "locator": "Table 1, association volume",
+              "domain_id": "held-aqueous-electrolyte-298-15-k-1-bar"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

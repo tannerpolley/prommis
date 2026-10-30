@@ -1,0 +1,1035 @@
+{
+  "arm": "D2Figiel",
+  "n": 3,
+  "target": null,
+  "start": 2,
+  "case": "",
+  "released": true,
+  "eligibility_gate": null,
+  "design": {
+    "O_A": 1.8153003830833914,
+    "B": 0.9999999999554383,
+    "S": 1.499999999933482
+  },
+  "quantities": {
+    "extraction_fraction": 0.99658392097176,
+    "stage1_li_na_selectivity": 753.3683743476452,
+    "loaded_organic_na_fraction": 0.33561071932269754,
+    "net_na_to_organic_mol": -0.024121322392055285,
+    "extractant_circulation_mol_m3": 36.30600777824881,
+    "initial_naoh_mol_m3": 36.30600777824881,
+    "formal_hcl_mol_m3": 36.30600777824882,
+    "model_bta_loss_mol_m3": 0,
+    "buphen_circulation_mol_m3": 1815.3003830024984,
+    "model_buphen_dissolution_mol_m3": 0.07136377110317849,
+    "formal_naoh_mol_m3": 36.30600777824881,
+    "loading": 0.6643892806773025
+  },
+  "initialization_projection": {
+    "prescribed_R": null,
+    "initial_R": null,
+    "metric": "nearest R at fixed O/A and c; root xtol 1e-14, inward offset 1e-12"
+  },
+  "multiplier": null,
+  "multipliers": {
+    "fs.stage[1].equilibrium[7]": -1.134112859564151,
+    "fs.stage[2].equilibrium[7]": -4.338726073993951,
+    "fs.stage[3].equilibrium[7]": -40.18136332082417,
+    "fs.paper1.buphen": -0.01124427822050021,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,1,aqueous,water]": -4.910569418331755e-14,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,1,aqueous,lithium-cation]": 1.1352709626085113,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,1,aqueous,sodium-cation]": 0.001158103006425768,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,1,aqueous,chloride-anion]": -9.697052004118798e-13,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,2,aqueous,water]": -3.2737129455545035e-14,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,2,aqueous,lithium-cation]": 4.883665181480096,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,2,aqueous,sodium-cation]": 0.0005442121966342147,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,2,aqueous,chloride-anion]": -6.464701336078509e-13,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,3,aqueous,water]": -1.6368564727772517e-14,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,3,aqueous,lithium-cation]": 41.31547617947073,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,3,aqueous,sodium-cation]": -3.2324456116221343e-13,
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,3,aqueous,chloride-anion]": -3.2323506680392546e-13,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,1,water]": 4.910569418331755e-14,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,1,lithium-cation]": -1.1352709626085113,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,1,sodium-cation]": -0.001158103006425768,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,1,chloride-anion]": 9.697052004118798e-13,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,2,water]": 3.2737129455545035e-14,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,2,lithium-cation]": -4.883665181480096,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,2,sodium-cation]": -0.0005442121966342147,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,2,chloride-anion]": 6.464701336078509e-13,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,3,water]": 1.6368564727772517e-14,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,3,lithium-cation]": -41.31547617947073,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,3,sodium-cation]": 3.2324456116221343e-13,
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,3,chloride-anion]": 3.2323506680392546e-13,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,1,organic,diluent]": -1.15268488517881e-13,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,1,organic,buphen]": -5.124158225191767e-13,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,1,organic,naa]": -7.459788366158963e-11,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,1,organic,lib2a]": 1.134112859526463,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,2,organic,diluent]": 0.0010351337791558184,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,2,organic,buphen]": -1.0152869549210736e-12,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,2,organic,naa]": -1.0592098508711714e-10,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,2,organic,lib2a]": 4.88312096917551,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,3,organic,diluent]": 0.0018443622619214982,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,3,organic,buphen]": -1.5145884266761117e-12,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,3,organic,naa]": -1.3153987966538065e-10,
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,3,organic,lib2a]": 41.31547617933648,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,1,diluent]": 1.15268488517881e-13,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,1,buphen]": 5.124158225191767e-13,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,1,naa]": 7.459788366158963e-11,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,1,lib2a]": -1.134112859526463,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,2,diluent]": -0.0010351337791558184,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,2,buphen]": 1.0152869549210736e-12,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,2,naa]": 1.0592098508711714e-10,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,2,lib2a]": -4.88312096917551,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,3,diluent]": -0.0018443622619214982,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,3,buphen]": 1.5145884266761117e-12,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,3,naa]": 1.3153987966538065e-10,
+    "fs.extraction.mscontactor.organic_material_balance[0.0,3,lib2a]": -41.31547617933648,
+    "fs.paper1.diluent": 0.002561646433683436,
+    "fs.paper1.naa": -0.5650993125938722,
+    "fs.paper1.sites_total_mol": -0.5571871050907331,
+    "fs.paper1.buphen_total_mol": -0.011244278218486772,
+    "fs.paper1.site_min": -0.007912207359009516,
+    "fs.paper1.site_max": -1.24486450081969e-11
+  },
+  "active_set": [
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,1,aqueous,lithium-cation]",
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,1,aqueous,sodium-cation]",
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,2,aqueous,lithium-cation]",
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,2,aqueous,sodium-cation]",
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reaction_constraint[0.0,3,aqueous,lithium-cation]",
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,1,lithium-cation]",
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,1,sodium-cation]",
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,2,lithium-cation]",
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,2,sodium-cation]",
+    "fs.extraction.mscontactor.aqueous_material_balance[0.0,3,lithium-cation]",
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,1,organic,lib2a]",
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,2,organic,diluent]",
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,2,organic,lib2a]",
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,3,organic,diluent]",
+    "fs.extraction.mscontactor.organic_heterogeneous_reaction_constraint[0.0,3,organic,lib2a]",
+    "fs.extraction.mscontactor.organic_material_balance[0.0,1,lib2a]",
+    "fs.extraction.mscontactor.organic_material_balance[0.0,2,diluent]",
+    "fs.extraction.mscontactor.organic_material_balance[0.0,2,lib2a]",
+    "fs.extraction.mscontactor.organic_material_balance[0.0,3,diluent]",
+    "fs.extraction.mscontactor.organic_material_balance[0.0,3,lib2a]",
+    "fs.paper1.B/upper",
+    "fs.paper1.S/upper",
+    "fs.paper1.buphen",
+    "fs.paper1.buphen_total_mol",
+    "fs.paper1.diluent",
+    "fs.paper1.naa",
+    "fs.paper1.site_min",
+    "fs.paper1.sites_total_mol",
+    "fs.stage[1].equilibrium[7]",
+    "fs.stage[2].equilibrium[7]",
+    "fs.stage[3].equilibrium[7]"
+  ],
+  "bound_multipliers": {
+    "fs.extraction.mscontactor.aqueous_inlet_state[0.0].flow_mol_comp[water]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_inlet_state[0.0].flow_mol_comp[lithium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_inlet_state[0.0].flow_mol_comp[sodium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_inlet_state[0.0].flow_mol_comp[chloride-anion]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_inlet_state[0.0].flow_mol_comp[diluent]": [
+      1.1527757942696775e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_inlet_state[0.0].flow_mol_comp[buphen]": [
+      4.988596923836658e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_inlet_state[0.0].flow_mol_comp[naa]": [
+      2.5038342479217663e-11,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_inlet_state[0.0].flow_mol_comp[lib2a]": [
+      0,
+      0
+    ],
+    "fs.parameters[sites_total_mol]": [
+      2.5038342479217663e-11,
+      0
+    ],
+    "fs.parameters[buphen_total_mol]": [
+      4.988596923836658e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.heterogeneous_reaction_extent[0.0,1,lib2a]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.heterogeneous_reaction_extent[0.0,2,lib2a]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.heterogeneous_reaction_extent[0.0,3,lib2a]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,1,aqueous,water]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,1,aqueous,lithium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,1,aqueous,sodium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,1,aqueous,chloride-anion]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,2,aqueous,water]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,2,aqueous,lithium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,2,aqueous,sodium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,2,aqueous,chloride-anion]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,3,aqueous,water]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,3,aqueous,lithium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,3,aqueous,sodium-cation]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous_heterogeneous_reactions_generation[0.0,3,aqueous,chloride-anion]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,1,organic,diluent]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,1,organic,buphen]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,1,organic,naa]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,1,organic,lib2a]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,2,organic,diluent]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,2,organic,buphen]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,2,organic,naa]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,2,organic,lib2a]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,3,organic,diluent]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,3,organic,buphen]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,3,organic,naa]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.organic_heterogeneous_reactions_generation[0.0,3,organic,lib2a]": [
+      0,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,1].flow_mol_comp[water]": [
+      1.6377655636862506e-14,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,1].flow_mol_comp[lithium-cation]": [
+      1.2339124374423518e-10,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,1].flow_mol_comp[sodium-cation]": [
+      3.2409317423609255e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,1].flow_mol_comp[chloride-anion]": [
+      3.2324415771303807e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,2].flow_mol_comp[water]": [
+      1.6377655636862506e-14,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,2].flow_mol_comp[lithium-cation]": [
+      1.0040825741755306e-09,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,2].flow_mol_comp[sodium-cation]": [
+      3.23348253106203e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,2].flow_mol_comp[chloride-anion]": [
+      3.2324415771303807e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,3].flow_mol_comp[water]": [
+      1.6377655636862506e-14,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,3].flow_mol_comp[lithium-cation]": [
+      1.1005457811950724e-08,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,3].flow_mol_comp[sodium-cation]": [
+      3.2325365207132604e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.aqueous[0.0,3].flow_mol_comp[chloride-anion]": [
+      3.2324415771303807e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,1].flow_mol_comp[diluent]": [
+      1.1527757942696775e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,1].flow_mol_comp[buphen]": [
+      5.124249134282893e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,1].flow_mol_comp[naa]": [
+      7.459789275250309e-11,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,1].flow_mol_comp[lib2a]": [
+      3.768814613168235e-11,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,2].flow_mol_comp[diluent]": [
+      1.1527757942696775e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,2].flow_mol_comp[buphen]": [
+      5.028802233109062e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,2].flow_mol_comp[naa]": [
+      3.1323110516434344e-11,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,2].flow_mol_comp[lib2a]": [
+      1.2479037091410172e-10,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,3].flow_mol_comp[diluent]": [
+      1.1527757942696775e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,3].flow_mol_comp[buphen]": [
+      4.993105626642541e-13,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,3].flow_mol_comp[naa]": [
+      2.5618903669183588e-11,
+      0
+    ],
+    "fs.extraction.mscontactor.organic[0.0,3].flow_mol_comp[lib2a]": [
+      1.1048868892149952e-09,
+      0
+    ],
+    "fs.paper1.O_A": [
+      6.875332107346175e-13,
+      -5.109839259504924e-12
+    ],
+    "fs.paper1.B": [
+      1.2120342744347065e-12,
+      -0.020411742562657372
+    ],
+    "fs.paper1.S": [
+      1.5149487974769346e-12,
+      -0.01367766669446561
+    ]
+  },
+  "result": {
+    "stages": [
+      {
+        "stage": 1,
+        "inlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.024204005186572543,
+          "sodium-cation": 2.7881930247327076,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.856073198852189,
+          "buphen": 1.8007240907740076,
+          "naa": 0.029017861664157336,
+          "lib2a": 0.007288146114091482,
+          "sites_total_mol": 0.03630600777824882,
+          "buphen_total_mol": 1.8153003830021905
+        },
+        "outlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.007370828908608745,
+          "sodium-cation": 2.805026201010671,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.856073198852189,
+          "buphen": 1.7670577382180799,
+          "naa": 0.012184685386193538,
+          "lib2a": 0.024121322392055285
+        },
+        "balance_residuals_mol_per_raw_l": {
+          "0": 6.938893903907228e-18,
+          "1": -3.608224830031759e-16,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 6.938893903907228e-18,
+          "6": -1.5265566588595902e-16
+        },
+        "phase_charge_eq_per_raw_l": [
+          -4.388850394221322e-16,
+          0.0
+        ],
+        "certificate": {
+          "status": "evaluated",
+          "balance_inf_norm": 1.4210854715202004e-14,
+          "charge_inf_norm": 1.1449174941446927e-16,
+          "absence_inf_norm": 0.0,
+          "reaction_affinity_inf_norm": 9.237055564881302e-14,
+          "kkt_stationarity_inf_norm": 1.1212005449062778e-12,
+          "pressure_relative_inf_norm": 6.900702231860123e-12,
+          "reduced_hessian_min_eigenvalue": 0.009741707457167516,
+          "direction_rank": 1,
+          "direct_amounts_mol": [
+            {
+              "water": 55.50799999999999,
+              "lithium-cation": 0.007370828908613295,
+              "sodium-cation": 2.8050262010106666,
+              "chloride-anion": 2.8123970299192798,
+              "diluent": 0.0,
+              "buphen": 0.0,
+              "naa": 0.0,
+              "lib2a": 0.0
+            },
+            {
+              "water": 0.0,
+              "lithium-cation": 0.0,
+              "sodium-cation": 0.0,
+              "chloride-anion": 0.0,
+              "diluent": 7.85607319885219,
+              "buphen": 1.7670577382180892,
+              "naa": 0.012184685386198072,
+              "lib2a": 0.024121322392050736
+            }
+          ],
+          "D": {
+            "Li": 1.8027532345356516
+          },
+          "outlet_max_difference_mol_per_raw_l": 1.4210854715202004e-14
+        },
+        "named_conservation_mol": {
+          "Li": 6.938893903907228e-18,
+          "Na": -3.608224830031759e-16,
+          "K": 0,
+          "Mg": 0,
+          "Ca": 0,
+          "Sr": 0,
+          "Cl": 0.0,
+          "water": 0.0,
+          "diluent": 0.0,
+          "A": 6.938893903907228e-18,
+          "B": -1.5265566588595902e-16
+        }
+      },
+      {
+        "stage": 2,
+        "inlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.007370828908608745,
+          "sodium-cation": 2.805026201010671,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.856073198852189,
+          "buphen": 1.8136535343062552,
+          "naa": 0.03548258343028113,
+          "lib2a": 0.0008234243479676882,
+          "sites_total_mol": 0.03630600777824882,
+          "buphen_total_mol": 1.8153003830021905
+        },
+        "outlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.0009061071424849514,
+          "sodium-cation": 2.811490922776795,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.856073198852189,
+          "buphen": 1.8007240907740076,
+          "naa": 0.029017861664157336,
+          "lib2a": 0.007288146114091482
+        },
+        "balance_residuals_mol_per_raw_l": {
+          "0": 0.0,
+          "1": 2.1163626406917047e-16,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 8.673617379884035e-19,
+          "6": 2.2551405187698492e-17
+        },
+        "phase_charge_eq_per_raw_l": [
+          -2.282245573081987e-16,
+          0.0
+        ],
+        "certificate": {
+          "status": "evaluated",
+          "balance_inf_norm": 7.105427357601002e-15,
+          "charge_inf_norm": 9.740472317609772e-16,
+          "absence_inf_norm": 0.0,
+          "reaction_affinity_inf_norm": 1.4210854715202004e-13,
+          "kkt_stationarity_inf_norm": 7.84071701010577e-13,
+          "pressure_relative_inf_norm": 2.5852986418328783e-11,
+          "reduced_hessian_min_eigenvalue": 0.0010319559300832652,
+          "direction_rank": 1,
+          "direct_amounts_mol": [
+            {
+              "water": 55.50800000000001,
+              "lithium-cation": 0.0009061071424857096,
+              "sodium-cation": 2.811490922776795,
+              "chloride-anion": 2.8123970299192798,
+              "diluent": 0.0,
+              "buphen": 0.0,
+              "naa": 0.0,
+              "lib2a": 0.0
+            },
+            {
+              "water": 0.0,
+              "lithium-cation": 0.0,
+              "sodium-cation": 0.0,
+              "chloride-anion": 0.0,
+              "diluent": 7.856073198852189,
+              "buphen": 1.8007240907740085,
+              "naa": 0.029017861664158085,
+              "lib2a": 0.007288146114090722
+            }
+          ],
+          "D": {
+            "Li": 4.430870097821397
+          },
+          "outlet_max_difference_mol_per_raw_l": 7.105427357601002e-15
+        },
+        "named_conservation_mol": {
+          "Li": 0.0,
+          "Na": 2.1163626406917047e-16,
+          "K": 0,
+          "Mg": 0,
+          "Ca": 0,
+          "Sr": 0,
+          "Cl": 0.0,
+          "water": 0.0,
+          "diluent": 0.0,
+          "A": 8.673617379884035e-19,
+          "B": 2.2551405187698492e-17
+        }
+      },
+      {
+        "stage": 3,
+        "inlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.0009061071424849514,
+          "sodium-cation": 2.811490922776795,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.856073198852189,
+          "buphen": 1.8153003830021905,
+          "naa": 0.03630600777824882,
+          "lib2a": 0.0,
+          "sites_total_mol": 0.03630600777824882,
+          "buphen_total_mol": 1.8153003830021905
+        },
+        "outlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 8.268279451726325e-05,
+          "sodium-cation": 2.8123143471247625,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.856073198852189,
+          "buphen": 1.8136535343062552,
+          "naa": 0.03548258343028113,
+          "lib2a": 0.0008234243479676882
+        },
+        "balance_residuals_mol_per_raw_l": {
+          "0": 0.0,
+          "1": -2.42861286636753e-16,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": -4.336808689942018e-18,
+          "6": 3.2959746043559335e-17
+        },
+        "phase_charge_eq_per_raw_l": [
+          -4.667219302006975e-16,
+          0.0
+        ],
+        "certificate": {
+          "status": "evaluated",
+          "balance_inf_norm": 1.4210854715202004e-14,
+          "charge_inf_norm": 4.800305118679571e-16,
+          "absence_inf_norm": 0.0,
+          "reaction_affinity_inf_norm": 0.0,
+          "kkt_stationarity_inf_norm": 1.2100564527950562e-12,
+          "pressure_relative_inf_norm": 1.9444668097889917e-11,
+          "reduced_hessian_min_eigenvalue": 9.028252877976677e-05,
+          "direction_rank": 1,
+          "direct_amounts_mol": [
+            {
+              "water": 55.50800000000002,
+              "lithium-cation": 8.268279451732183e-05,
+              "sodium-cation": 2.8123143471247634,
+              "chloride-anion": 2.81239702991928,
+              "diluent": 0.0,
+              "buphen": 0.0,
+              "naa": 0.0,
+              "lib2a": 0.0
+            },
+            {
+              "water": 0.0,
+              "lithium-cation": 0.0,
+              "sodium-cation": 0.0,
+              "chloride-anion": 0.0,
+              "diluent": 7.85607319885219,
+              "buphen": 1.8136535343062554,
+              "naa": 0.03548258343028119,
+              "lib2a": 0.0008234243479676499
+            }
+          ],
+          "D": {
+            "Li": 5.486053755595361
+          },
+          "outlet_max_difference_mol_per_raw_l": 1.4210854715202004e-14
+        },
+        "named_conservation_mol": {
+          "Li": 0.0,
+          "Na": -2.42861286636753e-16,
+          "K": 0,
+          "Mg": 0,
+          "Ca": 0,
+          "Sr": 0,
+          "Cl": 0.0,
+          "water": 0.0,
+          "diluent": 0.0,
+          "A": -4.336808689942018e-18,
+          "B": 3.2959746043559335e-17
+        }
+      }
+    ],
+    "outlet_mol_per_raw_l": {
+      "water": 55.508,
+      "lithium-cation": 8.268279451726325e-05,
+      "sodium-cation": 2.8123143471247625,
+      "chloride-anion": 2.81239702991928,
+      "diluent": 7.856073198852189,
+      "buphen": 1.7670577382180799,
+      "naa": 0.012184685386193538,
+      "lib2a": 0.024121322392055285
+    },
+    "solve": {
+      "termination": "optimal",
+      "kkt": {
+        "stationarity": 1.392240343871991e-12,
+        "complementarity": 9.437853537360066e-13,
+        "feasibility": 3.079758670310184e-13,
+        "multiplier_sign": 0.0
+      },
+      "solve_and_kkt_s": 5.367754172002606,
+      "options": {
+        "print_user_options": "yes",
+        "hessian_approximation": "exact",
+        "bound_relax_factor": 0,
+        "nlp_scaling_method": "none",
+        "tol": 1e-11,
+        "constr_viol_tol": 1e-12,
+        "dual_inf_tol": 1e-07,
+        "compl_inf_tol": 1e-07,
+        "max_iter": 200,
+        "acceptable_iter": 0,
+        "bound_push": 1e-08,
+        "bound_frac": 1e-08,
+        "mu_init": 1e-06,
+        "max_cpu_time": 290
+      }
+    },
+    "balance_residuals_mol_per_raw_l": {
+      "stage1/0": 6.938893903907228e-18,
+      "stage1/1": -3.608224830031759e-16,
+      "stage1/2": 0.0,
+      "stage1/3": 0.0,
+      "stage1/4": 0.0,
+      "stage1/5": 6.938893903907228e-18,
+      "stage1/6": -1.5265566588595902e-16,
+      "stage2/0": 0.0,
+      "stage2/1": 2.1163626406917047e-16,
+      "stage2/2": 0.0,
+      "stage2/3": 0.0,
+      "stage2/4": 0.0,
+      "stage2/5": 8.673617379884035e-19,
+      "stage2/6": 2.2551405187698492e-17,
+      "stage3/0": 0.0,
+      "stage3/1": -2.42861286636753e-16,
+      "stage3/2": 0.0,
+      "stage3/3": 0.0,
+      "stage3/4": 0.0,
+      "stage3/5": -4.336808689942018e-18,
+      "stage3/6": 3.2959746043559335e-17,
+      "global/0": 3.469446951953614e-18,
+      "global/1": -3.95516952522712e-16,
+      "global/2": 0.0,
+      "global/3": 0.0,
+      "global/4": 0.0,
+      "global/5": 0.0,
+      "global/6": -9.71445146547012e-17
+    },
+    "strict_certificate": true,
+    "named_global_conservation_mol": {
+      "Li": 3.469446951953614e-18,
+      "Na": -3.95516952522712e-16,
+      "K": 0,
+      "Mg": 0,
+      "Ca": 0,
+      "Sr": 0,
+      "Cl": 0.0,
+      "water": 0.0,
+      "diluent": 0.0,
+      "A": 0.0,
+      "B": -9.71445146547012e-17
+    }
+  },
+  "fixed_replay": {
+    "stages": [
+      {
+        "stage": 1,
+        "inlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.024204005186572543,
+          "sodium-cation": 2.7881930247327076,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.85607319885219,
+          "buphen": 1.800724090774304,
+          "naa": 0.029017861664151597,
+          "lib2a": 0.007288146114097213,
+          "sites_total_mol": 0.036306007778248814,
+          "buphen_total_mol": 1.8153003830024985
+        },
+        "outlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.007370828908614443,
+          "sodium-cation": 2.8050262010106657,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.85607319885219,
+          "buphen": 1.7670577382183879,
+          "naa": 0.012184685386193498,
+          "lib2a": 0.024121322392055312
+        },
+        "balance_residuals_mol_per_raw_l": {
+          "0": 0.0,
+          "1": 6.938893903907228e-18,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 0.0,
+          "6": -1.3877787807814457e-17
+        },
+        "phase_charge_eq_per_raw_l": [
+          -7.025630077706069e-17,
+          0.0
+        ],
+        "certificate": {
+          "status": "evaluated",
+          "balance_inf_norm": 1.7763568394002505e-15,
+          "charge_inf_norm": 3.408731630294426e-16,
+          "absence_inf_norm": 0.0,
+          "reaction_affinity_inf_norm": 5.684341886080802e-14,
+          "kkt_stationarity_inf_norm": 1.6168764684827597e-12,
+          "pressure_relative_inf_norm": 4.285860555341969e-11,
+          "reduced_hessian_min_eigenvalue": 0.009741707457356374,
+          "direction_rank": 1,
+          "direct_amounts_mol": [
+            {
+              "water": 55.508,
+              "lithium-cation": 0.00737082890861441,
+              "sodium-cation": 2.805026201010666,
+              "chloride-anion": 2.81239702991928,
+              "diluent": 0.0,
+              "buphen": 0.0,
+              "naa": 0.0,
+              "lib2a": 0.0
+            },
+            {
+              "water": 0.0,
+              "lithium-cation": 0.0,
+              "sodium-cation": 0.0,
+              "chloride-anion": 0.0,
+              "diluent": 7.856073198852192,
+              "buphen": 1.7670577382183883,
+              "naa": 0.012184685386193474,
+              "lib2a": 0.02412132239205535
+            }
+          ],
+          "D": {
+            "Li": 1.8027532345357238
+          },
+          "outlet_max_difference_mol_per_raw_l": 1.7763568394002505e-15
+        }
+      },
+      {
+        "stage": 2,
+        "inlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.007370828908614443,
+          "sodium-cation": 2.8050262010106657,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.85607319885219,
+          "buphen": 1.8136535343065605,
+          "naa": 0.03548258343027975,
+          "lib2a": 0.0008234243479690616,
+          "sites_total_mol": 0.036306007778248814,
+          "buphen_total_mol": 1.8153003830024985
+        },
+        "outlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.0009061071424862911,
+          "sodium-cation": 2.8114909227767937,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.85607319885219,
+          "buphen": 1.800724090774304,
+          "naa": 0.029017861664151597,
+          "lib2a": 0.007288146114097213
+        },
+        "balance_residuals_mol_per_raw_l": {
+          "0": 0.0,
+          "1": -1.491862189340054e-16,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 1.734723475976807e-18,
+          "6": -1.4224732503009818e-16
+        },
+        "phase_charge_eq_per_raw_l": [
+          -2.2085198253529725e-16,
+          0.0
+        ],
+        "certificate": {
+          "status": "evaluated",
+          "balance_inf_norm": 1.7763568394002505e-15,
+          "charge_inf_norm": 1.1674688993323912e-15,
+          "absence_inf_norm": 0.0,
+          "reaction_affinity_inf_norm": 1.3500311979441904e-13,
+          "kkt_stationarity_inf_norm": 2.7977620220553945e-13,
+          "pressure_relative_inf_norm": 4.408695630786497e-12,
+          "reduced_hessian_min_eigenvalue": 0.0010319559305227578,
+          "direction_rank": 1,
+          "direct_amounts_mol": [
+            {
+              "water": 55.508,
+              "lithium-cation": 0.0009061071424862326,
+              "sodium-cation": 2.8114909227767932,
+              "chloride-anion": 2.8123970299192806,
+              "diluent": 0.0,
+              "buphen": 0.0,
+              "naa": 0.0,
+              "lib2a": 0.0
+            },
+            {
+              "water": 0.0,
+              "lithium-cation": 0.0,
+              "sodium-cation": 0.0,
+              "chloride-anion": 0.0,
+              "diluent": 7.856073198852188,
+              "buphen": 1.8007240907743043,
+              "naa": 0.029017861664151514,
+              "lib2a": 0.007288146114097274
+            }
+          ],
+          "D": {
+            "Li": 4.430870097822822
+          },
+          "outlet_max_difference_mol_per_raw_l": 1.7763568394002505e-15
+        }
+      },
+      {
+        "stage": 3,
+        "inlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 0.0009061071424862911,
+          "sodium-cation": 2.8114909227767937,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.85607319885219,
+          "buphen": 1.8153003830024985,
+          "naa": 0.036306007778248814,
+          "lib2a": 0.0,
+          "sites_total_mol": 0.036306007778248814,
+          "buphen_total_mol": 1.8153003830024985
+        },
+        "outlet_mol_per_raw_l": {
+          "water": 55.508,
+          "lithium-cation": 8.268279451722947e-05,
+          "sodium-cation": 2.812314347124763,
+          "chloride-anion": 2.81239702991928,
+          "diluent": 7.85607319885219,
+          "buphen": 1.8136535343065605,
+          "naa": 0.03548258343027975,
+          "lib2a": 0.0008234243479690616
+        },
+        "balance_residuals_mol_per_raw_l": {
+          "0": 0.0,
+          "1": 1.5959455978986625e-16,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": -4.87890977618477e-18,
+          "6": 1.1514227071796057e-16
+        },
+        "phase_charge_eq_per_raw_l": [
+          -5.641917055071444e-17,
+          0.0
+        ],
+        "certificate": {
+          "status": "evaluated",
+          "balance_inf_norm": 8.881784197001252e-16,
+          "charge_inf_norm": 3.016792544940916e-16,
+          "absence_inf_norm": 0.0,
+          "reaction_affinity_inf_norm": 7.105427357601002e-14,
+          "kkt_stationarity_inf_norm": 2.0620213920567026e-12,
+          "pressure_relative_inf_norm": 2.371691731894998e-11,
+          "reduced_hessian_min_eigenvalue": 9.028252862808441e-05,
+          "direction_rank": 1,
+          "direct_amounts_mol": [
+            {
+              "water": 55.508,
+              "lithium-cation": 8.26827945174283e-05,
+              "sodium-cation": 2.812314347124763,
+              "chloride-anion": 2.8123970299192806,
+              "diluent": 0.0,
+              "buphen": 0.0,
+              "naa": 0.0,
+              "lib2a": 0.0
+            },
+            {
+              "water": 0.0,
+              "lithium-cation": 0.0,
+              "sodium-cation": 0.0,
+              "chloride-anion": 0.0,
+              "diluent": 7.856073198852189,
+              "buphen": 1.8136535343065607,
+              "naa": 0.035482583430279935,
+              "lib2a": 0.0008234243479688839
+            }
+          ],
+          "D": {
+            "Li": 5.486053755596516
+          },
+          "outlet_max_difference_mol_per_raw_l": 8.881784197001252e-16
+        }
+      }
+    ],
+    "outlet_mol_per_raw_l": {
+      "water": 55.508,
+      "lithium-cation": 8.268279451722947e-05,
+      "sodium-cation": 2.812314347124763,
+      "chloride-anion": 2.81239702991928,
+      "diluent": 7.85607319885219,
+      "buphen": 1.7670577382183879,
+      "naa": 0.012184685386193498,
+      "lib2a": 0.024121322392055312
+    },
+    "solve": {
+      "termination": "optimal",
+      "kkt": {
+        "stationarity": 0.0,
+        "complementarity": 0.0,
+        "feasibility": 2.220446049250313e-16,
+        "multiplier_sign": 0.0
+      },
+      "solve_and_kkt_s": 1.8975771609984804,
+      "options": {
+        "print_user_options": "yes",
+        "hessian_approximation": "exact",
+        "bound_relax_factor": 0,
+        "nlp_scaling_method": "none",
+        "tol": 1e-11,
+        "constr_viol_tol": 1e-12,
+        "dual_inf_tol": 1e-07,
+        "compl_inf_tol": 1e-07,
+        "max_iter": 200,
+        "acceptable_iter": 0,
+        "bound_push": 1e-08,
+        "bound_frac": 1e-08,
+        "mu_init": 1e-06,
+        "max_cpu_time": 290
+      }
+    },
+    "balance_residuals_mol_per_raw_l": {
+      "stage1/0": 0.0,
+      "stage1/1": 6.938893903907228e-18,
+      "stage1/2": 0.0,
+      "stage1/3": 0.0,
+      "stage1/4": 0.0,
+      "stage1/5": 0.0,
+      "stage1/6": -1.3877787807814457e-17,
+      "stage2/0": 0.0,
+      "stage2/1": -1.491862189340054e-16,
+      "stage2/2": 0.0,
+      "stage2/3": 0.0,
+      "stage2/4": 0.0,
+      "stage2/5": 1.734723475976807e-18,
+      "stage2/6": -1.4224732503009818e-16,
+      "stage3/0": 0.0,
+      "stage3/1": 1.5959455978986625e-16,
+      "stage3/2": 0.0,
+      "stage3/3": 0.0,
+      "stage3/4": 0.0,
+      "stage3/5": -4.87890977618477e-18,
+      "stage3/6": 1.1514227071796057e-16,
+      "global/0": 0.0,
+      "global/1": 1.734723475976807e-17,
+      "global/2": 0.0,
+      "global/3": 0.0,
+      "global/4": 0.0,
+      "global/5": -3.469446951953614e-18,
+      "global/6": -4.163336342344337e-17
+    },
+    "strict_certificate": true
+  },
+  "f7_difference_mol": 3.079758670310184e-13,
+  "iterations": {
+    "build/issue216_engine_8298c602/D2Figiel_N3_max_start2/ipopt.log": 13
+  },
+  "wall_seconds": 7.391575781999563,
+  "accepted": true
+}

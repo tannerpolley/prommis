@@ -1,0 +1,117 @@
+schema_version = 2
+packet_id = "figiel-2025-chloride-activity-refit"
+packet_version = "2"
+title = "Provisional Figiel aqueous Mg/Ca chloride fit"
+description = "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending."
+license_or_use_basis = "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending. Source-traceable project-derived parameters for private scientific verification; no full paper content."
+tolerance_rationale = "Measured maximum and mean absolute errors are stated as limits: MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Hydration <=10 J/mol; current-wheel stage-1 preservation <=1e-12 relative for nonzero values, absolute at zero. Original 0.02-decade target not met and relaxed by owner 2026-10-06; numerical fitting, no physical validation."
+
+[[sources]]
+source_id = "figiel-yu-held-2025"
+citation = "Figiel, P.; Yu, G.; Held, C. Predicting Thermodynamic Properties of Ions in Single Solvents and in Mixed Solvents Using a Modified Born Term within the ePC-SAFT Framework. Industrial & Engineering Chemistry Research 2025, 64, 9406-9418."
+doi = "10.1021/acs.iecr.5c00475"
+use_basis = "primary equations and parameters for bounded water, methanol, and ethanol alkali-halide reference states"
+
+[[sources]]
+source_id = "nist-srd-69-water"
+citation = "NIST Chemistry WebBook, SRD 69, Water, CAS 7732-18-5."
+use_basis = "water identity and molecular weight"
+
+[[sources]]
+source_id = "nist-srd-69-methanol"
+citation = "NIST Chemistry WebBook, SRD 69, Methanol, CAS 67-56-1."
+use_basis = "methanol identity and molecular weight"
+
+[[sources]]
+source_id = "nist-srd-69-ethanol"
+citation = "NIST Chemistry WebBook, SRD 69, Ethanol, CAS 64-17-5."
+use_basis = "ethanol identity and molecular weight"
+
+[[domains]]
+domain_id = "figiel-298-k-1-bar"
+kind = "reported-conditions"
+temperature_min = 298.15
+temperature_max = 298.15
+temperature_unit = "kelvin"
+pressure_min = 1
+pressure_max = 1
+pressure_unit = "bar"
+ion_mole_fraction_max = 0.38
+description = "Source-defined reported-conditions domain figiel-298-k-1-bar (temperature 298.15–298.15 kelvin; pressure 1–1 bar); see the cited sources and canonical Parameters document."
+
+[[domains]]
+domain_id = "nist-water-identity"
+kind = "unknown"
+description = "Source-defined domain nist-water-identity has no numeric range stated in the origin bundle; retain the cited source limits and do not infer a broader range."
+
+[[domains]]
+domain_id = "nist-methanol-identity"
+kind = "unknown"
+description = "Source-defined domain nist-methanol-identity has no numeric range stated in the origin bundle; retain the cited source limits and do not infer a broader range."
+
+[[domains]]
+domain_id = "nist-ethanol-identity"
+kind = "unknown"
+description = "Source-defined domain nist-ethanol-identity has no numeric range stated in the origin bundle; retain the cited source limits and do not infer a broader range."
+
+
+[[sources]]
+source_id = "issue-209-stage1-exact-refit"
+citation = "ePC-SAFT issue 209, stage-1 native exact-derivative refit, 2026-10-01"
+use_basis = "Aqueous chlorides, 0.001-4.5 mol/kg water, at 298.15 K and 100000 Pa; all acceptance rows recomputed from stored packet."
+
+
+[[sources]]
+source_id = "held-2014"
+citation = "Held, C.; Reschke, T.; Mohammad, S.; Luza, A.; Sadowski, G. ePC-SAFT revised. Chemical Engineering Research and Design 2014, 92, 2884-2897."
+doi = "10.1016/j.cherd.2014.05.017"
+use_basis = "Tables 1-3 strategy 2 and Eqs. (1), (15)-(22); Zotero 3DIW87Q5/TD5T732H; PDF SHA-256 dea9aa05e2ee8eb1c675873fa9d8737943312484874d844f01b45613da261acf."
+
+[[sources]]
+source_id = "marcus-1991"
+citation = "Marcus, Y. Thermodynamics of solvation of ions. Part 5. Gibbs free energy of hydration at 298.15 K. J. Chem. Soc., Faraday Trans. 1991, 87, 2995-2999."
+doi = "10.1039/FT9918702995"
+use_basis = "Table 1 p. 2996; G* plus the owner-verified Figiel Eq. 18 shift 17.908 kJ/mol."
+
+[[sources]]
+source_id = "issue-209-stage2-native-fit"
+citation = "ePC-SAFT issue 209 native stage-2 fit, 2026-10-06"
+use_basis = "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending."
+
+[[sources]]
+source_id = "goldberg-nuttall-1978"
+citation = "Goldberg and Nuttall, J. Phys. Chem. Ref. Data 1978, 7, 263; DOI 10.1063/1.555569."
+doi = "10.1063/1.555569"
+use_basis = "Evaluated MgCl2 Table 17 and CaCl2 Table 20, 42 molalities each; retained inputs/evaluated.csv in the Held-2014 analysis."
+
+[[domains]]
+domain_id = "issue-209-provisional-binary-aqueous"
+kind = "reported-conditions"
+temperature_min = 298.15
+temperature_max = 298.15
+temperature_unit = "kelvin"
+pressure_min = 1
+pressure_max = 1
+pressure_unit = "bar"
+molality_min = 0.001
+molality_max = 4.5
+molality_unit = "mol/kg water"
+description = "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending."
+
+[[files]]
+path = "parameters/parameters.json"
+role = "parameters"
+media_type = "application/json"
+sha256 = "19c3b120355df92736cd2a057434629e8accd4723e83f9d2342fd9c6fba0cd76"
+source_refs = ["figiel-yu-held-2025", "nist-srd-69-water", "nist-srd-69-methanol", "nist-srd-69-ethanol", "issue-209-stage1-exact-refit", "held-2014", "marcus-1991", "issue-209-stage2-native-fit", "goldberg-nuttall-1978"]
+domain_refs = ["issue-209-provisional-binary-aqueous"]
+units_basis = "Explicit units per coefficient; formula-unit molality per kg water."
+
+[[files]]
+path = "provenance/source-origin.toml"
+role = "provenance"
+media_type = "application/toml"
+sha256 = "aa59e32a4de4ae7315309ee05fcce911ab7c7459bdafc6ab2105ac3335cea6ac"
+source_refs = ["figiel-yu-held-2025", "nist-srd-69-water", "nist-srd-69-methanol", "nist-srd-69-ethanol", "issue-209-stage1-exact-refit", "held-2014", "marcus-1991", "issue-209-stage2-native-fit", "goldberg-nuttall-1978"]
+domain_refs = ["issue-209-provisional-binary-aqueous"]
+units_basis = "Non-numeric source identities and SHA-256 hashes."

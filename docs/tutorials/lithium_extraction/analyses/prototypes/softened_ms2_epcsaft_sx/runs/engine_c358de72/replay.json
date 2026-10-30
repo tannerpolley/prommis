@@ -1,0 +1,375 @@
+{
+  "issue": 216,
+  "scope": "Paper 1 retained results under analyses/prototypes/softened_ms2_epcsaft_sx on Engine c358de72, following the #221 Phase A procedure",
+  "evidence_type": "numerical verification, not physical validation",
+  "provenance": {
+    "engine_commit": "c358de722be1b5c1ad34d9a5b1c1a0e304cba9f5",
+    "wheel": "epcsaft-0.2.0.dev0-cp313-cp313-manylinux_2_39_x86_64.whl",
+    "wheel_sha256": "2d16ddf7d109433b234b802cd4b010bc4ad3bdbadaccfa29961ac9e2484614b0",
+    "previous_engine": "ca719012c31e8b41edcb98ae82a388117b58d343",
+    "application_commit": "4140ea72",
+    "external_ipopt": "3.13.2, MA27, SHA-256 8f8711b709b5f265ff7cb8b352c037bb999d88628384be8390f26530f08de94e (unchanged from #219/#221)"
+  },
+  "limits": {
+    "owner_scaled": 1e-06,
+    "amount_mol_l": 1e-09,
+    "F7_mol": 1e-09,
+    "stage_certificate": "strict: status evaluated and direct outlet difference <= 1e-9 mol per raw L",
+    "stored_point_kkt": {
+      "stationarity": 1e-07,
+      "complementarity": 1e-07,
+      "feasibility": 1e-08,
+      "multiplier_sign": 1e-08
+    }
+  },
+  "checks": {
+    "round0": {
+      "hbta": {
+        "set": "hbta",
+        "cases": 353,
+        "numerical_cases": 346,
+        "passed": 353,
+        "max_scaled_difference": 3.272045939586884e-11,
+        "max_amount_mol": 0.0
+      },
+      "held": {
+        "set": "held",
+        "cases": 60,
+        "numerical_cases": 42,
+        "passed": 60,
+        "max_scaled_difference": 2.002857765254162e-13,
+        "max_amount_mol": 0.0
+      },
+      "figiel": {
+        "set": "figiel",
+        "cases": 60,
+        "numerical_cases": 42,
+        "passed": 60,
+        "max_scaled_difference": 3.907667350012632e-13,
+        "max_amount_mol": 0.0
+      },
+      "historical": {
+        "set": "historical",
+        "cases": 48,
+        "numerical_cases": 48,
+        "passed": 48,
+        "max_scaled_difference": 2.366235603297197e-11,
+        "max_amount_mol": 1.6337861619142302e-11
+      },
+      "h158": {
+        "set": "h158",
+        "cases": 8,
+        "numerical_cases": 6,
+        "passed": 8,
+        "max_scaled_difference": 4.076193575440734e-09
+      }
+    },
+    "acid_accepted": {
+      "cases": 95,
+      "passed": 95,
+      "max_scaled": 1.9005346720403903e-13,
+      "max_amount_mol": 1.4210854715202004e-14,
+      "extra_case": [
+        {
+          "case": "f14_acid_C_table3_hcl_0.json",
+          "old_accepted": false,
+          "new_accepted": true,
+          "passed": null,
+          "old_error": "RuntimeError(\"table3_hcl_0 (C): no strict start: ['0.05: LOCAL_INFEASIBILITY infeasible: residual 3.0459489651416671 against EQUILIBRIUM_ROW_RESIDUAL 1e-10 after 153 iterations, contraction absent, floor 5.6349449126162469e-11, amplification 0', '0.3: LOCAL_INFEASIBILITY infeasible: residual 5.0681409662266219 against EQUILIBRIUM_ROW_RESIDUAL 1e-10 after 120 iterations, contraction absent, floor 1.3726312166528749e-08, amplification 0', '0.001: LOCAL_INFEASIBILITY infeasible: residual 0.95678682769876966 against EQUILIBRIUM_ROW_RESIDUAL 1e-10 after 80 iterations, contraction absent, floor 7.2298168917014496e-11, amplification 0', '0.9: LOCAL_INFEASIBILITY infeasible: residual 0.81984591600710344 against EQUILIBRIUM_ROW_RESIDUAL 1e-10 after 183 iterations, contraction absent, floor 7.6747220795018206e-11, amplification 0']\")",
+          "new_error": null
+        }
+      ]
+    },
+    "round1_retained_controls": {
+      "cases": 631,
+      "passed": 631,
+      "max_outlet_difference_mol_l": 7.965644369662342e-12,
+      "max_quantity_scaled": 3.3680705183894675e-09,
+      "max_F7_difference_mol": 8.373517717494783e-13,
+      "stored_points": {
+        "cases": 631,
+        "passed": 631,
+        "strict_stages": 1773,
+        "max_kkt": {
+          "stationarity": 4.963214603193045e-09,
+          "complementarity": 1.026256110051614e-09,
+          "feasibility": 5.974252890651556e-12,
+          "multiplier_sign": -0.0
+        },
+        "max_outlet_difference_mol_l": 7.965666694063315e-12,
+        "limits": {
+          "stationarity": 1e-07,
+          "complementarity": 1e-07,
+          "feasibility": 1e-08,
+          "multiplier_sign": 1e-08
+        },
+        "certificate_limit_mol_l": 1e-09
+      },
+      "existing_F7_square_method_cases": 5
+    },
+    "round1_retained_controls_identical_summary_to_ca719012": true,
+    "transplanted_multiplier_diagnostic": {
+      "cases": 631,
+      "passed": 570,
+      "misses_same_cases_as_ca719012": true
+    },
+    "des1_cold_rows_and_promoted_fits": {
+      "all_passed": true,
+      "cold_rows": 16,
+      "fits": [
+        {
+          "candidate": "X",
+          "passed": true,
+          "ln_K": [
+            -7.0256630375986395,
+            -8.195914250136601
+          ],
+          "Phi": 0.9312755100545786
+        },
+        {
+          "candidate": "S",
+          "passed": true,
+          "ln_K": [
+            -3.6703352621011236,
+            -4.808162771938238
+          ],
+          "Phi": 0.7335751256670889
+        }
+      ]
+    },
+    "des1_all_predictions": {
+      "rows": 114,
+      "retained": 114,
+      "passed": 114,
+      "all_fields_bitwise": 114,
+      "non_results": [],
+      "max_scaled": 0.0,
+      "max_amount_mol": 0.0
+    },
+    "des2_accepted_pmax": {
+      "cases": 18,
+      "passed": 18,
+      "max_amount_mol_raw_l": 0.0,
+      "max_E_Li_absolute": 0.0,
+      "max_decision_difference": 0.0,
+      "max_F7_mol": 1.2612133559741778e-13,
+      "quantities_bitwise": 18
+    },
+    "paired_fresh_selection_vs_ca719012": [
+      {
+        "case": "capacity_high_delta_minus_N1_0.8_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_minus_N1_0.9_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_minus_N2_0.8_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_minus_N2_0.95_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_minus_N2_0.99_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_minus_N2_0.9_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_minus_N2_max_start2",
+        "ca719012_accepted": false,
+        "c358de72_accepted": false,
+        "ca719012_error": "RuntimeError('IPOPT unresolved: optimal')",
+        "c358de72_error": "RuntimeError('IPOPT unresolved: optimal')",
+        "same_error": true
+      },
+      {
+        "case": "capacity_high_delta_plus_N1_0.8_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_plus_N1_0.95_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_plus_N1_0.9_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      },
+      {
+        "case": "capacity_high_delta_plus_N3_0.8_start2",
+        "ca719012_accepted": true,
+        "c358de72_accepted": true,
+        "design_bitwise": true,
+        "quantities_bitwise": true,
+        "stage_amounts_bitwise": true
+      }
+    ],
+    "numeric_equality_with_ca719012_replay": {
+      "frozen_rounds": {
+        "files": 631,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "retained_points": {
+        "files": 631,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "rounds/round0_hbta/results": {
+        "files": 353,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "rounds/round0_held/results": {
+        "files": 60,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "rounds/round0_figiel/results": {
+        "files": 60,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "rounds/round0_historical/results": {
+        "files": 48,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "rounds/h158": {
+        "files": 1,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "rounds/acid": {
+        "files": 98,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      },
+      "des1": {
+        "files": 3,
+        "differing_numeric_leaves": 0,
+        "max_abs_difference": 0.0,
+        "at": null
+      }
+    },
+    "P7_westmoreland_base_n5_high": {
+      "status": "unresolved",
+      "reason": "RuntimeError: IPOPT unresolved: optimal",
+      "solver_exit": "Solved To Acceptable Level.",
+      "iterations": 17,
+      "dual_infeasibility": 0.014323113867990107,
+      "constraint_violation": 7.186336448216156e-11,
+      "complementarity": 1.1385906677510129e-12,
+      "fixed_controls_carbonation_nacl_mol_kg": 3.0000000000000058,
+      "same_as_ca719012": "identical optimizer trace values and fixed-control reporting stop; only timings differ"
+    }
+  },
+  "round4": {
+    "inputs": 513,
+    "state_records_in_replayed_cohorts": 497,
+    "derived_or_record_files": [
+      "analyses/prototypes/softened_ms2_epcsaft_sx/results/near_complete_extraction_reporting.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/amendments_2_4/results/capacity_bounds_all_optima.csv",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/amendments_2_4/results/correction_summary.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/amendments_2_4/results/f8_primary_starts.csv",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/amendments_2_4/results/optima_all_starts.csv",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/amendments_2_4/results/optima_by_case.csv",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/des1/results/challenge_scores.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/des1/results/refresh_execution.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/des2/pmax/physical_metrics.csv",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/des2/pmax/provenance.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/des2/pmax/summary.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/engine_8298c602/results/holdout_score_summary.csv",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/engine_8298c602/results/pmin_eligibility.csv",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/engine_8298c602/results/runtime_identity.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/engine_ca719012/phase_a/replay.json",
+      "analyses/prototypes/softened_ms2_epcsaft_sx/runs/engine_ca719012/phase_b/adoption.json"
+    ],
+    "note": "Round 4 runs no model. Its derived CSV/JSON summaries tabulate the replayed state records; DES-1 challenge_scores.json is covered by the 114-row DES-1 prediction replay."
+  },
+  "excluded": {
+    "ionic_liquid": "scripts/il_chemistry.py, runs/il1*, runs/il_diagnosis keep their own pin and are outside Paper 1 (#240); not replayed"
+  },
+  "execution": {
+    "nice": 10,
+    "blas_threads": 1,
+    "workers": "1 for the first 359 jobs, then 8 at the orchestrator request; one job per process, each writing only its own outputs",
+    "jobs": 1301,
+    "interruptions": "The sequential run was stopped at the orchestrator request and resumed with 8 workers; a T3 server restart then stopped the 8-worker run, which resumed from its execution records."
+  },
+  "diagnoses": [
+    {
+      "case": "Acid driver",
+      "finding": "The archived #221 driver patched corrections.save, which current source no longer has; corrections.acid now imports save from round0 at call time. The driver redirects round0.save instead; first attempt exited before any calculation."
+    },
+    {
+      "case": "Duplicate-run artifacts",
+      "finding": "Three retained-control jobs completed before the interruption but were not yet in the in-order execution record; their reruns raised FileExistsError at save. The completed outputs are used; the three failure files and their unnecessary square-method diagnoses are kept in the raw archive under duplicate_run_artifacts."
+    },
+    {
+      "case": "Transplanted-multiplier diagnostic",
+      "finding": "The same 61 cases miss as under ca719012, with identical values; #221 diagnosed this as an invalid diagnostic (fresh primals with stored multipliers). Acceptance uses the original stored primals and multipliers: 631 pass."
+    },
+    {
+      "case": "Five redundant fixed-control probes",
+      "finding": "Same five cases as #221 fail the fixed-control optimization probe; the existing F7 square method resolves all five with strict certificates."
+    },
+    {
+      "case": "Fresh-optimizer selection",
+      "finding": "All eleven #221 paired cases return bitwise-identical designs, quantities and stage amounts to ca719012, or the same non-result (capacity_high_delta_minus_N2_max_start2). capacity_high_delta_plus_N3_0.8_start2, which differed between 8298c602 and ca719012, is bitwise identical between ca719012 and c358de72. No fresh selection is adopted."
+    },
+    {
+      "case": "Extra acid C table-3 zero-HCl case",
+      "finding": "Again returns a strict result as under ca719012; it remains extra evidence and is not promoted."
+    }
+  ]
+}

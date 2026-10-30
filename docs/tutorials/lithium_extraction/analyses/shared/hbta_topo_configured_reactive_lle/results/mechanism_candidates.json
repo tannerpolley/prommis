@@ -1,0 +1,310 @@
+{
+ "engine": {
+  "filename": "epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl",
+  "sha256": "b55665901b881836f90af010c22bd16a51a687a4e83242ab6d7d5d10118e582a",
+  "source_commit": "80cf018b499ad080d33555fd0a2566be416e0918",
+  "version": "0.2.0.dev0"
+ },
+ "issue": "tannerpolley/Lithium_Extraction#158",
+ "design": "issue #158 comment 5885287577 (fit/holdout split and criteria fixed before fitting)",
+ "enthalpy_j_mol": {
+  "R1": -5730.0,
+  "R3": -5730.0
+ },
+ "reference_temperature_k": 298.15,
+ "sets": {
+  "A": [
+   "R1",
+   "R2"
+  ],
+  "B": [
+   "R1",
+   "R2",
+   "R3"
+  ],
+  "C": [
+   "R1",
+   "R2",
+   "R5"
+  ],
+  "D": [
+   "R1",
+   "R2",
+   "R3",
+   "R5"
+  ]
+ },
+ "summary": {
+  "A": {
+   "ln_k_298": {
+    "R1": -3.117969507068662,
+    "R2": -6.516572399919201
+   },
+   "log10_k_298": {
+    "R1": -1.354116951662522,
+    "R2": -2.8301114342079394
+   },
+   "fit_residuals_log10": [
+    -0.0005801098466111244,
+    0.39287973294514345,
+    -0.342374059452016,
+    0.6469629810650234
+   ],
+   "fit_cost": 0.34506795827033787,
+   "starts_ln_k": [
+    [
+     -3.2,
+     -6.9
+    ],
+    [
+     -7.0,
+     -11.5
+    ],
+    [
+     0.0,
+     -4.6
+    ]
+   ],
+   "worst_abs_log10_d_holdout_figure1_table4": 0.8568889903237893,
+   "slope_log10_d_per_ph_3.07_to_8.19": 0.4602471204566869,
+   "figure1_interval_slopes": {
+    "2.83-3.07": 0.9320987041897031,
+    "3.07-4.73": 0.8407798161436069,
+    "4.73-8.19": 0.2775902879676101,
+    "8.19-11.17": -0.007433849845182259
+   },
+   "figure4_falls_with_temperature": true,
+   "figure4_worst_abs_log10_d": 0.4519694532458428,
+   "figure3_model_slopes": {
+    "log_hbta": 1.2078300939945428,
+    "log_topo": 2.054913513768929
+   },
+   "figure5_worst_abs_log10_d": 0.8926240143667422,
+   "figure2_worst_abs_log10_d": 0.5052061052608667,
+   "table3_worst_abs_log10_d": 3.8783029584764326,
+   "table3_failed_states": 0,
+   "all_states_strict": true,
+   "failed_states": [],
+   "gating_states_off_target_ph": [],
+   "criteria": {
+    "worst_le_0.30": false,
+    "slope_in_0.15_0.44": false,
+    "temperature_falls_and_worst_le_0.30": false,
+    "strict_at_printed_ph": true
+   },
+   "passes": false
+  },
+  "B": {
+   "ln_k_298": {
+    "R1": -15.736011605773557,
+    "R2": -18.76302819354347,
+    "R3": 3.8260618308982552
+   },
+   "log10_k_298": {
+    "R1": -6.8340630075529845,
+    "R2": -8.148679608251067,
+    "R3": 1.6616375405797648
+   },
+   "fit_residuals_log10": [
+    -0.24934088339437496,
+    -0.009776504488134186,
+    0.17670402169174884,
+    0.05060704595632166,
+    0.08650538788815867
+   ],
+   "fit_cost": 0.05176751134401895,
+   "starts_ln_k": [
+    [
+     -3.2,
+     -6.9,
+     3.5
+    ],
+    [
+     -15.9,
+     -18.9,
+     3.6
+    ],
+    [
+     -4.6,
+     -8.1,
+     2.3
+    ]
+   ],
+   "worst_abs_log10_d_holdout_figure1_table4": 1.6141667580570533,
+   "slope_log10_d_per_ph_3.07_to_8.19": 0.07243928609289255,
+   "figure1_interval_slopes": {
+    "2.83-3.07": -0.05531252096781141,
+    "3.07-4.73": -0.010820393056136171,
+    "4.73-8.19": 0.11237065401026744,
+    "8.19-11.17": 0.6866599457741317
+   },
+   "figure4_falls_with_temperature": true,
+   "figure4_worst_abs_log10_d": 1.0988604680423963,
+   "figure3_model_slopes": {
+    "log_hbta": 1.0913212491058795,
+    "log_topo": 1.3139470281484658
+   },
+   "figure5_worst_abs_log10_d": 0.7753382768835494,
+   "figure2_worst_abs_log10_d": 1.3549357434999432,
+   "table3_worst_abs_log10_d": 1.065832144647408,
+   "table3_failed_states": 0,
+   "all_states_strict": true,
+   "failed_states": [],
+   "gating_states_off_target_ph": [],
+   "criteria": {
+    "worst_le_0.30": false,
+    "slope_in_0.15_0.44": false,
+    "temperature_falls_and_worst_le_0.30": false,
+    "strict_at_printed_ph": true
+   },
+   "passes": false
+  },
+  "C": {
+   "ln_k_298": {
+    "R1": -3.1143411276881037,
+    "R2": -7.6752238933378125,
+    "R5": -12.170045154694746
+   },
+   "log10_k_298": {
+    "R1": -1.352541166519294,
+    "R2": -3.3333073842486045,
+    "R5": -5.285383455197334
+   },
+   "fit_residuals_log10": [
+    -0.00019634961549148158,
+    -0.03813474337110194,
+    0.08124378725298248,
+    0.5644714015474173
+   ],
+   "fit_cost": 0.1633414066686324,
+   "starts_ln_k": [
+    [
+     -3.2,
+     -8.4,
+     -12.1
+    ],
+    [
+     -3.2,
+     -6.9,
+     -18.4
+    ],
+    [
+     -4.6,
+     -9.2,
+     -15.0
+    ]
+   ],
+   "worst_abs_log10_d_holdout_figure1_table4": 0.6968927133054749,
+   "slope_log10_d_per_ph_3.07_to_8.19": 0.37249357787418697,
+   "figure1_interval_slopes": {
+    "2.83-3.07": 0.9292563235399146,
+    "3.07-4.73": 0.8151085558677575,
+    "4.73-8.19": 0.16006859688497407,
+    "8.19-11.17": -0.001217984639298766
+   },
+   "figure4_falls_with_temperature": true,
+   "figure4_worst_abs_log10_d": 0.03512056216878481,
+   "figure3_model_slopes": {
+    "log_hbta": 0.6806745024202431,
+    "log_topo": 1.7017989754871823
+   },
+   "figure5_worst_abs_log10_d": 0.4399351845273948,
+   "figure2_worst_abs_log10_d": 0.3794000164169821,
+   "table3_worst_abs_log10_d": 1.0614283259508968,
+   "table3_failed_states": 0,
+   "all_states_strict": true,
+   "failed_states": [],
+   "gating_states_off_target_ph": [],
+   "criteria": {
+    "worst_le_0.30": false,
+    "slope_in_0.15_0.44": true,
+    "temperature_falls_and_worst_le_0.30": true,
+    "strict_at_printed_ph": true
+   },
+   "passes": false
+  },
+  "D": {
+   "ln_k_298": {
+    "R1": -15.735989892534246,
+    "R2": -18.76299249621339,
+    "R3": 3.8260641645326245,
+    "R5": -44.72057217041338
+   },
+   "log10_k_298": {
+    "R1": -6.834053577612967,
+    "R2": -8.148664105097595,
+    "R3": 1.6616385540642942,
+    "R5": -19.42189772116666
+   },
+   "fit_residuals_log10": [
+    -0.24933993429321186,
+    -0.009776262855367668,
+    0.17670197895137563,
+    0.050617305679812485,
+    0.08650631694550397
+   ],
+   "fit_cost": 0.05176751100992621,
+   "starts_ln_k": [
+    [
+     -3.2,
+     -8.4,
+     2.3,
+     -12.1
+    ],
+    [
+     -4.6,
+     -8.1,
+     2.3,
+     -15.0
+    ],
+    [
+     -15.9,
+     -18.9,
+     3.6,
+     -20.7
+    ]
+   ],
+   "worst_abs_log10_d_holdout_figure1_table4": 1.6141610416656518,
+   "slope_log10_d_per_ph_3.07_to_8.19": 0.07244021732647789,
+   "figure1_interval_slopes": {
+    "2.83-3.07": -0.05531252131363603,
+    "3.07-4.73": -0.00894848533955033,
+    "4.73-8.19": 0.11147394896796936,
+    "8.19-11.17": 0.6866581086136955
+   },
+   "figure4_falls_with_temperature": true,
+   "figure4_worst_abs_log10_d": 1.0988531800157484,
+   "figure3_model_slopes": {
+    "log_hbta": 1.0913211830309315,
+    "log_topo": 1.313950361701851
+   },
+   "figure5_worst_abs_log10_d": 0.7753390459755573,
+   "figure2_worst_abs_log10_d": 1.3549281749850772,
+   "table3_worst_abs_log10_d": 1.0658293324737251,
+   "table3_failed_states": 0,
+   "all_states_strict": true,
+   "failed_states": [],
+   "gating_states_off_target_ph": [
+    "figure1_initial_11.81"
+   ],
+   "criteria": {
+    "worst_le_0.30": false,
+    "slope_in_0.15_0.44": false,
+    "temperature_falls_and_worst_le_0.30": false,
+    "strict_at_printed_ph": false
+   },
+   "passes": false
+  }
+ },
+ "observed_figure1_interval_slopes": {
+  "2.83-3.07": 0.59,
+  "3.07-4.73": 0.44,
+  "4.73-8.19": 0.24,
+  "8.19-11.17": 0.15
+ },
+ "sources": {
+  "zhang_2017": "Sep. Purif. Technol. 188:167-173; Figs. 1-5, Tables 2-4, Sections 3.1-3.7",
+  "zhang_2020": "J. Hazard. Mater. 398:122840 (Zotero G8GUHCG4), Section 3.11 dH = -5.73 kJ/mol"
+ },
+ "limits": "Figures 1-4 print no buffer, base or Na level; states are solved at the printed (Fig. 1, Table 4) or stated (Sec. 3.4 pH 9.5; Sec. 3.6 pH 8.0 for the brine) equilibrium pH with NaOH entering as NaA.T or HCl. Figures 2-3 print no pH and Fig. 3 no partner concentration (0.3 M assumed). BTA-(aq) ion parameters are provisional (chloride's). dH is Zhang 2020's apparent value applied to R1 and R3 as a standard enthalpy. Table 3's loaded organic (Sec. 3.6: 1.51 g/L Li, 0.81 g/L Na) is represented as chelates. MS-2 chloride is charge-closed to Li + Na (2.81 M; measured 4.91 M) and Ca, Mg, K, Sr are absent. Model pH is the Engine's H+ molal-activity scale. Dodecane stands in for kerosene."
+}

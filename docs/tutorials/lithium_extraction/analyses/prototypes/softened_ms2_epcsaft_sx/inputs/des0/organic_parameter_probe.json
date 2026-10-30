@@ -1,0 +1,346 @@
+{
+  "schema": "epcsaft.parameters",
+  "schema_version": 1,
+  "document_id": "rezaee-2025-measured-data-scaffold",
+  "document_version": 1,
+  "purpose": "user-provided",
+  "sources": [
+    {
+      "source_id": "held-2008",
+      "citation": "Held, Cameretti, and Sadowski, Fluid Phase Equilibria 2008",
+      "doi": "10.1016/j.fluid.2008.06.010",
+      "use_basis": "Fixed aqueous Strategy 1 parameters."
+    },
+    {
+      "source_id": "rezaee-2026",
+      "citation": "Rezaee, Feyzi, and Miri, Fluid Phase Equilibria 2026",
+      "doi": "10.1016/j.fluid.2026.114737",
+      "use_basis": "Organic comparator coordinates; not fitted in this study."
+    },
+    {
+      "source_id": "issue-77-model-form",
+      "citation": "Declared downstream sensitivity scaffold.",
+      "use_basis": "NH3 and dilute RLi/RNa residual-coordinate scaffolds."
+    }
+  ],
+  "domains": [
+    {
+      "domain_id": "held-strategy-1-aqueous",
+      "kind": "unknown"
+    },
+    {
+      "domain_id": "rezaee-organic-scaffold",
+      "kind": "unknown"
+    },
+    {
+      "domain_id": "sensitivity-only",
+      "kind": "unknown"
+    }
+  ],
+  "components": [
+    {
+      "component_id": "des-h",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.20748558,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 0,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/des-h/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 10.9898,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        },
+        {
+          "identity": "component/des-h/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.157,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        },
+        {
+          "identity": "component/des-h/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 305.09,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        }
+      ]
+    },
+    {
+      "component_id": "topo",
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 0.3866349,
+            "unit": "kilogram / mole"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 0,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/topo/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 13.209,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        },
+        {
+          "identity": "component/topo/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.755,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        },
+        {
+          "identity": "component/topo/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 395.55,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table 4 (DES) and Table 6 (TOPO); conditional comparator only",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        }
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "component_id_a": "des-h",
+      "component_id_b": "topo",
+      "coefficients": [
+        {
+          "identity": "pair/des-h/topo/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "rezaee-2026",
+            "locator": "Table9",
+            "domain_id": "rezaee-organic-scaffold"
+          }
+        }
+      ]
+    }
+  ],
+  "model_families": [
+    {
+      "family_id": "model/association",
+      "kind": "association",
+      "choice": "general-site",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      }
+    },
+    {
+      "family_id": "model/base",
+      "kind": "base",
+      "choice": "pc-saft",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      }
+    },
+    {
+      "family_id": "model/polar",
+      "kind": "polar",
+      "choice": "none",
+      "provenance": {
+        "source_id": "held-2008",
+        "locator": "Table 2 and Eqs. 2-10",
+        "domain_id": "held-strategy-1-aqueous"
+      }
+    },
+    {
+      "family_id": "model/electrolyte",
+      "kind": "electrolyte",
+      "choice": "none"
+    },
+    {
+      "family_id": "model/permittivity",
+      "kind": "permittivity",
+      "choice": "none"
+    }
+  ],
+  "model_coefficients": [],
+  "correlations": [],
+  "topology": {
+    "sites": [
+      {
+        "component_id": "des-h",
+        "site_id": "a",
+        "site_role": "donor",
+        "multiplicity": 1
+      },
+      {
+        "component_id": "des-h",
+        "site_id": "b",
+        "site_role": "acceptor",
+        "multiplicity": 1
+      },
+      {
+        "component_id": "topo",
+        "site_id": "s",
+        "site_role": "acceptor",
+        "multiplicity": 1
+      }
+    ],
+    "edges": [
+      {
+        "endpoint_a": {
+          "component_id": "des-h",
+          "site_id": "a"
+        },
+        "endpoint_b": {
+          "component_id": "des-h",
+          "site_id": "b"
+        },
+        "energy_over_k": {
+          "identity": "des-h/e",
+          "value": {
+            "magnitude": 6900.0,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "des-h/k",
+          "value": {
+            "magnitude": 0.15,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "rezaee-2026",
+              "locator": "Tables4/6; declared association sites",
+              "domain_id": "rezaee-organic-scaffold"
+            }
+          ]
+        }
+      },
+      {
+        "endpoint_a": {
+          "component_id": "topo",
+          "site_id": "s"
+        },
+        "endpoint_b": {
+          "component_id": "topo",
+          "site_id": "s"
+        },
+        "energy_over_k": {
+          "identity": "topo/e",
+          "value": {
+            "magnitude": 1520.0,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "topo/k",
+          "value": {
+            "magnitude": 0.01,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "rezaee-2026",
+              "locator": "Tables4/6; declared association sites",
+              "domain_id": "rezaee-organic-scaffold"
+            }
+          ]
+        }
+      }
+    ],
+    "no_cross_association": [
+      {
+        "component_id_a": "des-h",
+        "component_id_b": "topo",
+        "provenance": {
+          "source_id": "rezaee-2026",
+          "locator": "Retained no cross-association density reconstruction",
+          "domain_id": "rezaee-organic-scaffold"
+        }
+      }
+    ]
+  }
+}
