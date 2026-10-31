@@ -24,6 +24,10 @@ pip install -e . "watertap>=1.8,<1.9" "ipywidgets>=8,<9" jupyterlab
 idaes get-extensions
 ```
 
+The Miniforge installer refuses a folder whose path contains a space; if your Windows user name has one, install
+Miniforge to `C:\miniforge3`. Clone the repository with git rather than downloading a zip: PrOMMiS reads its version
+from the git history.
+
 `PYTHONUTF8=1` makes Python read the retained data files as UTF-8 on Windows. `tannerwpolley` is an interim channel for the Engine until its conda-forge package is published; after that,
 `-c conda-forge` alone is enough. Reaktoro solves the softening step of the produced-water notebook.
 

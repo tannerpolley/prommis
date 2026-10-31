@@ -30,6 +30,9 @@ def main():
               'basis': 'mol per raw litre; aqueous components reconstruct every Reaktoro element',
               'component_basis': 'H is total acid protons on CO3-2/B(OH)4-/SO4-2 bases, not free H+; water is the '
                                  'corresponding H2O component; original aqueous species are retained separately'}
+    # The retained values come from Linux; another platform's Reaktoro build agrees to its convergence tolerance, not
+    # to the last bits (on Windows, MS-2 sludge differs by 3e-12 and residual Ca + Mg by 1e-9, relative).
+    relative = ps.rkt.EquilibriumOptions().optima.convergence.tolerance
     for case in (args.case,) if args.case else ('base', 'optimistic'):
         t = time.monotonic()
         result = flowsheet.washed_feed(raw,
@@ -37,9 +40,8 @@ def main():
         for name, expected in previous[case].items():
             for key, target in (expected.items() if isinstance(expected, dict) else [(name, expected)]):
                 actual = result[name][key] if isinstance(expected, dict) else result[name]
-                strict = name == 'reagent_mol' or 'sludge' in name
-                absolute = 1e-9 if key == 'HCl' or name == 'pH' else 0. if strict else 1e-12
-                assert math.isclose(actual, target, rel_tol=1e-12 if strict else 1e-9, abs_tol=absolute), (case, name, key)
+                absolute = 1e-9 if key == 'HCl' or name == 'pH' else 1e-12
+                assert math.isclose(actual, target, rel_tol=relative, abs_tol=absolute), (case, name, key)
         assert abs(result['pH'] - raw['pH']) <= 1e-9
         result['reagent_elements_mol'] = {e: sum(n * ps.REAGENT_ELEMENTS[k].get(e, 0)
             for k, n in result['reagent_mol'].items()) for e in result['raw_mol']}
