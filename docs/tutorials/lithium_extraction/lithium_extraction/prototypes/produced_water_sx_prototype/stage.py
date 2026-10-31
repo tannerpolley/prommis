@@ -6,6 +6,7 @@ is affine in those amounts, so the basis is never rescaled inside the stages.
 """
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import shutil
 import re
@@ -314,7 +315,8 @@ def solve(model, directory, *, wall_seconds=290, hessian='exact'):
             setattr(model, name, Suffix(direction=Suffix.IMPORT))
     started = time.monotonic()
     result = SolverFactory('ipopt', executable=shutil.which('ipopt', path=idaes.bin_directory),  # ipopt.exe on Windows
-                            options={'option_file_name': str(path)}).solve(
+                            # IPOPT splits option values at spaces; relative to the tutorial folder the path has none.
+                            options={'option_file_name': os.path.relpath(path)}).solve(
         model, logfile=str(directory / 'ipopt.log'))
     if not check_optimal_termination(result) or 'Optimal Solution Found' not in str(result.solver.message):
         raise RuntimeError(f'IPOPT unresolved: {result.solver.termination_condition}')
