@@ -21,6 +21,7 @@ from idaes.core.base.property_meta import HasPropertyClassMetadata
 from idaes.core.util.misc import add_object_reference
 from prommis.solvent_extraction.solvent_extraction import SolventExtraction
 from pyomo.common.config import ConfigValue
+from pyomo.common.errors import ApplicationError
 from pyomo.environ import (Block, ConcreteModel, Constraint, Expression, ExternalFunction, NonNegativeReals,
                            Objective, Param, RangeSet, Reference, Set, SolverFactory, Suffix, Var, units, value)
 from pyomo.contrib.pynumero.interfaces.pyomo_nlp import PyomoNLP
@@ -299,32 +300,63 @@ def _kkt(model, logfile=None):
     }
 
 
-def solve(model, directory, *, wall_seconds=290, hessian='exact'):
-    """Exact Hessians by default; the caller's wall timer includes build, initialization and certificates."""
-    directory = Path(directory).resolve()
+def _ipopt(model, directory, options):
+    """One IPOPT run with its option file and log in ``directory``; the result, or the error IPOPT's exit raised."""
     directory.mkdir(parents=True, exist_ok=True)
+    path = directory / 'ipopt.opt'
+    path.write_text(''.join(f'{key} {item}\n' for key, item in options.items()))
+    try:
+        return SolverFactory('ipopt', executable=shutil.which('ipopt', path=idaes.bin_directory),  # ipopt.exe on Windows
+                             # IPOPT splits option values at spaces; relative to the tutorial folder the path has none.
+                             options={'option_file_name': os.path.relpath(path)}).solve(
+            model, logfile=str(directory / 'ipopt.log'))
+    except ApplicationError as error:
+        return error
+    except ValueError as error:  # Pyomo refuses to load the point of an IPOPT error status
+        if 'bad status' not in str(error):
+            raise
+        return error
+
+
+def _optimal(result):
+    return (not isinstance(result, Exception) and check_optimal_termination(result)
+            and 'Optimal Solution Found' in str(result.solver.message))
+
+
+def solve(model, directory, *, wall_seconds=290, hessian='exact'):
+    """Exact Hessians by default; the caller's wall timer includes build, initialization and certificates.
+
+    An unscaled solve that stops short of its optimum is repeated once from the same start with IPOPT's
+    gradient-based scaling (#266); acceptance and KKT limits are the same for both attempts.
+    """
+    directory = Path(directory).resolve()
     options = {'print_user_options': 'yes', 'hessian_approximation': hessian, 'bound_relax_factor': 0,
                'nlp_scaling_method': 'none', 'tol': 1e-11,
                'constr_viol_tol': 1e-12 / max(1., value(model.fs.washed_feed_l_per_raw_l)), 'dual_inf_tol': 1e-7,
                'compl_inf_tol': 1e-7, 'max_iter': 200, 'acceptable_iter': 0, 'bound_push': 1e-8,
                'bound_frac': 1e-8, 'mu_init': 1e-6, 'max_cpu_time': wall_seconds}
-    path = directory / 'ipopt.opt'
-    path.write_text(''.join(f'{key} {item}\n' for key, item in options.items()))
     for name in ('dual', 'ipopt_zL_out', 'ipopt_zU_out'):
         if not hasattr(model, name):
             setattr(model, name, Suffix(direction=Suffix.IMPORT))
+    start = [(v, v.value) for v in model.component_data_objects(Var)]
     started = time.monotonic()
-    result = SolverFactory('ipopt', executable=shutil.which('ipopt', path=idaes.bin_directory),  # ipopt.exe on Windows
-                            # IPOPT splits option values at spaces; relative to the tutorial folder the path has none.
-                            options={'option_file_name': os.path.relpath(path)}).solve(
-        model, logfile=str(directory / 'ipopt.log'))
-    if not check_optimal_termination(result) or 'Optimal Solution Found' not in str(result.solver.message):
-        raise RuntimeError(f'IPOPT unresolved: {result.solver.termination_condition}')
+    attempt, result = 'unscaled', _ipopt(model, directory, options)
+    remaining = wall_seconds - (time.monotonic() - started)
+    if not _optimal(result) and remaining > 0:
+        for v, x in start:
+            v.set_value(x, skip_validation=True)
+        options = options | {'nlp_scaling_method': 'gradient-based', 'nlp_scaling_max_gradient': 1,
+                             'max_cpu_time': remaining}
+        directory = directory / 'scaled'
+        attempt, result = 'scaled', _ipopt(model, directory, options)
+    if not _optimal(result):
+        raise RuntimeError('IPOPT unresolved: ' + (f'{type(result).__name__}: {result}' if isinstance(result, Exception)
+                                                   else str(result.solver.termination_condition)))
     diagnostics = _kkt(model, directory / 'ipopt.log')
     limits = {'stationarity': 1e-7, 'complementarity': 1e-7, 'feasibility': 1e-8, 'multiplier_sign': 1e-8}
     if any(not np.isfinite(diagnostics[k]) or diagnostics[k] > v for k, v in limits.items()):
         raise RuntimeError(f'KKT limits failed: {diagnostics}')
-    model._solve = {'termination': str(result.solver.termination_condition), 'kkt': diagnostics,
+    model._solve = {'termination': str(result.solver.termination_condition), 'kkt': diagnostics, 'attempt': attempt,
                     'solve_and_kkt_s': time.monotonic() - started, 'options': options}
     return model._solve
 
