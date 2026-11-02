@@ -133,7 +133,7 @@ def _row(path, key, value):
         return next(r for r in csv.DictReader(stream) if r[key] == value)
 
 
-def costs_and_balances(feed, extraction, case, assumptions, scrub_na=None):
+def costs_and_balances(feed, extraction, case, assumptions, scrub_na=None, *, nacl_coordinate=None):
     """Labelled mass balances. Carbonation uses Ge measurements after the failed Pitzer falsifier.
 
     Basis: one L raw brine. Strip water recycle and unused-acid recovery are separate declared operations.
@@ -159,7 +159,7 @@ def costs_and_balances(feed, extraction, case, assumptions, scrub_na=None):
     free_acid = (1 - assumptions['acid_recovery']) * (gross_strip_acid - bound)
     strip_acid = bound + free_acid
     carbon = downstream.accounts({'Li': stripped['Li'], 'Na': stripped['Na'], 'Cl': strip_acid,
-                                  'C': 0., 'H': free_acid}, assumptions)
+                                  'C': 0., 'H': free_acid}, assumptions, nacl_coordinate=nacl_coordinate)
     net_water, water, nacl, s, mother, purge, product, carbonate = (carbon[k] for k in (
         'fresh_water_kg', 'reactor_water_kg', 'mother_nacl_mol_kg', 'ge_li2co3_mol_kg', 'mother_liquor_mol',
         'mother_purge_mol', 'product_li2co3_mol', 'carbonation_na2co3_mol'))

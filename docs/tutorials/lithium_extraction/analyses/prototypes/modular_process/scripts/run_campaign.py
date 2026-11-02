@@ -364,7 +364,7 @@ def worker(job, *, persist=True, wall_seconds=290):
                         break
                     enumeration = full_process.enumerate_units(model._washed,
                         full_process.extraction(model)['loaded_organic'], reference['full_process']['assumptions'],
-                        organic_to_aqueous_ratio=model._design['organic_to_aqueous_ratio'])
+                        organic_to_aqueous_ratio=model._design['organic_to_aqueous_ratio'], model=model)
                     selected = next((r for r in enumeration if r['feasible']), None)
                     if selected is None:
                         raise RuntimeError('converged extraction has no admissible downstream interval/regime')

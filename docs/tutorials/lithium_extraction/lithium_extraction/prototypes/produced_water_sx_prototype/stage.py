@@ -318,6 +318,11 @@ def _ipopt(model, directory, options):
         return error
 
 
+def solved_values(model):
+    """Every variable value; equal to the stored tuple only while the model still holds its accepted solve."""
+    return tuple(v.value for v in model.component_data_objects(Var))
+
+
 def _optimal(result):
     return (not isinstance(result, Exception) and check_optimal_termination(result)
             and 'Optimal Solution Found' in str(result.solver.message))
@@ -338,6 +343,7 @@ def solve(model, directory, *, wall_seconds=290, hessian='exact'):
     for name in ('dual', 'ipopt_zL_out', 'ipopt_zU_out'):
         if not hasattr(model, name):
             setattr(model, name, Suffix(direction=Suffix.IMPORT))
+    model._solved_values = None
     start = [(v, v.value) for v in model.component_data_objects(Var)]
     started = time.monotonic()
     attempt, result = 'unscaled', _ipopt(model, directory, options)
@@ -356,6 +362,7 @@ def solve(model, directory, *, wall_seconds=290, hessian='exact'):
     limits = {'stationarity': 1e-7, 'complementarity': 1e-7, 'feasibility': 1e-8, 'multiplier_sign': 1e-8}
     if any(not np.isfinite(diagnostics[k]) or diagnostics[k] > v for k, v in limits.items()):
         raise RuntimeError(f'KKT limits failed: {diagnostics}')
+    model._solved_values = solved_values(model)
     model._solve = {'termination': str(result.solver.termination_condition), 'kkt': diagnostics, 'attempt': attempt,
                     'solve_and_kkt_s': time.monotonic() - started, 'options': options}
     return model._solve

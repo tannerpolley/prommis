@@ -17,7 +17,27 @@ from pyomo.network import Arc
 from pyomo.util.check_units import assert_units_consistent
 from pyomo.util.subsystems import TemporarySubsystemManager, create_subsystem_block
 
-from . import brines, carbonation, chain, costing, downstream, flowsheet, records, references
+from . import brines, carbonation, chain, costing, downstream, flowsheet, records, references, stage
+
+OWNER_COMPARISON_LIMIT = 1e-9  # connected quantities against the independent #176 owner recomputation
+
+
+def reconciled_nacl(raw, bounded):
+    """The solved, bounded NaCl coordinate for a recomputed value that differs from it only by rounding (#267)."""
+    if not math.isfinite(raw) or not 0 <= bounded <= 3 or abs(raw - bounded) > OWNER_COMPARISON_LIMIT:
+        raise ValueError('NaCl differs from the bounded connected state')
+    return bounded
+
+
+def connected_nacl(raw, model, washed, loaded, assumptions, ratio):
+    """Only the unchanged state of the last accepted solve, with its own inputs, supplies the endpoint coordinate."""
+    stored = {k: n for k, n in model._full_process['assumptions'].items() if k != 'extractant_mol_l'}
+    supplied = {k: n for k, n in assumptions.items() if k != 'extractant_mol_l'}  # enumerate_units never reads it
+    if (getattr(model, '_solved_values', None) != stage.solved_values(model) or washed is not model._washed
+            or loaded != extraction(model)['loaded_organic'] or supplied != stored
+            or ratio != model._design['organic_to_aqueous_ratio']):
+        raise ValueError('NaCl endpoint requires the unchanged state and inputs of the last accepted solve')
+    return reconciled_nacl(raw, value(model.fs.carbonation.nacl_mol_kg))
 
 def extraction(model):
     """Transport the generic boundary amounts to the historical cost owner's named inputs."""
@@ -34,7 +54,7 @@ def extraction(model):
             'organic_volume_l_per_raw_l': model._design['organic_to_aqueous_ratio'] * v}
 
 
-def enumerate_units(washed, loaded, assumptions, *, organic_to_aqueous_ratio=1.):
+def enumerate_units(washed, loaded, assumptions, *, organic_to_aqueous_ratio=1., model=None):
     """Enumerate both scrub bounds and every measured Ge interval before calling IPOPT.
 
     Fixed-design screening discards only analytically inadmissible alternatives;
@@ -51,6 +71,9 @@ def enumerate_units(washed, loaded, assumptions, *, organic_to_aqueous_ratio=1.)
     gross = 2.5 * organic_to_aqueous_ratio * v / 10
     fresh = stripped_li + stripped_na + (1 - assumptions['acid_recovery']) * (gross - stripped_li - stripped_na)
     salt = fresh / (stripped_li / assumptions['concentrate_li_mol_kg']) if stripped_li > 0 else None
+    evaluated = salt
+    if salt is not None and salt > 3 and model is not None:
+        evaluated = connected_nacl(salt, model, washed, loaded, assumptions, organic_to_aqueous_ratio)
     with carbonation.GE_TABLE.open() as stream:
         knots = [float(r['nacl_mol_kg']) for r in csv.DictReader(stream) if r['series'] == 'NaCl']
     candidates = []
@@ -61,16 +84,17 @@ def enumerate_units(washed, loaded, assumptions, *, organic_to_aqueous_ratio=1.)
                 reasons.append('scrub acid below the other bound')
             if gross < stripped_li + stripped_na:
                 reasons.append('strip acid inventory below metal proton demand')
-            if salt is None or not math.isfinite(salt) or not 0 <= salt <= 3:
+            if evaluated is None or not math.isfinite(evaluated) or not 0 <= evaluated <= 3:
                 reasons.append('carbonation outside the measured solubility data')
-            elif not lo <= salt <= hi:
+            elif not lo <= evaluated <= hi:
                 reasons.append('NaCl outside this interpolation interval')
             else:
-                s = carbonation.empirical_solubility(assumptions['carbonation_temperature_k'], salt)
+                s = carbonation.empirical_solubility(assumptions['carbonation_temperature_k'], evaluated)
                 if stripped_li - 2 * s * stripped_li / assumptions['concentrate_li_mol_kg'] <= 0:
                     reasons.append('concentration input leaves no Li2CO3 product')
             candidates.append({'scrub_regime': regime, 'carbonation_interval_mol_kg': [lo, hi],
                                'mother_nacl_mol_kg': salt, 'scrub_acid_mol': acid,
+                               **({'evaluated_nacl_mol_kg': evaluated} if evaluated is not salt else {}),
                                'scrub_other_bound_mol': other,
                                'feasible': not reasons, 'reasons': reasons})
     return candidates
@@ -176,7 +200,9 @@ def report(model, result, softening):
     washed, v = model._washed, model._washed['feed_l']
     assumptions = dict(data['assumptions'], extractant_mol_l=model._design['extractant_mol_l'])
     extracted = extraction(model)
-    owner = flowsheet.costs_and_balances(washed, extracted, data['case'], assumptions)
+    owner = flowsheet.costs_and_balances(washed, extracted, data['case'], assumptions,
+        nacl_coordinate=lambda raw: connected_nacl(raw, model, washed, extracted['loaded_organic'], assumptions,
+                                                   model._design['organic_to_aqueous_ratio']))
     owner['organic_volume_l_per_raw_l'] = extracted['organic_volume_l_per_raw_l']
     owner['strip_water_recycle_fraction'] = 1 - owner['fresh_water_kg'] / (owner['organic_volume_l_per_raw_l'] / 10)
     if model._design['organic_to_aqueous_ratio'] != 1.:
@@ -194,7 +220,7 @@ def report(model, result, softening):
     if max(abs(value(n)) for n in fs.saponification.prepared_difference.values()) > 1e-9:
         raise RuntimeError('Prepared organic differs from the extraction inlet')
     differences = {k: actual[k] - owner[k] for k in actual}
-    if any(not math.isfinite(n) or abs(n) > 1e-9 for k, n in differences.items() if k != 'operating_usd_kg_li'):
+    if any(not math.isfinite(n) or abs(n) > OWNER_COMPARISON_LIMIT for k, n in differences.items() if k != 'operating_usd_kg_li'):
         raise RuntimeError(f'Connected units differ from #176 owner: {differences}')
     reconciliation = costing.reconcile(fs.costing, owner['cost_usd_m3'], owner['operating_usd_kg_li'],
                                        owner['li_product_kg_m3'], owner['mass_kg_per_l'])

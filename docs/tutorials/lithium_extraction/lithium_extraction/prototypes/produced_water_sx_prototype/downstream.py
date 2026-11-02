@@ -27,13 +27,17 @@ def held_liquid_loss(dry_kg, liquor_kg, moisture, wash_volumes):
     return held, fraction, fraction * math.exp(-wash_volumes)
 
 
-def accounts(liquor, assumptions):
-    """Ge Table 4 NaCl series at 0.5 mol/kg added soda ash; no extrapolation."""
+def accounts(liquor, assumptions, *, nacl_coordinate=None):
+    """Ge Table 4 NaCl series at 0.5 mol/kg added soda ash; no extrapolation.
+
+    Above 3 mol/kg, ``nacl_coordinate`` may supply the reconciled solved coordinate (#267).
+    """
     net_water = liquor['Li'] / assumptions['concentrate_li_mol_kg']
     recycle = assumptions['mother_recycle']
     water = net_water / (1 - recycle)
     nacl = liquor['Cl'] / net_water
-    s = carbonation.empirical_solubility(assumptions['carbonation_temperature_k'], nacl)
+    evaluated = nacl_coordinate(nacl) if nacl > 3 and nacl_coordinate is not None else nacl
+    s = carbonation.empirical_solubility(assumptions['carbonation_temperature_k'], evaluated)
     mother = {'Li': 2 * s * water, 'Na': (nacl + 1) * water, 'C': (.5 + s) * water}
     purge = {e: n * (1 - recycle) for e, n in mother.items()}
     product = (liquor['Li'] - purge['Li']) / 2
@@ -42,7 +46,8 @@ def accounts(liquor, assumptions):
         raise ValueError('Concentration input leaves no Li2CO3 product')
     if carbonate < 0:
         raise ValueError('Carbonation soda ash is negative')
-    return {'product_li2co3_mol': product, 'ge_li2co3_mol_kg': s, 'mother_liquor_mol': mother,
+    coordinates = {'raw_mother_nacl_mol_kg': nacl, 'evaluated_nacl_mol_kg': evaluated} if evaluated is not nacl else {}
+    return coordinates | {'product_li2co3_mol': product, 'ge_li2co3_mol_kg': s, 'mother_liquor_mol': mother,
             'mother_purge_mol': purge, 'mother_nacl_mol_kg': nacl, 'reactor_water_kg': water,
             'fresh_water_kg': net_water, 'neutralization_naoh_mol': liquor['H'],
             'carbonation_na2co3_mol': carbonate}
