@@ -285,7 +285,7 @@ def direct_from_result(result, stage_count=None, *, front_end=None):
     return {"stages": rows, "start": {"guesses": guesses}}
 
 
-def d2_simulation(job, directory, remaining, records=None, brine=None, start=None):
+def d2_simulation(job, directory, remaining, records, brine=None, start=None):
     """`records` is the campaign records folder, read for the whole-process initialization; `brine` replaces the site's
     raw feed; the site still sets the design's site basis; `start` replaces the extraction-only stage profiles (#245).
     """

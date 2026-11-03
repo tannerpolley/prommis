@@ -46,8 +46,8 @@ def main():
         "component_basis": "H is total acid protons on CO3-2/B(OH)4-/SO4-2 bases, not free H+; water is the "
         "corresponding H2O component; original aqueous species are retained separately",
     }
-    # Acceptance limit from the solver's precision (#219): Reaktoro's convergence tolerance, relative, for every
-    # quantity. On Windows, MS-2 sludge differs from the retained Linux values by 3e-12 and residual Ca + Mg by 1e-9.
+    # Relative limit from the solver's precision (#219): Reaktoro's convergence tolerance. On Windows, MS-2 sludge
+    # differs from the retained Linux values by 3e-12 and residual Ca + Mg by 1e-9.
     relative = ps.rkt.EquilibriumOptions().optima.convergence.tolerance
     for case in (args.case,) if args.case else ("base", "optimistic"):
         t = time.monotonic()
@@ -61,7 +61,10 @@ def main():
                 actual = (
                     result[name][key] if isinstance(expected, dict) else result[name]
                 )
-                absolute = 1e-9 if key == "HCl" or name == "pH" else 1e-12
+                strict = name == "reagent_mol" or "sludge" in name
+                absolute = (
+                    1e-9 if key == "HCl" or name == "pH" else 0.0 if strict else 1e-12
+                )
                 assert math.isclose(
                     actual, target, rel_tol=relative, abs_tol=absolute
                 ), (case, name, key)

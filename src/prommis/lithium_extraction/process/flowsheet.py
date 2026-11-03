@@ -35,8 +35,8 @@ MASS_KG_PER_MOL = {
 
 
 def installed_engine():
-    """Installed Engine identity: a wheel listed by sha256 in ENGINE_COMMITS (this repository's .venv) or an installed
-    public release listed by version in ENGINE_RELEASES (a conda install, which has no wheel file); refuses anything else.
+    """Installed Engine identity: a wheel listed by sha256 in ENGINE_COMMITS (this repository's .venv) or a public
+    release listed by version in ENGINE_RELEASES, installed by conda or from an index; refuses source-tree installs.
     """
     from prommis.lithium_extraction.thermodynamics.reaction_topology import (
         _sha256,
@@ -55,6 +55,11 @@ def installed_engine():
         return _verify_wheel(wheel, sha256, ENGINE_COMMITS[sha256]) | {
             "identified_by": "wheel sha256"
         }
+    # The conda package records its build directory as dir_info, so its installer, not direct_url, marks it a release.
+    if direct and (distribution.read_text("INSTALLER") or "").strip() != "conda":
+        raise ValueError(
+            f"Installed epcsaft comes from a source tree ({direct.get('url')}), not a declared wheel or release"
+        )
     version = distribution.version
     if version not in ENGINE_RELEASES:
         raise ValueError(
