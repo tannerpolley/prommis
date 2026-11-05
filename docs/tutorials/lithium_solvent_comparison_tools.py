@@ -6,7 +6,6 @@ Every function that changes the flowsheet takes the model `m` as its first argum
 
 import csv
 import json
-import time
 from functools import cache
 
 import ipywidgets as widgets
@@ -17,7 +16,7 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 from pyomo.environ import Block, Constraint, Var, value
 from pyomo.util.calc_var_value import calculate_variable_from_constraint
 
-from lithium_tutorial_tools import ROOT, log_directory, number, plot_checks
+from lithium_tutorial_tools import ROOT, log_directory, number, plot_checks, shown
 from prommis.lithium_extraction.extraction import countercurrent
 from prommis.lithium_extraction.extraction import (
     solvent_comparison_optimization as optimization,
@@ -117,7 +116,10 @@ def draw_cascade():
 
 
 def feed_table():
-    """The synthetic softened MS-2 feed per litre, and the model feed each solvent family receives."""
+    """The synthetic softened MS-2 feed per litre, and the model feed each solvent family receives.
+
+    A dash marks a species that solvent family's equilibrium model leaves out, or water's mass concentration.
+    """
     raw = brines.raw_feed("MS2")
     feeds = {
         "HBTA/TOPO and DES": records.extraction_feed(raw, "A", synthetic_softened=True),
@@ -133,7 +135,7 @@ def feed_table():
     ]
     for label, feed in feeds.items():
         table[f"model feed, {label} (mol/L)"] = pd.Series(feed["model_feed"])
-    return table
+    return shown(table, "—")
 
 
 def _rows(name):
@@ -191,14 +193,69 @@ DESIGN_NAMES = {
 
 
 def designs():
-    """The retained three-stage design of each system, one row per design variable."""
+    """The paper's three-stage design of each system, one row per design variable."""
     return pd.DataFrame(
         [
-            {"system": SYSTEMS[a][0], "design variable": DESIGN_NAMES[k], "value": v}
+            {
+                "system": SYSTEMS[a][0],
+                "design variable": DESIGN_NAMES[k],
+                "value": design_value(a, k, v),
+            }
             for a in SYSTEMS
             for k, v in design(a)[1].items()
         ]
     ).set_index(["system", "design variable"])
+
+
+def design_value(arm, name, v):
+    """A design value; one within 1e-6 of a design bound is shown as that bound."""
+    for bound, side in zip(BOUNDS[arm].get(name, ()), ("lower", "upper")):
+        if abs(v - bound) <= 1e-6 * max(abs(bound), 1):
+            return f"{float(bound)} ({side} bound)"
+    return number(v)
+
+
+def paper_results():
+    """The paper's maximum lithium recovery at 1 to 5 stages, and the sodium share of the loaded organic at 3 stages.
+
+    Read from the paper's results table; a blank cell is a stage count with no result in the paper.
+    """
+    rows = {
+        (r["arm"], int(r["N"])): r
+        for r in _rows("pmax_comparison.csv")
+        if r["comparison_set"] == "Paper 1 row"
+    }
+    stages = sorted({n for _, n in rows})
+
+    def recovery(row):
+        if row["recovery_class"] == SATURATED:
+            return "≈ 100"
+        if not row["recovery_raw"]:
+            return ""
+        return (
+            "> 99.9"
+            if float(row["recovery_raw"]) >= 0.999
+            else f"{100 * float(row['recovery_raw']):.1f}"
+        )
+
+    table = pd.DataFrame(
+        {
+            label: {
+                **{
+                    ("Li recovery (%)", f"{n} stage" + "s" * (n > 1)): recovery(
+                        rows[arm, n]
+                    )
+                    for n in stages
+                },
+                (
+                    "Na / (Li + Na) in loaded organic (%)",
+                    f"{STAGES} stages",
+                ): f"{100 * float(retained()[arm][0]['loaded_na_fraction']):.1f}",
+            }
+            for arm, (label, _) in SYSTEMS.items()
+        }
+    ).T
+    return table.rename_axis("solvent system")
 
 
 # ---------------------------------------------------------------- the acid-form HBTA/TOPO flowsheet built in the notebook
@@ -311,7 +368,7 @@ def solve(m, name):
 
 
 def optimum_table(m, brine, starting):
-    """The design and lithium recovery from the starting design, the optimizer, and the study's retained optimum."""
+    """The design and lithium recovery from the starting design, the optimizer, and the paper's optimum."""
     d, row = m.fs.design, retained()["acid_A"][0]
     names = {"organic_to_aqueous_ratio": "O/A", "extractant_mol_l": "c (mol/L organic)"}
     optimized = {names[k]: value(getattr(d, k)) for k in names}
@@ -324,23 +381,23 @@ def optimum_table(m, brine, starting):
         {
             "starting design": starting,
             "optimized here": optimized,
-            "retained optimum": {
+            "paper's optimum": {
                 **{names[k]: float(row[k]) for k in names},
                 "$E_{Li}$": float(row["recovery_raw"]),
             },
         }
     )
     table["relative difference"] = (
-        table["optimized here"] / table["retained optimum"] - 1
+        table["optimized here"] / table["paper's optimum"] - 1
     ).abs()
     return table
 
 
-def matches_repository_build(m, solved):
-    """Largest difference (mol/L) between the notebook's stage outlets and the repository's own acid-form build."""
-    repository = [outlet(row) for row in solved["acid_A"]["result"]["stages"]]
+def largest_outlet_difference(m, solved):
+    """Largest difference (mol/L) between the notebook's stage outlets and the study builder's acid-form solve."""
+    study = [outlet(row) for row in solved["acid_A"]["result"]["stages"]]
     difference = max(
-        abs(m.fs.stage[k].outlet[s].value - repository[k - 1][s])
+        abs(m.fs.stage[k].outlet[s].value - study[k - 1][s])
         for k in m.fs.stages
         for s in m._chemistry.species
     )
@@ -356,11 +413,11 @@ def outlet(row):
 
 
 def solve_all():
-    """Build and solve every system at its retained controls; a failed design is reported, not raised."""
+    """Build and solve every system at the paper's design; a failed design is reported, not raised."""
     solved, status = {}, []
     directory = log_directory("solvent_comparison")
     for arm, (label, _) in SYSTEMS.items():
-        started, line = time.monotonic(), {"system": label}
+        line = {"system": label}
         try:
             start, controls = design(arm)
             solved[arm] = _solve_design(
@@ -380,7 +437,7 @@ def solve_all():
             )
         except Exception as error:
             line.update(solved=False, failure=repr(error))
-        status.append(line | {"wall time (s)": round(time.monotonic() - started, 1)})
+        status.append(line)
     return solved, pd.DataFrame(status).set_index("system")
 
 
@@ -521,7 +578,7 @@ def plot_profiles(table):
         ax.set(xlabel="Stage (brine enters stage 1)", xticks=[1, 2, 3], xlim=(0.6, 3.4))
     fig.legend(loc="outside lower center", ncols=4, frameon=False)
     fig.suptitle(
-        "Three-stage countercurrent profiles at the retained maximum-recovery designs (model predictions)",
+        "Three-stage countercurrent profiles at the paper's maximum-recovery designs (model predictions)",
         fontsize=10,
     )
     plt.show()
@@ -694,10 +751,14 @@ def _stage_amounts(arm, entry):
             )
             for s in outlet(old)
         ]
+        kind = {
+            "result": "stage outlets (optimizer solve)",
+            "fixed_replay": "stage outlets (fixed-design solve)",
+        }[name]
         lines.append(
             dict(
                 table=f"{row['source'].rsplit('/', 1)[-1]} [{name}]",
-                kind=f'stage outlets ({name.replace("_", " ")})',
+                kind=kind,
                 field=f"{len(differences)} stage outlet amounts",
                 difference=max(differences),
                 limit=AMOUNT_LIMIT,
@@ -734,8 +795,8 @@ def headline(solved):
     return pd.DataFrame(rows)
 
 
-def check_retained(solved):
-    """Every retained field and stage outlet against the reproduction; stops on any failure.
+def check_against_paper(solved):
+    """Every field of the paper's results row and every stage outlet against the reproduction; stops on any failure.
 
     Draws every comparison against its tolerance and returns (summary per system, every comparison).
     """
@@ -757,11 +818,9 @@ def check_retained(solved):
     check = pd.DataFrame(lines)
     check.loc[check["limit"].eq("equal text"), "kind"] = "text field (equal)"
     failed = check[~check["passed"]]
-    assert (
-        failed.empty
-    ), f"reproduced values differ from the retained results:\n{failed}"
+    assert failed.empty, f"reproduced values differ from the paper's results:\n{failed}"
     summary = plot_checks(
-        check, "system", f"{len(check)} comparisons with the retained results"
+        check, "system", f"{len(check)} comparisons with the paper's results"
     )
     return summary, check.dropna(axis="columns", how="all")
 
@@ -867,7 +926,7 @@ def run_design(options):
         "system": SYSTEMS[arm][0],
         "stages": stages,
         "design": ", ".join(
-            f"{SHORT_NAMES[k]} = {number(v)}" for k, v in chosen.items()
+            f"{SHORT_NAMES[k]} = {design_value(arm, k, v)}" for k, v in chosen.items()
         ),
     }
     try:

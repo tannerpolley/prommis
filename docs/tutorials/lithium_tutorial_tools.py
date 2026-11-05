@@ -49,15 +49,35 @@ def number(x):
 pd.set_option("display.float_format", number)
 
 
+def shown(table, missing):
+    """A table as text: numbers by `number`, empty cells as `missing`."""
+    return table.map(lambda x: missing if pd.isna(x) else number(x))
+
+
+# Display names of the HBTA/TOPO organic complexes; the model's species names stay unchanged.
+LABELS = {"lithium-carrier": "LiA·T complex", "sodium-carrier": "NaA·T complex"}
+
+
+def label(species):
+    return LABELS.get(species, species)
+
+
 def versions():
     """The software this run uses, with the installed Engine."""
     engine = installed_engine()
     return pd.Series(
         {
-            "ePC-SAFT Engine": f"{engine['filename'].split('-')[1]} (source commit {engine['source_commit'][:8]})",
-            "IDAES": version("idaes-pse"),
-            "PrOMMiS": version("prommis"),
-            "Pyomo": version("pyomo"),
+            "ePC-SAFT Engine": engine["filename"].split("-")[1],
+            **{
+                name: version(package).split("+")[
+                    0
+                ]  # release number, without a local build tag
+                for name, package in (
+                    ("IDAES", "idaes-pse"),
+                    ("PrOMMiS", "prommis"),
+                    ("Pyomo", "pyomo"),
+                )
+            },
         },
         name="version",
     ).to_frame()
@@ -69,6 +89,14 @@ def log_directory(name):
 
 
 # ---------------------------------------------------------------- building the extraction stages
+
+
+def species(chemistry):
+    """The species of each phase in a compiled Engine record."""
+    return {
+        f"{phase} species": [label(s) for s in support]
+        for phase, support in zip(PHASES, chemistry.supports)
+    }
 
 
 def extent_stoichiometry(chemistry):
@@ -209,7 +237,7 @@ def engine_check(m, k):
             "flowsheet outlet (mol/L)": solved,
             "difference (mol/L)": abs(direct - solved),
         }
-    return pd.DataFrame(rows).T.rename_axis(f"leaving stage {k}")
+    return pd.DataFrame(rows).T.rename(index=label).rename_axis(f"leaving stage {k}")
 
 
 def engine_derivatives(m, k, s):
@@ -228,23 +256,47 @@ def engine_derivatives(m, k, s):
             m.fs.engine.evaluate([*up, *record])
             - m.fs.engine.evaluate([*down, *record])
         ) / (2 * h)
-        rows[f"entering {q}"] = {
+        rows[f"entering {label(q)}"] = {
             "exact (Engine)": gradient[i],
             "finite difference": difference,
             "relative difference": abs(gradient[i] - difference)
             / max(abs(gradient[i]), 1e-12),
         }
-    return pd.DataFrame(rows).T.rename_axis(f"d n(out, {s}) / d n(in)")
+    return pd.DataFrame(rows).T.rename_axis(f"d n(out, {label(s)}) / d n(in)")
 
 
 def stage_profile(m, species):
     """Amount of each species leaving each stage, from the model (mol per litre of extraction feed)."""
     return pd.DataFrame(
-        {k: {s: m.fs.stage[k].outlet[s].value for s in species} for k in m.fs.stages}
+        {
+            k: {label(s): m.fs.stage[k].outlet[s].value for s in species}
+            for k in m.fs.stages
+        }
     ).rename_axis(columns="stage")
 
 
+def stream_table(unit, basis):
+    """The streams entering and leaving a unit, as its report() lists them, in mol per litre of the named basis.
+
+    The property packages carry amounts per litre of a reference flow, so report() prints them as dimensionless.
+    """
+    table = unit._get_stream_table_contents().drop(columns="Units")
+    table.index = [label(name.removeprefix("flow_mol_comp ")) for name in table.index]
+    return shown(table.rename_axis(f"mol per L of {basis}"), "")
+
+
 # ---------------------------------------------------------------- inspecting a flowsheet
+
+PORT_LABELS = {
+    "retained": "organic kept for reuse"
+}  # display labels only; the IDAES port keeps its name
+
+
+def _port(name):
+    """A port name, or `unit.port` path, with its port shown by its display label."""
+    unit, _, port = name.removeprefix("fs.").rpartition(".")
+    port = PORT_LABELS.get(port, port)
+    return f"{unit}.{port}" if unit else port
 
 
 def unit_models(model):
@@ -255,7 +307,8 @@ def unit_models(model):
             unit.parent_block(), UnitModelBlockData
         ):
             ports = [
-                p.local_name for p in unit.component_objects(Port, descend_into=False)
+                _port(p.local_name)
+                for p in unit.component_objects(Port, descend_into=False)
             ]
             rows.append(
                 {
@@ -275,19 +328,19 @@ def arcs(model):
         [
             {
                 "arc": a.name.removeprefix("fs."),
-                "from": a.source.name.removeprefix("fs."),
-                "to": a.destination.name.removeprefix("fs."),
+                "from": _port(a.source.name),
+                "to": _port(a.destination.name),
             }
             for a in model.fs.component_data_objects(Arc, descend_into=True)
         ]
     ).set_index("arc")
 
 
-# ---------------------------------------------------------------- showing a retained-record check
+# ---------------------------------------------------------------- showing the reproduction check
 
 
 def plot_checks(checks, group, title):
-    """Every comparison as |reproduced - retained| / tolerance; a point below 1 is within its tolerance.
+    """Every comparison as |reproduced - published| / tolerance; a point below 1 is within its tolerance.
 
     `checks` needs the columns `group`, 'kind', 'difference', 'limit' and 'passed'. Differences of 1e-12 of the
     tolerance or less, exact agreement included, are drawn at the bottom; text fields compared for equality are
