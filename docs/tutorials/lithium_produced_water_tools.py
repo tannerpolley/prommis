@@ -498,7 +498,9 @@ def headline(model, result, softened, site):
             "Li2CO3 product (kg per m3 raw water)": value(costing.li_kg_h) * LCE_PER_LI,
             "operating cost (USD per m3 raw water)": value(costing.operating_cost),
             "operating cost (USD per kg Li)": value(costing.usd_kg_li),
-            "break-even price (USD per kg LCE)": value(costing.usd_kg_li) / LCE_PER_LI,
+            "break-even price (USD per t LCE)": 1000
+            * value(costing.usd_kg_li)
+            / LCE_PER_LI,
         },
         name=WATERS[site],
     )
@@ -762,8 +764,8 @@ def price_sensitivity(m, result):
                     sum(usd_h[k] for k in items) / li for items in PRICE_ITEMS.values()
                 ),
             ),
-            title=f"{number(total)} USD/kg Li; break-even {number(total / LCE_PER_LI)} USD/kg LCE "
-            f"({number(total / LCE_PER_LI / base)} times the {base:g} USD/kg LCE base price)",
+            title=f"{number(total)} USD/kg Li; break-even {number(1000 * total / LCE_PER_LI)} USD/t LCE "
+            f"({number(total / LCE_PER_LI / base)} times the {number(1000 * base)} USD/t LCE base price)",
         )
         ax.spines[["top", "right"]].set_visible(False)
         plt.tight_layout()
@@ -803,9 +805,8 @@ def summary(results):
                 * LCE_PER_LI,
                 "operating cost (USD/kg Li)": r["cost_usd_kg_li"],
                 "operating cost (USD/m3 raw water)": r["cost_usd_m3_raw_brine"],
-                "break-even price (USD/kg LCE)": r["full_process"][
-                    "break_even_lce_usd_kg"
-                ],
+                "break-even price (USD/t LCE)": 1000
+                * r["full_process"]["break_even_lce_usd_kg"],
             }
             for s, r in results.items()
         }
@@ -865,7 +866,10 @@ def plot_break_even(results):
         )["mars_hill"]["lce_usd_kg"],
     }
     names = [WATERS[s] for s in results]
-    break_even = [r["full_process"]["break_even_lce_usd_kg"] for r in results.values()]
+    break_even = [
+        1000 * r["full_process"]["break_even_lce_usd_kg"] for r in results.values()
+    ]
+    prices = {case: 1000 * price for case, price in prices.items()}
     fig, ax = plt.subplots(figsize=(7, 3.2))
     ax.plot(
         break_even,
@@ -877,16 +881,16 @@ def plot_break_even(results):
     )
     for (case, price), style in zip(prices.items(), ("--", ":")):
         ax.axvline(
-            price, color="#a23b2a", ls=style, label=f"{case}: {price:g} USD/kg LCE"
+            price, color="#a23b2a", ls=style, label=f"{case}: {number(price)} USD/t LCE"
         )
     for x, n in zip(break_even, names):
         ax.annotate(
-            f"{x:.0f}", (x, n), textcoords="offset points", xytext=(0, 10), ha="center"
+            number(x), (x, n), textcoords="offset points", xytext=(0, 10), ha="center"
         )
     ax.set(
         xlim=(0, 1.15 * max(break_even)),
         ylim=(-0.6, len(names) - 0.4),
-        xlabel="lithium carbonate price (USD/kg LCE)",
+        xlabel="lithium carbonate price (USD/t LCE)",
     )
     ax.legend(fontsize=8, loc="upper right")
     plt.tight_layout()
@@ -894,7 +898,7 @@ def plot_break_even(results):
     return pd.DataFrame(
         {
             name: {
-                "break-even (USD/kg LCE)": b,
+                "break-even (USD/t LCE)": b,
                 "times base price": b / prices["base price"],
             }
             for name, b in zip(names, break_even)
@@ -1157,7 +1161,8 @@ def _row(record, selection):
             "Li to Li2CO3 (%)": 100 * record["product_recovery_fraction"],
             "USD/m3 raw water": record["cost_usd_m3_raw_brine"],
             "USD/kg Li": record["cost_usd_kg_li"],
-            "break-even (USD/kg LCE)": record["full_process"]["break_even_lce_usd_kg"],
+            "break-even (USD/t LCE)": 1000
+            * record["full_process"]["break_even_lce_usd_kg"],
         }
     else:
         row["reason"] = record.get("reason", "")
@@ -1272,18 +1277,18 @@ def paper_headline():
             ("water", "(Ca+Mg)/Li (kg/kg)"): raw["ca_mg_li_mass_ratio"],
             (hbta, "Li to Li2CO3 (%)"): 100
             * _hbta(site, "base")["product_recovery_fraction"],
-            (hbta, "break-even, base prices (USD/kg LCE)"): _hbta(site, "base")[
-                "break_even_lce_usd_kg"
-            ],
-            (hbta, "break-even, optimistic prices (USD/kg LCE)"): _hbta(
-                site, "optimistic"
-            )["break_even_lce_usd_kg"],
+            (hbta, "break-even, base prices (USD/t LCE)"): 1000
+            * _hbta(site, "base")["break_even_lce_usd_kg"],
+            (hbta, "break-even, optimistic prices (USD/t LCE)"): 1000
+            * _hbta(site, "optimistic")["break_even_lce_usd_kg"],
             (d2, "Li to Li2CO3 (%)"): 100
             * _buphen(site, "base")["product_recovery_fraction"],
         }
-    prices = [c["li2co3_usd_kg"] for c in _buphen("MS2", "base")["ceilings"]]
+    prices = [
+        number(1000 * c["li2co3_usd_kg"]) for c in _buphen("MS2", "base")["ceilings"]
+    ]
     print(
-        "Assumed lithium carbonate price: {:g} (base) to {:g} (optimistic) USD/kg LCE".format(
+        "Assumed lithium carbonate price: {} (base) to {} (optimistic) USD/t LCE".format(
             *prices
         )
     )
@@ -1301,7 +1306,7 @@ def buphen_results():
             rows[name, case] = {
                 "Li to Li2CO3 (%)": 100 * d["product_recovery_fraction"],
                 **{
-                    f"BuPhen price ceiling at {c['li2co3_usd_kg']:g} USD/kg LCE (USD/kg)": c[
+                    f"BuPhen price ceiling at {number(1000 * c['li2co3_usd_kg'])} USD/t LCE (USD/kg)": c[
                         "buphen_ceiling_usd_kg"
                     ]
                     for c in d["ceilings"]
@@ -1318,8 +1323,8 @@ def hbta_targets():
     low, high = BAND["mars_hill"][FIT]["ca_mg_li_bracket_kg_kg"]
     return pd.Series(
         {
-            "Lowest primary-calibration HBTA/TOPO break-even (USD/kg LCE)": number(
-                best[FIT]["break_even_lce_usd_kg"]
+            "Lowest primary-calibration HBTA/TOPO break-even (USD/t LCE)": number(
+                1000 * best[FIT]["break_even_lce_usd_kg"]
             ),
             "lowest break-even: water, prices, stages": f"{ALL_WATERS[best['site']]}, {best['case']}, {best[FIT]['stages']}",
             "Mars Hill (Ca+Mg)/Li, measured (kg/kg)": number(
