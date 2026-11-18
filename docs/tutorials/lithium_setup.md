@@ -20,7 +20,7 @@ The Engine's conda packages exist for Python 3.13 only, so make a new environmen
 root of this PrOMMiS checkout:
 
 ```sh
-conda create -n prommis-lithium -c conda-forge -c tannerwpolley python=3.13 epcsaft=1.2.0 reaktoro=2.13.0
+conda create -n prommis-lithium -c conda-forge -c tannerwpolley python=3.13 epcsaft=1.3.1 reaktoro=2.13.0
 conda env config vars set -n prommis-lithium PYTHONUTF8=1
 conda activate prommis-lithium
 pip install -e . "watertap>=1.8,<1.9" "ipywidgets>=8,<9" jupyterlab
@@ -54,5 +54,5 @@ jupyter nbconvert --to notebook --execute --inplace lithium_produced_water_proce
 **As an app.** `voila lithium_produced_water_process.ipynb` (after `pip install voila`) serves a notebook as a web page
 that shows only the text, widgets and results, with the code hidden; it runs every cell when the page opens.
 
-The helper functions the notebooks call are the `lithium_*_tools.py` files beside them. The notebooks were checked on
-epcsaft 1.2.0 (Engine commit `4cb87490`); another Engine version is refused.
+The helper functions the notebooks call are the `lithium_*_tools.py` files beside them. The public epcsaft 1.3.1
+conda release was built from Engine commit `1b46e57c`.

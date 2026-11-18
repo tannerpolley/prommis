@@ -14,6 +14,7 @@ MASSES = json.loads((ANALYSIS / "inputs/reaction_basis.json").read_text())[
     "molar_masses_kg_mol"
 ]
 BUPHEN_ORGANIC_AQUEOUS_PARTITION = 1.4e4
+MOLAR_MASS_KG_MOL = {"BuPhen": 0.29242, "D2EHDTPA": 0.35456, "dodecane": 0.17033484}
 LABELS = {
     "evidence_type": "prediction",
     "holdout_support": "no holdout support",
@@ -38,7 +39,13 @@ def ms2_feed():
     }
 
 
-def site_supply(buphen, S, v, stage_count, *, site_basis_li_mol_l=None):
+class OutsideDomain(ValueError):
+    """A design or feed outside the #188 fixed design domain."""
+
+
+def site_supply(
+    buphen, S, v, stage_count, *, site_basis_li_mol_l=None, design_range=None
+):
     """The #188 fixed design domain and site supply, also used by the generic simulation."""
     basis = (
         BASIS["site_basis_li_mol_L"]
@@ -46,6 +53,23 @@ def site_supply(buphen, S, v, stage_count, *, site_basis_li_mol_l=None):
         else site_basis_li_mol_l
     )
     sites = S * basis / v
+    if design_range is not None:
+        valid = all(
+            lo <= x <= hi
+            for x, (lo, hi) in zip(
+                (buphen, S, v, sites),
+                (
+                    *(design_range["bounds"][k] for k in ("B", "S", "O_A")),
+                    design_range["sites_mol_l"],
+                ),
+                strict=True,
+            )
+        )
+        if not valid or stage_count not in design_range["stages"]:
+            raise OutsideDomain(
+                f"Outside explicit design range: B={buphen}, S={S}, O/A={v}, N={stage_count}, A={sites}"
+            )
+        return sites
     if not (
         0.25 <= buphen <= 1
         and 0.9 <= S <= 1.5
@@ -53,7 +77,7 @@ def site_supply(buphen, S, v, stage_count, *, site_basis_li_mol_l=None):
         and 0.020 <= sites <= 0.060
         and stage_count in BASIS["stage_counts"]
     ):
-        raise ValueError(
+        raise OutsideDomain(
             f"Outside #188 domain: B={buphen}, S={S}, O/A={v}, N={stage_count}, A={sites}"
         )
     return sites
@@ -124,6 +148,55 @@ def extract(
     return result
 
 
+def entrained_l(case_assumptions, strip_li_mol):
+    """Organic litres per raw litre leaving with the raffinate (one raw litre) and the strip liquor, whose water is the
+    stripped Li at the concentrate molality (1 kg/L, #176 basis); the shared entrainment applies to both (#342).
+    """
+    return case_assumptions["entrainment_l_per_l"] * (
+        1 + strip_li_mol / case_assumptions["concentrate_li_mol_kg"]
+    )
+
+
+def losses_kg_per_l(
+    entrained,
+    S,
+    v,
+    buphen,
+    h2s,
+    free_b_raffinate,
+    diluent_per_l_organic,
+    *,
+    site_basis_li_mol_l,
+):
+    """kg per raw litre lost: octanol dissolution (pure-water solubility, per raw litre) and entrainment; BuPhen
+    dissolution (free BuPhen at the raffinate end over its partition value) and entrainment; D2EHDTPA and dodecane
+    entrainment. Arguments may be numbers or Pyomo expressions of the solved design; one owner for both.
+    """
+    octanol = sum(
+        BASIS[k]["vol_fraction"] * BASIS[k]["density_kg_L"]
+        for k in ("octanol_1", "octanol_2")
+    )
+    return {
+        "octanol_dissolution": sum(
+            BASIS[k]["pure_water_solubility_kg_m3"] for k in ("octanol_1", "octanol_2")
+        )
+        / 1000,
+        "octanol_entrainment": entrained * octanol,
+        "BuPhen_dissolution": free_b_raffinate
+        / BUPHEN_ORGANIC_AQUEOUS_PARTITION
+        * MOLAR_MASS_KG_MOL["BuPhen"],
+        "BuPhen_entrainment": entrained * buphen * MOLAR_MASS_KG_MOL["BuPhen"],
+        "D2EHDTPA_entrainment": entrained
+        * (S * site_basis_li_mol_l + h2s)
+        / v
+        * MOLAR_MASS_KG_MOL["D2EHDTPA"],
+        "diluent": entrained
+        * 0.75
+        * diluent_per_l_organic
+        * MOLAR_MASS_KG_MOL["dodecane"],
+    }  # 25 vol% octanols
+
+
 def accounts(
     extraction,
     S,
@@ -132,19 +205,38 @@ def accounts(
     case,
     h2s,
     *,
+    case_assumptions=None,
     feed_li_mol_l=None,
     site_basis_li_mol_l=None,
     value_basis_li_mol_l=None,
 ):
-    """USD/m3 feed and kg/m3 losses; missing prices remain symbolic, never zero-priced totals."""
+    """kg/m3 losses and the priced strip intermediate (NaOH, 31 % HCl, octanols); BuPhen and D2EHDTPA are the
+    unpriced active set (#339 decision 1). Independent of the connected model: amounts come from solved outlets.
+    Without case_assumptions the retained #188 basis applies (per-cycle entrainment fraction of circulated organic,
+    #188 octanol price, revenue fields), so retained MS-2 studies and their Engine replay still reproduce.
+    """
+    old = case_assumptions is None
     reg = "data/reference/tea/hbta_topo_screening_cost_assumptions.csv"
     prices = {
         k: float(_row(reg, "assumption_id", k + "_price")["base"])
         for k in ("naoh", "hcl")
     }
-    organic_reg = "data/reference/tea/d2ehdtpa_buphen_price_register.csv"
-    octanol_price = float(
-        _row(organic_reg, "component_id", "1_octanol")["delivered_price_usd_kg"]
+    octanol_price = (
+        float(
+            _row(
+                "data/reference/tea/d2ehdtpa_buphen_price_register.csv",
+                "component_id",
+                "1_octanol",
+            )["delivered_price_usd_kg"]
+        )
+        if old
+        else float(
+            _row(
+                "data/reference/tea/extractant_price_register.csv",
+                "component_id",
+                "1_octanol",
+            )["price_usd_kg"]
+        )
     )
     feed_li = ms2_feed()["Li"] if feed_li_mol_l is None else feed_li_mol_l
     site_basis = (
@@ -165,37 +257,29 @@ def accounts(
         raise RuntimeError("Strip/site mass balance exceeds 1e-9 mol/L feed")
     rec = strip["Li"] / feed_li
     li_kg = strip["Li"] * MASSES["Li"] * 1000
-    lce_kg = strip["Li"] * 0.07389 / 2 * 1000
-    f = BASIS["entrainment_fraction"][case]
-    oct_diss = sum(
-        BASIS[k]["pure_water_solubility_kg_m3"] for k in ("octanol_1", "octanol_2")
+    entrained = (
+        BASIS["entrainment_fraction"][case] * v
+        if old
+        else entrained_l(case_assumptions, strip["Li"])
     )
-    oct_ent = (
-        f
-        * v
-        * 1000
-        * sum(
-            BASIS[k]["vol_fraction"] * BASIS[k]["density_kg_L"]
-            for k in ("octanol_1", "octanol_2")
-        )
-    )
-    b_diss = (
-        extraction["stages"][-1]["free_B_mol_L"]
-        / BUPHEN_ORGANIC_AQUEOUS_PARTITION
-        * 0.29242
-        * 1000
-    )
-    b_ent = f * v * buphen * 0.29242 * 1000
-    a_ent = f * (available + h2s) * 0.35456 * 1000
-    diluent = extraction["stages"][0]["amounts_mol"][1]["diluent"]
-    d_ent = (
-        f * 0.75 * diluent * 0.17033484 * 1000
-    )  # explicit 5/20 vol% octanols replace modeled dodecane.
+    lost = {
+        k: 1000 * n
+        for k, n in losses_kg_per_l(
+            entrained,
+            S,
+            v,
+            buphen,
+            h2s,
+            extraction["stages"][-1]["free_B_mol_L"],
+            extraction["stages"][0]["amounts_mol"][1]["diluent"] / v,
+            site_basis_li_mol_l=site_basis,
+        ).items()
+    }
     costs = {
         "naoh": (available + h2s) * 0.039997 * 1000 * prices["naoh"],
         "hcl31": acid * 0.036461 / 0.31 * 1000 * prices["hcl"],
-        "octanol_dissolution": oct_diss * octanol_price,
-        "octanol_entrainment": oct_ent * octanol_price,
+        "octanol_dissolution": lost["octanol_dissolution"] * octanol_price,
+        "octanol_entrainment": lost["octanol_entrainment"] * octanol_price,
     }
     subtotal = sum(costs.values())
     result = {
@@ -212,22 +296,21 @@ def accounts(
         - sum(rc.ION[e][2] * n for e, n in strip.items()),
         "NaOH_mol_L_feed": available + h2s,
         "li_recovered_kg_m3": li_kg,
-        "lce_recovered_kg_m3": lce_kg,
+        "lce_recovered_kg_m3": strip["Li"] * 0.07389 / 2 * 1000,
+        "entrained_organic_l_per_raw_l": entrained,
         "strip_na_fraction": strip["Na"] / (strip["Li"] + strip["Na"]),
         "strip_closure_mol": strip_closure,
-        "BuPhen_dissolved_kg_m3": b_diss,
-        "BuPhen_entrained_kg_m3": b_ent,
-        "BuPhen_loss_kg_m3": b_diss + b_ent,
-        "D2EHDTPA_loss_kg_m3": a_ent,
-        "dodecane_loss_kg_m3": d_ent,
-        "octanol_dissolved_kg_m3": oct_diss,
-        "octanol_entrained_kg_m3": oct_ent,
+        "BuPhen_dissolved_kg_m3": lost["BuPhen_dissolution"],
+        "BuPhen_entrained_kg_m3": lost["BuPhen_entrainment"],
+        "BuPhen_loss_kg_m3": lost["BuPhen_dissolution"] + lost["BuPhen_entrainment"],
+        "D2EHDTPA_loss_kg_m3": lost["D2EHDTPA_entrainment"],
+        "dodecane_loss_kg_m3": lost["diluent"],
+        "octanol_dissolved_kg_m3": lost["octanol_dissolution"],
+        "octanol_entrained_kg_m3": lost["octanol_entrainment"],
         "priced_subtotal_usd_m3": subtotal,
         "priced_subtotal_usd_kg_li": subtotal / li_kg,
-        "priced_subtotal_usd_kg_lce": subtotal / lce_kg,
         "missing_accounts": BASIS["missing_accounts"],
-        "cost_expression": "priced subtotal + BuPhen_loss*p_BuPhen + D2EHDTPA_loss*p_D2EHDTPA + dodecane_loss*p_dodecane; prices USD/kg, losses kg/m3",
-        "break_even_label": "BuPhen-only conditional upper bound, before D2EHDTPA/dodecane prices and excluded accounts",
+        "cost_expression": "C_r + theta*(BuPhen_loss + D2EHDTPA_loss); prices USD/kg, losses kg/m3 (#339 decision 1)",
         "octanol_dissolution_label": BASIS["octanol_dissolution_label"],
         "H2S_scope": "HA unavailable outside Engine; equal Na and HS leave raffinate; no sulfide activity or residual-loading reuse model",
         "strip_assumptions": "Na=Li strip fraction and Sr=alkaline-earth strip fraction; no independent Na or Sr strip measurement",
@@ -245,10 +328,19 @@ def accounts(
             result[f"strip_{e}_per_Li_mol_mol"] = strip[e] / strip["Li"]
     for k, cost in costs.items():
         result[f"{k}_usd_m3"] = cost
-    value_basis = (
+    if not old:
+        return result | {"entrainment_l_per_l": case_assumptions["entrainment_l_per_l"]}
+    lce_kg = result["lce_recovered_kg_m3"]
+    result.update(
+        {
+            "priced_subtotal_usd_kg_lce": subtotal / lce_kg,
+            "cost_expression": "priced subtotal + BuPhen_loss*p_BuPhen + D2EHDTPA_loss*p_D2EHDTPA + dodecane_loss*p_dodecane; prices USD/kg, losses kg/m3",
+            "break_even_label": "BuPhen-only conditional upper bound, before D2EHDTPA/dodecane prices and excluded accounts",
+        }
+    )
+    value_scale = feed_li / (
         ms2_feed()["Li"] if value_basis_li_mol_l is None else value_basis_li_mol_l
     )
-    value_scale = feed_li / value_basis
     for label, value in (
         ("low", 15.65 * value_scale),
         ("high", 18.69 * value_scale),
@@ -259,7 +351,7 @@ def accounts(
                 f"revenue_{label}_usd_m3": value * rec,
                 f"headroom_before_missing_{label}_usd_m3": value * rec - subtotal,
                 f"BuPhen_break_even_upper_{label}_usd_kg": (value * rec - subtotal)
-                / (b_diss + b_ent),
+                / result["BuPhen_loss_kg_m3"],
             }
         )
     return result

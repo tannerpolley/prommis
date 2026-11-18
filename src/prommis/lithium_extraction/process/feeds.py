@@ -10,6 +10,71 @@ SHARED = "analyses.shared.hbta_topo_configured_reactive_lle.scripts"
 D2 = "analyses.prototypes.d2ehdtpa_buphen_ms2_prototype.scripts"
 SAPONIFIED = "lithium_extraction.prototypes.hbta_topo_ms2_saponified"
 FRESH = "lithium_extraction.v3.hbta_topo_ms2_extraction"
+PACKAGE = "lithium_extraction.prototypes.produced_water_sx_prototype"
+CASES = ("base", "optimistic")
+STAGES = (1, 2, 3, 4, 5)
+REGISTER = "data/reference/tea/extractant_price_register.csv"
+SCREENING = "data/reference/tea/hbta_topo_screening_cost_assumptions.csv"
+LOSS = "data/reference/tea/solvent_entrainment.csv"
+
+
+def stage_adapter(name):
+    from prommis.lithium_extraction.extraction import (
+        d2ehdtpa_buphen_stage as d2_stage,
+        fresh_organic as fresh,
+        set_a,
+        set_c,
+    )
+
+    return {"d2_stage": d2_stage, "fresh": fresh, "set_a": set_a, "set_c": set_c}[name]
+
+
+# A solvent record (#341): its chemistry owners, stage adapter, design variables and bounds, required pretreatment,
+# scrub/strip/cleanup data, dissolution loss, price rows and labels. `candidate.jobs` and `candidate.build` read these
+# instead of solvent names. Values are those the owners already use; locator strings name the owner of each value.
+HBTA_TOPO_PROCESS = {
+    "pretreatment": "whole-water softening",  # flowsheet.washed_feed; extraction-only removes divalents at no cost
+    "downstream": f"{PACKAGE}.full_process",
+    "scrub_strip": "case assumptions scrub_hcl_mol_l, scrub_li_loss, scrub_na_efficiency, acid_recovery; "
+    "strip fraction data/reference/extraction_models/hbta_topo_li_na/observations.csv:"
+    "zhang2017_fig6_li_strip_2p5m_hcl (flowsheet.costs_and_balances)",
+    "cleanup": "none: divalents leave in whole-water softening",
+    "dissolution_loss": f"{PACKAGE}.flowsheet:costs_and_balances: predicted raffinate BTA plus the shared {LOSS} "
+    "entrainment of HBTA, TOPO and diluent on raffinate, scrub and strip liquors",
+    # #339 decision 1: extractant and synergist, counted as the purchased compound; diluent stays in C_r.
+    "active_set": ("HBTA", "TOPO"),
+    "prices": f"{REGISTER}: HBTA, TOPO (unpriced), sulfonated_kerosene; {SCREENING}: naoh_price, hcl_price; "
+    "data/reference/tea/pretreatment_cost_assumptions.csv: soda ash, sludge (flowsheet.costs_and_balances)",
+}
+D2_PROCESS = {
+    "stage_adapter": "d2_stage",
+    # The #341 campaign keeps the fixed five-stage design; the #342 rule releases `bounds` at every rule stage count.
+    "design": {
+        "optimized": False,
+        "stages": (5,),
+        "scopes": {"extraction_only": ("base",), "full_process": CASES},
+        # #188/#214 retained design starts every solve; O/A 1.25 at Mars Hill (#214).
+        "fixed": {"B": 1.0, "S": 1.2, "O_A": 1.0, "Sr_decade": 0.0},
+        "site_fixed": {"MarsHill": {"O_A": 1.25}},
+        # #188 design range, released by #342: BuPhen M, site ratio per feed Li, O/A; organic sites M.
+        "bounds": {"B": (0.25, 1.0), "S": (0.9, 1.5), "O_A": (0.5, 2.0)},
+        "sites_mol_l": (0.020, 0.060),
+        "li_target": 0.95,
+        "sodium_limit": None,
+    },
+    "variants": ("fitted",),
+    "pretreatment": "none",
+    "nominal_acidity_input": False,  # calcium-tolerant: raw water enters extraction
+    "downstream": f"{PACKAGE}.d2_full_process",
+    "scrub_strip": f"{PACKAGE}.d2ehdtpa_buphen:accounts (Raiguel 2024 strip; no scrub)",
+    "cleanup": f"{PACKAGE}.d2_full_process:cleanup (declared ideal Mg/Ca/Sr removal from strip liquor)",
+    "dissolution_loss": f"{PACKAGE}.d2ehdtpa_buphen:accounts: octanol dissolution, BuPhen dissolution from its "
+    f"partition value, and the shared {LOSS} entrainment of octanols, BuPhen, D2EHDTPA and "
+    "dodecane on raffinate and strip liquor",
+    "active_set": ("BuPhen", "D2EHDTPA"),
+    "prices": f"{REGISTER}: BuPhen, D2EHDTPA (both unpriced), 1_octanol, 2_octanol, n_dodecane; {SCREENING}: "
+    f"naoh_price, hcl_price; {PACKAGE}.d2_full_process:accounts soda ash, sludge",
+}
 SOLVENTS = {
     "fresh": {
         "owner": FRESH,
@@ -20,6 +85,26 @@ SOLVENTS = {
         "domain_owner": "data/processed/hbta_topo_ms2_engine_comparison/greenfield_current_v3/loaded_state_surrogate.json",
         "domain_basis": "current loaded-organic surrogate numerical interpolation; not physical calibration",
         "labels": ["#158 fresh-solvent recovery discrepancy"],
+        "name": "Fresh HBTA/TOPO",
+        "stage_adapter": "fresh",
+        "starting_record": "results/fresh_r1.json",
+        "saponified": False,
+        "free_extractant": "free-carrier",
+        "nominal_acidity_input": True,
+        "design": {
+            "optimized": True,
+            "stages": STAGES,
+            "scopes": {"extraction_only": CASES, "full_process": CASES},
+            "bounds": {
+                "organic_to_aqueous_ratio": (0.5, 1.5),
+                "extractant_mol_l": (0.0075, 0.030),
+                "saponification_ratio": (0.0, 0.0),
+            },
+            "li_target": 0.95,
+            "sodium_limit": 0.02,
+        },
+        "variants": ("fitted",),
+        **HBTA_TOPO_PROCESS,
     },
     "A": {
         "owner": SAPONIFIED,
@@ -29,6 +114,26 @@ SOLVENTS = {
         "certificate_owner": f"{SHARED}.mechanism_candidates:is_strict",
         "domain_owner": "analyses/prototypes/hbta_topo_ms2_saponified/README.md",
         "labels": ["set A cannot evaluate a state requiring hydroxide"],
+        "name": "Saponified HBTA/TOPO, set A",
+        "stage_adapter": "set_a",
+        "starting_record": "results/set_a_r2.json",
+        "saponified": True,
+        "free_extractant": "hbta",
+        "nominal_acidity_input": True,
+        "design": {
+            "optimized": True,
+            "stages": STAGES,
+            "scopes": {"extraction_only": CASES, "full_process": CASES},
+            "bounds": {
+                "organic_to_aqueous_ratio": (0.5, 1.5),
+                "extractant_mol_l": (0.015, 0.030),
+                "saponification_ratio": (0.70, 0.95),
+            },
+            "li_target": None,
+            "sodium_limit": None,
+        },
+        "variants": ("fitted",),
+        **HBTA_TOPO_PROCESS,
     },
     "C": {
         "owner": SAPONIFIED,
@@ -42,6 +147,41 @@ SOLVENTS = {
             "several fixed stage supports share Engine #452 records",
             "#158 recovery requires unsupported aqueous HBTA dissolution",
         ],
+        "name": "Saponified HBTA/TOPO",
+        "stage_adapter": "set_c",
+        "support_rebuild": True,
+        "saponified": True,
+        "free_extractant": "hbta",
+        "nominal_acidity_input": False,
+        # Li/Na exchange fits: low = single-stage fit (lead), high = cascade fit (sensitivity).
+        "variants": ("low", "high"),
+        "constants": "analyses/prototypes/hbta_topo_ms2_prototype/results/set_c_summary.json",
+        "design": {
+            "optimized": True,
+            "stages": STAGES,
+            "scopes": {"extraction_only": CASES, "full_process": CASES},
+            # Retained #158/#216 design: fixed solves and the held optimum every released solve starts from (#342).
+            "fixed": {"organic_to_aqueous_ratio": 1.0, "saponification_ratio": 0.70},
+            # Owner decision O6 (#339 decision 1): each fit's supported range, within 0.30 decade on the data that
+            # vary the variable, rounded inward. `bounds` is the single-stage (lead) fit, `fit_bounds` the others.
+            # O/A upper: calibration check, Zhang 2020 Fig. 7 (0.27 decade at 2.0); O/A lower: numerical, the
+            # set_c.build_flowsheet accepted range (#216). Saponification: calibration, Zhang 2020 Table 2
+            # measured 48.3-81.0 %; cascade fit defined at 70 % (Zhang 2021 Table 9).
+            "bounds": {
+                "organic_to_aqueous_ratio": (0.5, 2.0),
+                "extractant_mol_l": (0.1, 0.4),
+                "saponification_ratio": (0.483, 0.809),
+            },
+            "fit_bounds": {
+                "high": {
+                    "organic_to_aqueous_ratio": (0.5, 1.0),
+                    "saponification_ratio": (0.483, 0.700),
+                }
+            },
+            "li_target": 0.95,
+            "sodium_limit": None,
+        },
+        **HBTA_TOPO_PROCESS,
     },
     "D2EHDTPA-Held": {
         "owner": "lithium_extraction.prototypes.produced_water_sx_prototype.d2ehdtpa_buphen",
@@ -54,6 +194,15 @@ SOLVENTS = {
             "Held mixed-Mg discrepancy remains unresolved",
             "Na and formulation transfer not supported (F2)",
         ],
+        "name": "D2EHDTPA/BuPhen, Held ion parameters",
+        "cell_id": {
+            "extraction_only": "D2Held_{site}",
+            "full_process": "D2Held_{site}_full_process_{case}",
+        },
+        "ion_basis": "held_explicit_sr",
+        "strip_lumped": {},
+        "starting_record": "results/ms2_0908.json",
+        **D2_PROCESS,  # under d2ehdtpa_buphen.ANALYSIS
     },
     "D2EHDTPA-Figiel": {
         "owner": f"{D2}.conditional_figiel_packet",
@@ -67,6 +216,17 @@ SOLVENTS = {
             "binary salts only; Sr counted as Ca",
             "Na and formulation transfer not supported (F2)",
         ],
+        "name": "D2EHDTPA/BuPhen, Figiel ion parameters",
+        "cell_id": {
+            "extraction_only": "D2Figiel_{site}",
+            "full_process": "D2Figiel_{site}_full_process_{case}",
+        },
+        "ion_basis": "packet",
+        "strip_lumped": {
+            "strip_Sr_mol_L_feed": 0.0
+        },  # Figiel's ion basis lumps Sr into Ca
+        "starting_record": "results/conditional_figiel_packet/reference_packet_fig7_exchange.json",
+        **D2_PROCESS,
     },
     "TOP-FeCl3": {"owner": None, "unavailable": "not modeled (#193)"},
 }
@@ -134,6 +294,17 @@ SPECIES_LABELS = {
 }
 
 
+def bounds(solvent, end=None, rule=False):
+    """Decision bounds of a solvent record for one exchange fit (`end`). Outside a #342 rule job the record's retained
+    fixed design is held (the #216 campaign, app and tutorial basis)."""
+    design = SOLVENTS[solvent]["design"]
+    if not rule:
+        return design["bounds"] | {
+            k: (v, v) for k, v in design.get("fixed", {}).items()
+        }
+    return design["bounds"] | design.get("fit_bounds", {}).get(end, {})
+
+
 def extraction_feed(
     brine,
     solvent,
@@ -151,7 +322,8 @@ def extraction_feed(
     SCOPES[scope]
     if "unavailable" in record:
         return {"unavailable": record["unavailable"]}
-    if scope == "full_process" and not solvent.startswith("D2EHDTPA"):
+    softened = record["pretreatment"] == "whole-water softening"
+    if scope == "full_process" and softened:
         return {
             "unavailable": "full process requires the complete washed outlet; set C uses set_c.washed_feed"
         }
@@ -172,7 +344,7 @@ def extraction_feed(
     if any(not math.isfinite(n) or n < 0 for n in physical.values()):
         raise ValueError("physical feed must be finite and nonnegative")
     removed = {}
-    if solvent in ("fresh", "A", "C"):
+    if softened:
         removed = {e: physical.get(e, 0.0) for e in ("Mg", "Ca", "Sr", "Ba")}
         removed["Cl"] = sum(2 * n for n in removed.values())
         if physical["Cl"] < removed["Cl"]:
@@ -202,7 +374,7 @@ def extraction_feed(
         cations = {e: physical.get(e, 0.0) for e in rc.ION if e != "Cl"}
         if synthetic_softened:
             cations["K"] = 0.0  # #216: unchanged KCl remains in physical accounting.
-        if solvent == "D2EHDTPA-Figiel":
+        if record["ion_basis"] == "packet":
             from prommis.lithium_extraction.thermodynamics.d2ehdtpa_buphen_figiel_chloride import (
                 lumped_feed,
             )
@@ -216,7 +388,7 @@ def extraction_feed(
     conditioning = (
         {"H": physical["H"], "Cl": physical["H"]} if synthetic_softened else {}
     )
-    if solvent in ("fresh", "A") and not synthetic_softened:
+    if record["nominal_acidity_input"] and not synthetic_softened:
         # #201 decision 11 supplies the acidity inventory already used by the owner, without changing its feed.
         conditioning = {"H": model["H"], "Cl": model["H"]}
         for e, n in conditioning.items():
@@ -236,7 +408,7 @@ def extraction_feed(
             f"{quantity} = {value:.17g} {unit}: physical calibration coverage unverified for arbitrary brine; "
             f'owner {record["chemistry_owner"]}'
         )
-    if solvent == "fresh":
+    if "domain_basis" in record:
         bounds = json.loads((REPO_ROOT / record["domain_owner"]).read_text())[
             "input_bounds"
         ]
@@ -254,12 +426,12 @@ def extraction_feed(
                 f"numerical interpolation interval [{low:.17g}, {high:.17g}] mol/L aqueous; "
                 f'owner {record["domain_owner"]}; not physical calibration coverage'
             )
-    elif solvent.startswith("D2EHDTPA"):
+    elif not softened:
         labels.append(
             f"process pH = {process_pH:.17g} dimensionless: H/pH not represented by "
             f'existing feed chemistry; owner {record["feed_owner"]}'
         )
-    if solvent in ("fresh", "A"):
+    if record["nominal_acidity_input"]:
         labels += [
             "record feed uses raw-brine mass basis; R1/R2 retain their original nominal-feed conversions",
             "nominal H and equal-Cl conditioning input: existing model H amount on one nominal "
@@ -267,7 +439,7 @@ def extraction_feed(
             "nominal acidity-conditioning HCl cost and buffering unquantified and excluded; "
             "cost completeness covers only listed extraction and saponification accounts",
         ]
-    if solvent.startswith("D2EHDTPA"):
+    if not softened:
         labels += [
             "changed model input: raw-brine source/mass basis; R6 keeps the original #188 feed and site basis"
         ]
@@ -292,7 +464,7 @@ def extraction_feed(
         "process_pH": process_pH,
         "pH_basis": (
             brine["pH_basis"]
-            if solvent in ("fresh", "A", "C")
+            if softened
             else "process assumption; H/pH is not represented by the existing D2EHDTPA feed owner"
         ),
         "labels": labels,

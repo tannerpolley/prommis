@@ -22,7 +22,7 @@ from prommis.lithium_extraction.process.divalent_softening import NAOH_KG_MOL
 from prommis.lithium_extraction.thermodynamics.hbta_topo_constants import (
     LI_MOLAR_MASS_G_MOL,
 )
-from prommis.lithium_extraction.process import flowsheet
+from prommis.lithium_extraction.process import flowsheet, feeds as records
 
 # Prices are declared before any costing block exists, so the currency is registered on import.
 register_idaes_currency_units()
@@ -68,8 +68,33 @@ def usd_per(unit):
     return pyunits.source_period_nominal_USD / unit
 
 
-def attach(fs, flows, li_kg_h):
-    """`flows` maps flow type to (flow per hour at 1 m3/h raw brine, price); `li_kg_h` is the scope's Li basis.
+CARBONATE_USD_KG = {
+    "base": 17.5,
+    "optimistic": 20.9,
+}  # case Li2CO3 price P (#339 decision 1)
+PRICE_REGISTER = "data/reference/tea/extractant_price_register.csv"
+
+
+def entrainment_l_per_l(case):
+    """Shared mechanical loss (#342, owner decision O4): litres of organic per litre of every aqueous stream leaving
+    the circuit, from the sourced mass loss and the copper-plant organic density."""
+    row = flowsheet._row("data/reference/tea/solvent_entrainment.csv", "case", case)
+    return (
+        float(row["organic_mg_per_l_aqueous"])
+        / float(row["organic_density_kg_l"])
+        / 1e6
+    )
+
+
+def register_price(component):
+    """Published price in USD/kg, or None: an unpriced component is never zero or another compound's price (O5)."""
+    price = flowsheet._row(PRICE_REGISTER, "component_id", component)["price_usd_kg"]
+    return float(price) if price else None
+
+
+def attach(fs, flows, li_kg_h, active=None):
+    """`flows` maps flow type to (flow per hour at 1 m3/h raw brine, price); `li_kg_h` is the scope's Li basis;
+    `active` maps each active-set component (#339 decision 1) to its unpriced loss per hour, kept outside the cost.
 
     A later scope replaces an earlier block, so each account is costed exactly once.
     """
@@ -84,6 +109,9 @@ def attach(fs, flows, li_kg_h):
     fs.costing.usd_kg_li = Expression(
         expr=fs.costing.operating_cost / fs.costing.li_kg_h
     )
+    if active is not None:
+        fs.costing.active_loss = Expression(tuple(active), rule=lambda b, k: active[k])
+        fs.costing.active_loss_kg_h = Expression(expr=sum(active.values()))
     fs.costing.initialize()
     return fs.costing
 
@@ -254,7 +282,11 @@ def add_extraction(model):
         / 1000
         * count
     )
-    naoh = 0.0 if model._solvent == "fresh" else fs.boundary["sodium-carrier"]
+    naoh = (
+        fs.boundary["sodium-carrier"]
+        if records.SOLVENTS[model._solvent]["saponified"]
+        else 0.0
+    )
     kg_h = pyunits.kg / pyunits.hr
     flows = {
         "organic_makeup_formulation": (

@@ -35,8 +35,8 @@ def fixed(candidate, n):
     }
     model = None
     try:
-        total_n = adapter.preparation(10.0)["total_N_mol"]
-        model = adapter.build(candidate, n, total_n, 0.3)
+        total_n = adapter.preparation(10.0, adapter.feed())["total_N_mol"]
+        model = adapter.build(candidate, n, total_n, 0.3, adapter.feed())
         record["initialization"] = model._initialization
         stage.solve(model, Path("build/issue216/des2") / f"{candidate}_fixed{n}")
         result = stage.report(model)
@@ -169,7 +169,10 @@ if __name__ == "__main__":
         pmax()
     else:
         OUT.mkdir(parents=True, exist_ok=True)
-        save("preparation.json", [adapter.preparation(ph) for ph in (9.5, 10.0, 10.5)])
+        save(
+            "preparation.json",
+            [adapter.preparation(ph, adapter.feed()) for ph in (9.5, 10.0, 10.5)],
+        )
         for candidate in ("X", "S"):
             for n in range(1, 6):
                 fixed(candidate, n)

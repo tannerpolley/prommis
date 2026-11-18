@@ -203,6 +203,17 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
         if initial_accounts is None
         else initial_accounts
     )
+    if "organic_loss" not in assumptions and "active_mass_kg_per_l" not in owner:
+        # A retained replay starts a #342 solve: its values initialize the units, but HBTA and TOPO are the unpriced
+        # active set, never costed accounts. Every other price is the same on both bases.
+        masses = owner["mass_kg_per_l"]
+        owner = dict(
+            owner,
+            mass_kg_per_l={
+                k: m for k, m in masses.items() if k not in ("HBTA", "TOPO")
+            },
+            active_mass_kg_per_l={k: masses[k] for k in ("HBTA", "TOPO")},
+        )
     model._full_process = {
         "case": case,
         "assumptions": assumptions,
@@ -317,6 +328,10 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
         * (owner["li_product_kg_m3"] / 1000 / owner["product_li2co3_mol"])
         * costing.RAW_L_H
         * pyunits.kg,
+        active={
+            k: quantities[k] * coefficients[k] * costing.RAW_L_H * pyunits.kg
+            for k in owner.get("active_mass_kg_per_l", {})
+        },
     )
     assert_units_consistent(model)
 
@@ -438,11 +453,15 @@ def report(model, result, softening):
         ),
         "li_product_kg_m3": fs.costing.li_kg_h,
     }
-    actual = {k: value(n) for k, n in quantities.items()}
     if (
-        max(abs(value(n)) for n in fs.saponification.prepared_difference.values())
-        > 1e-9
-    ):
+        "active_mass_kg_per_l" in owner
+    ):  # #342: the unpriced active-set loss against the independent owner
+        quantities["active_loss_kg_m3"] = fs.costing.active_loss_kg_h
+    actual = {k: value(n) for k, n in quantities.items()}
+    prepared = max(
+        abs(value(n)) for n in fs.saponification.prepared_difference.values()
+    )
+    if prepared > 1e-9:
         raise RuntimeError("Prepared organic differs from the extraction inlet")
     differences = {k: actual[k] - owner[k] for k in actual}
     if any(
@@ -588,6 +607,7 @@ def report(model, result, softening):
             }
             | {"reagent_elements_mol": washed["reagent_elements_mol"]},
             "owner_differences": differences,
+            "prepared_organic_max_difference_mol_per_raw_l": prepared,
             "idaes_costing_reconciliation": reconciliation,
             "inequality_margins": margins,
             "unit_enumeration_selected": data["candidate"],
@@ -597,7 +617,8 @@ def report(model, result, softening):
                 "#176 accounts per kg Li in Li2CO3; capital, labour and energy excluded",
                 "scrub/strip laboratory fractions transferred to produced water; no finished-product assay",
                 "downstream H/O and regeneration counterions unquantified in the #176 accounting",
-                data["assumptions"]["organic_loss_provenance"],
+                data["assumptions"].get("organic_loss_provenance")
+                or data["assumptions"]["entrainment_provenance"],
             ],
         },
         fs,

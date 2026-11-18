@@ -229,8 +229,20 @@ def organic(fs, model, assumptions, v, free):
         fs, "organic_loss", fs.organic_total_properties, ["retained", "loss"]
     )
     loss.feed = Arc(source=regenerated.organic, destination=loss.inlet)
-    for j in fs.organic_total_properties.component_list:
-        loss.split_fraction[0, "loss", j].fix(assumptions["organic_loss"])
+    if "organic_loss" in assumptions:  # a retained #176 record's own loss fraction
+        for j in fs.organic_total_properties.component_list:
+            loss.split_fraction[0, "loss", j].fix(assumptions["organic_loss"])
+    else:  # #342: shared entrainment on raffinate, scrub and strip liquors (O/A 10 each) per circulated organic litre
+        ratio = (
+            model._decisions["organic_to_aqueous_ratio"]
+            if hasattr(model, "_decisions")
+            else model._design["organic_to_aqueous_ratio"]
+        )
+        loss.entrainment = Constraint(
+            fs.organic_total_properties.component_list,
+            rule=lambda b, j: b.split_fraction[0, "loss", j]
+            == assumptions["entrainment_l_per_l"] * (1 / ratio + 2 / 10),
+        )
     makeup = mixer(
         fs, "organic_makeup", fs.organic_total_properties, ["retained", "fresh"]
     )

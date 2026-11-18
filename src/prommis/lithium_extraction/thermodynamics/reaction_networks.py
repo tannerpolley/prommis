@@ -10,6 +10,9 @@ Engine.
 from __future__ import annotations
 
 from copy import deepcopy
+from contextlib import contextmanager
+import os
+import json
 from dataclasses import dataclass
 from functools import lru_cache
 import math
@@ -240,6 +243,56 @@ def _pair(
     }
 
 
+AQUEOUS_PACKET = "figiel-2025-chloride-mixture-refit/4"
+
+
+@contextmanager
+def aqueous_basis(name: str):
+    """Select a named basis for one study process and its solver subprocesses."""
+    if name != AQUEOUS_PACKET:
+        raise ValueError(f"Unknown HBTA aqueous basis: {name}")
+    from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
+
+    previous = os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS")
+    caches = (build_model, solve_condition, mc.model, mc.offsets)
+    try:
+        os.environ["LITHIUM_HBTA_AQUEOUS_BASIS"] = name
+        for cached in caches:
+            cached.cache_clear()
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop("LITHIUM_HBTA_AQUEOUS_BASIS", None)
+        else:
+            os.environ["LITHIUM_HBTA_AQUEOUS_BASIS"] = previous
+        for cached in caches:
+            cached.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def _aqueous_packet() -> dict[str, Any]:
+    """Engine /4 aqueous subset; #363 owner decision, 2026-11-16."""
+    from epcsaft.parameters import parameter_document
+
+    from prommis.lithium_extraction.paths import REPO_ROOT
+
+    root = REPO_ROOT / "data/reference/hbta_topo_aqueous"
+    names = (
+        "water",
+        "lithium-cation",
+        "sodium-cation",
+        "hydronium-cation",
+        "chloride-anion",
+    )
+    document = parameter_document(
+        root, [("figiel-2025-chloride-mixture-refit/4", names)]
+    )
+    # H+ remains the application's inventory species and consumes no water.
+    return json.loads(
+        json.dumps(document).replace("hydronium-cation", "hydrogen-cation")
+    )
+
+
 def parameter_payload(
     topology: IndependentTopology, diluent_id: str, carbonate: bool = False
 ) -> dict[str, Any]:
@@ -345,6 +398,35 @@ def parameter_payload(
         coefficient["value"]["magnitude"] = h_values[coefficient["family"]]
         coefficient["provenance"] = h_provenance
     by_id["hydrogen-cation"] = hydrogen
+    if os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS") == AQUEOUS_PACKET:
+        aqueous = deepcopy(_aqueous_packet())
+        aqueous_ids = set(AQUEOUS_SUPPORT)
+        for record in aqueous["components"]:
+            identity = record["component_id"]
+            if "molar_mass" not in record["fixed"]:
+                record["fixed"]["molar_mass"] = deepcopy(
+                    by_id["lithium-cation"]["fixed"]["molar_mass"]
+                    if identity == "hydrogen-cation"
+                    else by_id[identity]["fixed"]["molar_mass"]
+                )
+            if identity == "hydrogen-cation":
+                record["fixed"]["molar_mass"]["value"]["magnitude"] = H_MOLAR_MASS
+                record["fixed"]["molar_mass"]["value"]["unit"] = "kilogram / mole"
+                record["fixed"]["molar_mass"]["provenance"] = {
+                    **structural,
+                    "locator": "H+ inventory; no water consumption",
+                }
+            by_id[identity] = record
+        hydrogen = by_id["hydrogen-cation"]
+        payload["materialization"] = aqueous["materialization"]
+        payload["model_coefficients"] = aqueous["model_coefficients"]
+        payload["model_families"] = aqueous["model_families"]
+        payload["cation_mixing"] = aqueous["cation_mixing"]
+        payload["correlations"] = [
+            r for r in payload["correlations"] if r["component_id"] not in aqueous_ids
+        ] + aqueous["correlations"]
+        for key in ("sites", "edges", "no_cross_association"):
+            payload["topology"][key] = aqueous["topology"][key]
     species = ALL_SPECIES if carbonate else SPECIES
     carbonate_provenance = {
         "source_id": "bulow-2021-carbonate",
@@ -466,6 +548,9 @@ def parameter_payload(
                         ),
                     ),
                 )
+    if os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS") == AQUEOUS_PACKET:
+        for row in aqueous["pairs"]:
+            pairs[frozenset((row["component_id_a"], row["component_id_b"]))] = row
     payload["pairs"] = list(pairs.values())
     return payload
 
@@ -1140,6 +1225,23 @@ def solve_condition(
     if chosen is None:
         return receipt
     _, _, phase_amounts, diagnostics = chosen
+    if os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS") == AQUEOUS_PACKET:
+        _, model = build_model(topology_id, diluent_id, components, complex_diluent_kij)
+        outside = [
+            model.outside_domains(
+                tuple(phase.get(s, 0.0) / sum(phase.values()) for s in components)
+            )
+            for phase in phase_amounts
+        ]
+        receipt["outside_domains"] = outside
+        if any(outside):
+            return {
+                **receipt,
+                "status": "non_evaluable",
+                "application_status": "non_evaluable",
+                "engine_status": "non_evaluable",
+                "next_probe": "outside aqueous packet composition domains",
+            }
     li_org, na_org = (
         phase_amounts[1]["lithium-carrier"],
         phase_amounts[1]["sodium-carrier"],

@@ -7,6 +7,7 @@ from pathlib import Path
 import epcsaft
 from epcsaft import equilibrium as eq
 import numpy as np
+from pyomo.environ import Block, Constraint, Expression, Var, value
 
 from prommis.lithium_extraction.thermodynamics import d2ehdtpa_buphen_reactions as rc
 from prommis.lithium_extraction.process import (
@@ -26,7 +27,6 @@ from prommis.lithium_extraction.paths import ENGINE_ASL_LIBRARY
 CONTINUATION = eq.Continuation(
     initial_step=0.25, minimum_step=1 / 64, max_steps=64, max_retries_per_step=4
 )
-REFERENCE = owner.ANALYSIS / "results/ms2_0908.json"
 
 
 def reference_feed(solvent="D2EHDTPA-Held"):
@@ -52,11 +52,16 @@ def reference_feed(solvent="D2EHDTPA-Held"):
 
 
 def build_flowsheet(
-    brine, solvent="D2EHDTPA-Held", scope="extraction_only", stages=5, scenario=None
+    brine,
+    solvent="D2EHDTPA-Held",
+    scope="extraction_only",
+    stages=5,
+    scenario=None,
+    design_range=None,
 ):
     """One basis per process; chemistry assembly and direct certificates remain source-owned."""
     if (
-        solvent not in ("D2EHDTPA-Held", "D2EHDTPA-Figiel")
+        records.SOLVENTS.get(solvent, {}).get("stage_adapter") != "d2_stage"
         or scope not in records.SCOPES
     ):
         raise ValueError("Unknown D2EHDTPA solvent or process scope")
@@ -74,7 +79,14 @@ def build_flowsheet(
     b, supply, ratio, site_basis = (
         scenario[k] for k in ("B", "S", "O_A", "site_basis_li_mol_l")
     )
-    sites = owner.site_supply(b, supply, ratio, stages, site_basis_li_mol_l=site_basis)
+    sites = owner.site_supply(
+        b,
+        supply,
+        ratio,
+        stages,
+        site_basis_li_mol_l=site_basis,
+        design_range=design_range,
+    )
     if not all(
         math.isfinite(n)
         for n in (
@@ -96,7 +108,7 @@ def build_flowsheet(
         feed["raw_brine"] = brine
     if "unavailable" in feed:
         raise ValueError(feed["unavailable"])
-    ion_basis.use("packet" if solvent == "D2EHDTPA-Figiel" else "held_explicit_sr")
+    ion_basis.use(records.SOLVENTS[solvent]["ion_basis"])
     cations = {e: feed["model_feed"].get(e, 0) for e in rc.ION if e != "Cl"}
     constants = scenario["ln_K_Li_Mg_Ca"]
     mixture, problem, aqueous, organic, species, _, _, _ = rc.build_problem(
@@ -201,30 +213,30 @@ def build_flowsheet(
         Path(epcsaft.__file__).resolve().parent / ENGINE_ASL_LIBRARY,
         certify,
         parameters=tuple(totals.items()),
+        temperature_k=problem.T,
+        pressure_pa=problem.P,
     )
-    model = stage.build_stages(chemistry, aqueous, organic, stages)
+    model = stage.build_stages(
+        chemistry,
+        aqueous,
+        organic,
+        stages,
+        maximum_stages=max(design_range["stages"]) if design_range else 5,
+    )
+    model._design_range = design_range
     model._physical_feed, model._design, model._solvent = feed, dict(scenario), solvent
     model._conserved_names, model._omitted_moieties = conserved, omitted
     return model
 
 
 def reference_record(solvent="D2EHDTPA-Held"):
-    path = (
-        REFERENCE
-        if solvent == "D2EHDTPA-Held"
-        else REFERENCE.parent
-        / "conditional_figiel_packet/reference_packet_fig7_exchange.json"
-    )
+    path = owner.ANALYSIS / records.SOLVENTS[solvent]["starting_record"]
     return path, json.loads(path.read_text())
 
 
 def strip_accounts(accounts, solvent):
     """Figiel's selected ion basis lumps Sr into Ca; every other strip amount is required."""
-    return (
-        accounts | {"strip_Sr_mol_L_feed": 0.0}
-        if solvent == "D2EHDTPA-Figiel"
-        else accounts
-    )
+    return accounts | records.SOLVENTS[solvent]["strip_lumped"]
 
 
 def reference_profiles(model):
@@ -246,8 +258,72 @@ def reference_profiles(model):
     ]
 
 
+def decisions(model):
+    """Release the record's #188 design range (#342): BuPhen B (M), site ratio S (sites per feed Li) and O/A set the
+    organic inlet and the Engine's ligand totals; organic site concentration S*basis/(O/A) stays in its range.
+    Starts fixed at the built design; `release` frees them."""
+    fs, record, d = model.fs, records.SOLVENTS[model._solvent]["design"], model._design
+    record = record | (model._design_range or {})
+    fs.design = Block()
+    b, model._decisions = fs.design, {}
+    for name, bounds in record["bounds"].items():
+        variable = Var(bounds=bounds, initialize=d[name])
+        b.add_component(name, variable)
+        variable.fix(d[name])
+        model._decisions[name] = variable
+    B, S, ratio = (model._decisions[k] for k in ("B", "S", "O_A"))
+    sites, diluent = S * d["site_basis_li_mol_l"], model._feeds[1]["diluent"] / d["O_A"]
+    links = {"buphen": B * ratio, "naa": sites, "diluent": diluent * ratio}
+    totals = {"sites_total_mol": sites, "buphen_total_mol": B * ratio}
+    for s in links:
+        fs.boundary[s].unfix()
+    for s in totals:
+        fs.parameters[s].unfix()
+    b.organic_inlet = Constraint(
+        tuple(links), rule=lambda _, s: fs.boundary[s] == links[s]
+    )
+    b.ligand_totals = Constraint(
+        tuple(totals), rule=lambda _, s: fs.parameters[s] == totals[s]
+    )
+    low, high = record["sites_mol_l"]
+    b.sites_low = Constraint(expr=sites >= low * ratio)
+    b.sites_high = Constraint(expr=sites <= high * ratio)
+    li = rc.ION["Li"][0]
+    b.li_extraction = Expression(
+        expr=1 - fs.stage[len(fs.stages)].outlet[li] / model._feeds[0][li]
+    )
+
+
+def release(model, objective, *, minimum_li_extraction=None):
+    """Free the decisions and set the #342 rule objective; the Li extraction requirement stays on extraction."""
+    from prommis.lithium_extraction.process import optimization
+
+    target = (
+        records.SOLVENTS[model._solvent]["design"]["li_target"]
+        if minimum_li_extraction is None
+        else minimum_li_extraction
+    )
+    for variable in model._decisions.values():
+        variable.unfix()
+    if hasattr(model.fs.design, "li_target"):
+        model.fs.design.del_component("li_target")
+    model.fs.design.li_target = Constraint(expr=model.fs.design.li_extraction >= target)
+    model.feasibility.deactivate()
+    optimization.add_rule(model, objective)
+
+
+def synchronize(model):
+    """The solved decisions and boundaries replace the build design, so reports price the solved design."""
+    if hasattr(model, "_decisions"):
+        model._design.update({k: value(v) for k, v in model._decisions.items()})
+    model._feeds = tuple(
+        {s: value(model.fs.boundary[s]) for s in feed} for feed in model._feeds
+    )
+
+
 def report(model, result=None, *, case="base"):
-    """Source moiety, physical raffinate and #188 strip/loss priced-subtotal evidence."""
+    """Source moiety, physical raffinate and strip/loss evidence at the solved design."""
+    synchronize(model)
     result = stage.report(model) if result is None else result
     species = model._chemistry.species
     residuals = dict(result["balance_residuals_mol_per_raw_l"])
@@ -291,10 +367,10 @@ def report(model, result=None, *, case="base"):
             for row in result["stages"]
         ],
     }
-    # Translate the #188 MS-2 value basis using this feed's nominal or raw-source Li conversion.
-    value_basis = li_feed * (
-        brines.raw_feed("MS2")["printed_mg_l"]["Li"]
-        / model._physical_feed["raw_brine"]["printed_mg_l"]["Li"]
+    from prommis.lithium_extraction.process.candidate import case_assumptions
+
+    assumptions = getattr(model, "_d2_full_process", None) or case_assumptions(
+        case, True
     )
     accounts = owner.accounts(
         extraction,
@@ -303,9 +379,9 @@ def report(model, result=None, *, case="base"):
         model._design["B"],
         case,
         0.0,
+        case_assumptions=assumptions,
         feed_li_mol_l=li_feed,
         site_basis_li_mol_l=model._design["site_basis_li_mol_l"],
-        value_basis_li_mol_l=value_basis,
     )
     accounts.update(
         accounting_basis="historical #188 extraction-plus-strip intermediate; neither user scope",

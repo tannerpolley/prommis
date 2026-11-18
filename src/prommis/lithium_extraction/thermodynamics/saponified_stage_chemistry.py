@@ -256,7 +256,17 @@ def live_stage_response(reference: Reference):
             inventory * li_in,
         ]
         return tuple(
-            external.evaluate([*controls, reference.record, "1", str(k)]) / inventory
+            external.evaluate(
+                [
+                    reference.problem.T,
+                    reference.problem.P,
+                    *controls,
+                    reference.record,
+                    "1",
+                    str(k),
+                ]
+            )
+            / inventory
             for k in reference.outputs
         )
 

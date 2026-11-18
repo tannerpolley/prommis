@@ -1,6 +1,17 @@
-"""Lithium #201 scope objectives and released extraction decisions; chemistry stays source-owned."""
+"""Lithium #201 scope objectives and released extraction decisions; chemistry stays source-owned.
 
-from pyomo.environ import Block, Constraint, Expression, Objective, Var, value
+Design bounds, the Li extraction target and the sodium limit belong to the solvent record (`records.SOLVENTS`, #341).
+"""
+
+from pyomo.environ import (
+    Block,
+    Constraint,
+    Expression,
+    Objective,
+    Var,
+    units as pyunits,
+    value,
+)
 
 from prommis.lithium_extraction.process.screening_costs import (
     load_screening_cost_assumptions,
@@ -11,14 +22,7 @@ from prommis.lithium_extraction.process import (
     whole_process as full_process,
     feeds as records,
 )
-from prommis.lithium_extraction.extraction import fresh_organic as fresh, set_a, set_c
-
-BOUNDS = {
-    "fresh": ((0.5, 1.5), (0.0075, 0.030), (0.0, 0.0)),
-    "A": ((0.5, 1.5), (0.015, 0.030), (0.70, 0.95)),
-    "C": ((1.0, 1.0), (0.1, 0.4), (0.70, 0.70)),
-}
-TARGETS = {"fresh": 0.95, "A": None, "C": 0.95}
+from prommis.lithium_extraction.extraction import fresh_organic as fresh
 
 
 def decisions(model, solvent):
@@ -26,13 +30,16 @@ def decisions(model, solvent):
     fs = model.fs
     fs.design = Block()
     b = fs.design
+    record = records.SOLVENTS[solvent]
     values = dict(
         model._design,
         saponification_ratio=model._design.get("saponification_ratio", 0.0),
     )
     names = ("organic_to_aqueous_ratio", "extractant_mol_l", "saponification_ratio")
     model._decisions = {}
-    for name, bounds in zip(names, BOUNDS[solvent], strict=True):
+    for name, bounds in records.bounds(
+        solvent, getattr(model, "_end", None), getattr(model, "_rule", False)
+    ).items():
         variable = Var(bounds=bounds, initialize=values[name])
         b.add_component(name, variable)
         variable.fix(values[name])
@@ -44,18 +51,19 @@ def decisions(model, solvent):
     b.diluent = Constraint(
         expr=inlet["diluent"] == ratio * model._feeds[1]["diluent"] / initial_ratio
     )
-    free = "free-carrier" if solvent == "fresh" else "hbta"
+    free = record["free_extractant"]
     inlet[free].unfix()
     b.free_extractant = Constraint(expr=inlet[free] == ratio * c * (1 - sap))
-    if solvent != "fresh":
+    if record["saponified"]:
         inlet["sodium-carrier"].unfix()
         b.saponified_extractant = Constraint(
             expr=inlet["sodium-carrier"] == ratio * c * sap
         )
-    if solvent != "fresh":
         inlet["topo"].unfix()
         b.free_topo = Constraint(expr=inlet["topo"] == inlet[free])
-    if solvent == "C":
+    if (
+        "extractant_mol_l" in fs.parameters
+    ):  # the stage adapter carries the concentration as an Engine parameter
         fs.parameters["extractant_mol_l"].unfix()
         b.engine_extractant = Constraint(expr=fs.parameters["extractant_mol_l"] == c)
     b.li_extraction = Expression(
@@ -69,14 +77,86 @@ def decisions(model, solvent):
     )  # full_process.connect_units replaces it with the full-process accounts
 
 
-def add_optimization(model, scope, *, minimum_li_extraction=None, sodium_limit=None):
-    """The extraction target remains on extraction, including in the full-process scope."""
-    solvent, b, fs = model._solvent, model.fs.design, model.fs
-    for variable in model._decisions.values():
-        if variable.lb != variable.ub:
+def add_rule(model, objective):
+    """#339 decision 1 per m3 raw water: q kg Li2CO3, C_r USD outside the active set, L kg active-set loss, P USD/kg.
+
+    'affordable': max theta subject to C_r + theta L = P q (theta of either sign); 'uniform': min (C_r + theta L)/q at
+    a fixed uniform price theta (the priced form of check 1); 'headroom': max P q - C_r. Replaces any earlier objective.
+    """
+    fs, b = model.fs, model.fs.design
+    usd_kg = costing.usd_per(pyunits.kg)
+    price = costing.CARBONATE_USD_KG[model._case] * usd_kg
+    q, cost, loss = (
+        fs.costing.li_kg_h * costing.LI2CO3_PER_LI,
+        fs.costing.operating_cost,
+        fs.costing.active_loss_kg_h,
+    )
+    for name in ("rule", "minimum_cost"):
+        if hasattr(model, name):
+            model.del_component(name)
+    for name in ("theta", "affordable"):
+        if hasattr(b, name):
+            b.del_component(name)
+    kind = objective["kind"]
+    if kind == "affordable":
+        start = value(
+            loss, exception=False
+        )  # units may not be initialized before the solve
+        b.theta = Var(
+            initialize=value((price * q - cost) / loss) if start else 0.0, units=usd_kg
+        )
+        b.affordable = Constraint(expr=cost + b.theta * loss == price * q)
+        model.rule = Objective(expr=-b.theta)
+    elif kind == "uniform":
+        model.rule = Objective(expr=(cost + objective["theta"] * usd_kg * loss) / q)
+    elif kind == "headroom":
+        model.rule = Objective(expr=cost - price * q)
+    else:
+        raise ValueError(f"unknown objective {kind}")
+    model._objective = dict(objective)
+
+
+def rule_values(model):
+    """q, C_r, L, P and the affordable price at the solved state, per m3 raw water."""
+    fs = model.fs
+    q = value(fs.costing.li_kg_h) * costing.LI2CO3_PER_LI
+    cost, loss, price = (
+        value(fs.costing.operating_cost),
+        value(fs.costing.active_loss_kg_h),
+        costing.CARBONATE_USD_KG[model._case],
+    )
+    return {
+        "carbonate_kg_m3": q,
+        "cost_outside_active_usd_m3": cost,
+        "active_loss_kg_m3": loss,
+        "active_loss_by_component_kg_m3": {
+            k: value(n) for k, n in fs.costing.active_loss.items()
+        },
+        "carbonate_price_usd_kg": price,
+        "headroom_usd_m3": price * q - cost,
+        "affordable_price_usd_kg": (price * q - cost) / loss if loss > 0 else None,
+    }
+
+
+def add_optimization(
+    model,
+    scope,
+    *,
+    minimum_li_extraction=None,
+    sodium_limit=None,
+    objective=None,
+    hold=(),
+):
+    """The extraction target remains on extraction, including in the full-process scope. `objective` selects a
+    #342 rule objective (`add_rule`); without it the scope cost per kg Li is minimized. Decisions named in `hold`
+    stay at their current values (the held optimum of #342 check 8)."""
+    record, b, fs = records.SOLVENTS[model._solvent], model.fs.design, model.fs
+    design = record["design"]
+    for name, variable in model._decisions.items():
+        if variable.lb != variable.ub and name not in hold:
             variable.unfix()
     target = (
-        TARGETS[solvent] if minimum_li_extraction is None else minimum_li_extraction
+        design["li_target"] if minimum_li_extraction is None else minimum_li_extraction
     )
     if target is not None:
         b.li_target = Constraint(expr=b.li_extraction >= target)
@@ -87,8 +167,8 @@ def add_optimization(model, scope, *, minimum_li_extraction=None, sodium_limit=N
         fs.stages,
         rule=lambda _, k: fs.stage[k].outlet["lithium-carrier"] <= 0.72 * ratio * c,
     )
-    if solvent == "fresh":
-        limit = 0.02 if sodium_limit is None else sodium_limit
+    if not record["saponified"]:  # net Na extracted against feed Na
+        limit = design["sodium_limit"] if sodium_limit is None else sodium_limit
         b.sodium = Constraint(
             expr=fs.stage[1].outlet["sodium-carrier"]
             <= limit * model._feeds[0]["sodium-cation"]
@@ -110,7 +190,10 @@ def add_optimization(model, scope, *, minimum_li_extraction=None, sodium_limit=N
         rule=lambda _, s: volume * fs.stage[len(fs.stages)].outlet[s] >= deficits[s],
     )
     model.feasibility.deactivate()
-    model.minimum_cost = Objective(expr=fs.costing.usd_kg_li)
+    if objective is None:
+        model.minimum_cost = Objective(expr=fs.costing.usd_kg_li)
+    else:
+        add_rule(model, objective)
 
 
 def synchronize(model):
@@ -148,17 +231,17 @@ def nominal_to_raw_litre(result, v):
 def report(model, scope, softening=None):
     synchronize(model)
     solvent = model._solvent
-    if solvent == "C":
-        result = set_c.report(model)
-    else:
-        result = (fresh if solvent == "fresh" else set_a).report(model)
-        if scope == "full_process":
-            nominal_to_raw_litre(result, model._washed["feed_l"])
+    record = records.SOLVENTS[solvent]
+    result = records.stage_adapter(record["stage_adapter"]).report(model)
+    if (
+        scope == "full_process" and "outlet_mol_per_raw_l" in result
+    ):  # an adapter reporting the nominal washed litre
+        nominal_to_raw_litre(result, model._washed["feed_l"])
     result["solvent"] = solvent
     if scope == "full_process":
         result = full_process.report(model, result, softening)
     else:
-        if solvent == "C":
+        if "costs" not in result:
             result["costs"] = fresh.extraction_costs(
                 model,
                 result["li_extraction_fraction"],
@@ -204,7 +287,7 @@ def report(model, scope, softening=None):
     result["na_metric"] = {
         "name": (
             "net Na extracted / feed Na"
-            if solvent == "fresh"
+            if not record["saponified"]
             else (
                 "strip-liquor Na/(Li+Na)"
                 if scope == "full_process"
@@ -213,7 +296,7 @@ def report(model, scope, softening=None):
         ),
         "value": (
             na / model._feeds[0]["sodium-cation"]
-            if solvent == "fresh"
+            if not record["saponified"]
             else (
                 result["full_process"]["strip_na_fraction"]
                 if scope == "full_process"
@@ -238,6 +321,10 @@ def report(model, scope, softening=None):
     result["product_recovery_fraction"] = (
         result["full_process"]["raw_li_recovery"] if scope == "full_process" else None
     )
+    if hasattr(model.fs.costing, "active_loss_kg_h"):
+        result["rule"] = rule_values(model) | {
+            "objective": getattr(model, "_objective", None)
+        }
     result["labels"] = [
         s
         for s in result["labels"]
@@ -249,13 +336,15 @@ def report(model, scope, softening=None):
     return result
 
 
-def target_failures(result, solvent):
+def target_failures(result, solvent, minimum_li_extraction=None):
     failures = list(result["R7"]["failures"])
-    target = TARGETS[solvent]
+    record = records.SOLVENTS[solvent]
+    target, sodium = record["design"]["li_target"], record["design"]["sodium_limit"]
+    target = target if minimum_li_extraction is None else minimum_li_extraction
     if target is not None and result["li_extraction_fraction"] < target - 1e-9:
         failures.append("Li extraction target not met")
-    if max(result["outlet_li_loading_fractions"]) > 0.72 + 1e-9:
+    if max(result["outlet_li_loading_fractions"], default=0.0) > 0.72 + 1e-9:
         failures.append("Li loading exceeds 0.72 per pair")
-    if solvent == "fresh" and result["na_metric"]["value"] > 0.02 + 1e-9:
-        failures.append("Na extraction exceeds 0.02 feed Na")
+    if sodium is not None and result["na_metric"]["value"] > sodium + 1e-9:
+        failures.append(f"Na extraction exceeds {sodium:g} feed Na")
     return failures

@@ -11,10 +11,15 @@ import textwrap
 from importlib.metadata import version
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from idaes.core import UnitModelBlockData
+# One BLAS/OpenMP thread for the Engine, in this kernel and in the IPOPT processes it starts: the conda Engine links a
+# threaded OpenBLAS, whose threads would use up IPOPT's CPU-time limit on these small equilibrium problems.
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+from idaes.core import UnitModelBlockData  # noqa: E402
 from pyomo.environ import (
     Block,
     Constraint,
@@ -23,14 +28,9 @@ from pyomo.environ import (
     Objective,
     Param,
     RangeSet,
-)
-from pyomo.environ import Reference, Var, value
-from pyomo.network import Arc, Port
-
-# One BLAS/OpenMP thread for the Engine, in this kernel and in the IPOPT processes it starts: the conda Engine links a
-# threaded OpenBLAS, whose threads would use up IPOPT's CPU-time limit on these small equilibrium problems.
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["OMP_NUM_THREADS"] = "1"
+)  # noqa: E402
+from pyomo.environ import Reference, Var, value  # noqa: E402
+from pyomo.network import Arc, Port  # noqa: E402
 
 
 from prommis.lithium_extraction.paths import REPO_ROOT as ROOT
@@ -155,8 +155,8 @@ def add_stage_equilibrium(m, chemistries):
     """Close every stage with the Engine: n_out[s, k] = E_s(n_in[k]) for each independent species s.
 
     `chemistries` holds one compiled Engine record per stage. The Engine is a Pyomo ExternalFunction with exact first
-    and second derivatives; its arguments are the amounts entering the stage (brine from stage k-1, organic from
-    stage k+1, or the feeds) and any fixed stage parameters.
+    and second derivatives; its arguments are the record's fixed T [K] and P [Pa], then the amounts entering the stage
+    (brine from stage k-1, organic from stage k+1, or the feeds) and any fixed stage parameters.
     """
     first = chemistries[0]
     species = first.species
@@ -192,6 +192,8 @@ def add_stage_equilibrium(m, chemistries):
             [j for j in independent if species[j] in names],
             rule=lambda b, j, k=k, c=c, names=names: b.outlet[species[j]]
             == m.fs.engine(
+                c.temperature_k,
+                c.pressure_pa,
                 *(incoming(k, q) for q in c.control_species),
                 c.record,
                 str(phase[species[j]]),
@@ -212,15 +214,16 @@ def _split(chemistry):
 
 
 def _engine_arguments(m, k, s):
-    """Stage k's Engine call for species s: amounts entering the stage, then the record, phase and position."""
+    """Stage k's Engine call for species s: fixed T and P, the amounts entering the stage, then the record, phase and
+    position."""
     c = m._chemistries[k - 1]
     names = c.record_species or c.species
     phase = next(p for p, support in enumerate(c.supports) if s in support)
-    return [value(m._incoming(k, q)) for q in c.control_species], [
-        c.record,
-        str(phase),
-        str(names.index(s)),
-    ]
+    return (
+        [c.temperature_k, c.pressure_pa],
+        [value(m._incoming(k, q)) for q in c.control_species],
+        [c.record, str(phase), str(names.index(s))],
+    )
 
 
 def engine_check(m, k):
@@ -228,8 +231,8 @@ def engine_check(m, k):
     rows = {}
     for j in m.fs.stage[k].equilibrium:
         s = m._chemistries[k - 1].species[j]
-        inputs, record = _engine_arguments(m, k, s)
-        direct, solved = m.fs.engine.evaluate([*inputs, *record]), value(
+        state, inputs, record = _engine_arguments(m, k, s)
+        direct, solved = m.fs.engine.evaluate([*state, *inputs, *record]), value(
             m.fs.stage[k].outlet[s]
         )
         rows[s] = {
@@ -242,8 +245,9 @@ def engine_check(m, k):
 
 def engine_derivatives(m, k, s):
     """The Engine's exact first derivatives of outlet s of stage k against central finite differences."""
-    inputs, record = _engine_arguments(m, k, s)
-    _, gradient, _ = m.fs.engine.evaluate_fgh([*inputs, *record])
+    state, inputs, record = _engine_arguments(m, k, s)
+    _, gradient, _ = m.fs.engine.evaluate_fgh([*state, *inputs, *record])
+    gradient = gradient[len(state) :]  # the T and P columns lead
     rows = {}
     for i, q in enumerate(m._chemistries[k - 1].control_species):
         h = 1e-6 * max(
@@ -253,8 +257,8 @@ def engine_derivatives(m, k, s):
         up[i] += h
         down[i] -= h
         difference = (
-            m.fs.engine.evaluate([*up, *record])
-            - m.fs.engine.evaluate([*down, *record])
+            m.fs.engine.evaluate([*state, *up, *record])
+            - m.fs.engine.evaluate([*state, *down, *record])
         ) / (2 * h)
         rows[f"entering {label(q)}"] = {
             "exact (Engine)": gradient[i],

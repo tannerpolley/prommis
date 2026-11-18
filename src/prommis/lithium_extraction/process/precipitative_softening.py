@@ -92,6 +92,10 @@ REAGENT_ELEMENTS = {
     "Ca(OH)2": {"Ca": 1, "O": 2, "H": 2},
 }
 CLOSURE_MOL = 1e-9
+PH_XTOL, PH_RTOL = (
+    1e-13,
+    1e-12,
+)  # brentq stopping tolerances on the reagent dose of `_to_ph`, mol
 MS2_PH = 5.77  # USGS row, measured at PHT 29.5 degC
 MS2_LI_VALUE_USD_M3 = (
     15.7,
@@ -175,7 +179,7 @@ def _to_ph(
             - target
         )
 
-    amount = brentq(miss, 0.0, upper, xtol=1e-13, rtol=1e-12)
+    amount = brentq(miss, 0.0, upper, xtol=PH_XTOL, rtol=PH_RTOL)
     return amount, _dosed(system, solver, state, reagent, amount)
 
 

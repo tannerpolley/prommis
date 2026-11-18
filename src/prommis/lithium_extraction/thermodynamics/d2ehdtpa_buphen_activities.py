@@ -119,14 +119,19 @@ def held_model():
     return mixture, offsets
 
 
-def engine_activities(mixture, offsets, mol, water):
-    amounts = {ION[e][0]: n for e, n in mol.items()} | {"water": water}
+def engine_activities(mixture, offsets, mol, water, *, held_basis=True):
+    amounts = (
+        dict.fromkeys(mixture.component_ids, 0.0)
+        | {ION[e][0]: n for e, n in mol.items()}
+        | {"water": water}
+    )
     total = math.fsum(amounts.values())
     x = [amounts[i] / total for i in mixture.component_ids]
     state = mixture.state(T, P=P, x=x, phase="liquid")
-    assert state.born == 0 and abs(
-        state.bulk_relative_permittivity - 78.09
-    ) <= math.ulp(78.09)
+    assert not held_basis or (
+        state.born == 0
+        and abs(state.bulk_relative_permittivity - 78.09) <= math.ulp(78.09)
+    )
     assert abs(state.pressure / P - 1) <= PRESSURE_RELATIVE_LIMIT
     loga = {
         e: (
@@ -136,10 +141,32 @@ def engine_activities(mixture, offsets, mol, water):
         )
         / math.log(10)
         for e, (name, _, _) in ION.items()
-        if mol[e] > 0
+        if mol.get(e, 0) > 0
         for j in [mixture.component_ids.index(name)]
     }
     return loga, state
+
+
+def pitzer_activities(system, solver, chem, mol):
+    """Solve the supplied aqueous state and enforce the existing F0 element/charge limits."""
+    import reaktoro as rkt
+
+    initial = np.array(rkt.ChemicalProps(chem).elementAmounts(), dtype=float)
+    result = solver.solve(chem)
+    if not result.succeeded():
+        raise RuntimeError(str(result.optima.failure_reason))
+    props = rkt.ChemicalProps(chem)
+    closure = float(
+        np.max(np.abs(np.array(props.elementAmounts(), dtype=float) - initial))
+    )
+    charge = float(props.charge())
+    assert max(closure, abs(charge)) <= CLOSURE_LIMIT
+    values = {
+        e: float(props.speciesActivityLg(s))
+        for e, (_, s, _) in ION.items()
+        if mol.get(e, 0) > 0
+    }
+    return values, props, closure, charge, result
 
 
 def database_coverage(contents):
@@ -285,21 +312,9 @@ def main():
             for e, n in mol.items():
                 if n > 0:
                     chem.set(ION[e][1], n, "mol")
-            initial = np.array(rkt.ChemicalProps(chem).elementAmounts(), dtype=float)
-            result = solver.solve(chem)
-            if not result.succeeded():
-                raise RuntimeError(f"{name}/{variant}: {result.optima.failure_reason}")
-            props = rkt.ChemicalProps(chem)
-            closure = float(
-                np.max(np.abs(np.array(props.elementAmounts(), dtype=float) - initial))
+            pitzer, props, closure, charge, result = pitzer_activities(
+                system, solver, chem, mol
             )
-            charge = float(props.charge())
-            assert max(closure, abs(charge)) <= CLOSURE_LIMIT
-            pitzer = {
-                e: float(props.speciesActivityLg(s))
-                for e, (_, s, _) in ION.items()
-                if mol[e] > 0
-            }
             numerical.append(
                 {
                     "state": name,

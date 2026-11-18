@@ -5,7 +5,8 @@ washed feed in full-process scope, so each flow equals today's mol per nominal l
 is affine in those amounts, so the basis is never rescaled inside the stages.
 """
 
-from dataclasses import dataclass
+from dataclasses import KW_ONLY, dataclass
+import json
 import os
 from pathlib import Path
 import shutil
@@ -69,6 +70,10 @@ class Chemistry:
     certify: object
     record_species: tuple = ()
     parameters: tuple = ()
+    _: KW_ONLY
+    # The record problem's fixed T [K] and P [Pa]: the Engine callback's leading arguments (ePC-SAFT #1098, #1250).
+    temperature_k: float
+    pressure_pa: float
 
 
 UNITS = {
@@ -189,10 +194,12 @@ class ExtentReactionBlockData(ProcessBlockData):
         add_object_reference(self, "params", self.config.parameters)
 
 
-def build_stages(chemistry, aqueous_feed, organic_feed, stages):
+def build_stages(chemistry, aqueous_feed, organic_feed, stages, *, maximum_stages=5):
     """Aqueous flows forward from stage 1, organic backward from stage N; Engine outlets close each stage."""
-    if type(stages) is not int or stages not in range(1, 6):
-        raise ValueError("stage count must be an integer from 1 through 5")
+    if type(stages) is not int or stages not in range(1, maximum_stages + 1):
+        raise ValueError(
+            f"stage count must be an integer from 1 through {maximum_stages}"
+        )
     chemistries = (
         (chemistry,) * stages if isinstance(chemistry, Chemistry) else tuple(chemistry)
     )
@@ -324,6 +331,8 @@ def build_stages(chemistry, aqueous_feed, organic_feed, stages):
                 species[j]
             ]
             == fs.response(
+                c.temperature_k,
+                c.pressure_pa,
                 *(incoming(k, s) for s in c.control_species),
                 c.record,
                 str(phases[species[j]]),
@@ -472,6 +481,32 @@ def _ipopt(model, directory, options):
         return error
 
 
+def _attempt(name, result, directory):
+    """IPOPT's exit message and iteration count of one attempt, read from its log."""
+    log = Path(directory) / "ipopt.log"
+    text = log.read_text(errors="replace") if log.exists() else ""
+    found = {
+        key: re.findall(pattern, text)
+        for key, pattern in (
+            ("iterations", r"Number of Iterations\.+:\s+(\d+)"),
+            ("exit", r"EXIT: (.+)"),
+        )
+    }
+    return {
+        "attempt": name,
+        "message": (
+            found["exit"][-1].strip()
+            if found["exit"]
+            else (
+                str(result)
+                if isinstance(result, Exception)
+                else str(result.solver.message)
+            )
+        ),
+        "iterations": int(found["iterations"][-1]) if found["iterations"] else None,
+    }
+
+
 def solved_values(model):
     """Every variable value; equal to the stored tuple only while the model still holds its accepted solve."""
     return tuple(v.value for v in model.component_data_objects(Var))
@@ -489,7 +524,10 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
     """Exact Hessians by default; the caller's wall timer includes build, initialization and certificates.
 
     An unscaled solve that stops short of its optimum is repeated once from the same start with IPOPT's
-    gradient-based scaling (#266); acceptance and KKT limits are the same for both attempts.
+    gradient-based scaling (#266), except after local infeasibility or diverging iterates; acceptance and KKT limits
+    are the same for both attempts. #342 option trial (MS-2 base subset): accepted solves take at most 23 iterations
+    and reach bitwise the same optimum with max_iter 50, no rescaled attempt after local infeasibility and
+    expect_infeasible_problem for one stage, while unresolved solves end in 17-116 s instead of 45-290 s.
     """
     directory = Path(directory).resolve()
     options = {
@@ -501,13 +539,15 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
         "constr_viol_tol": 1e-12 / max(1.0, value(model.fs.washed_feed_l_per_raw_l)),
         "dual_inf_tol": 1e-7,
         "compl_inf_tol": 1e-7,
-        "max_iter": 200,
+        "max_iter": 50,
         "acceptable_iter": 0,
         "bound_push": 1e-8,
         "bound_frac": 1e-8,
         "mu_init": 1e-6,
         "max_cpu_time": wall_seconds,
     }
+    if len(model.fs.stages) == 1:
+        options["expect_infeasible_problem"] = "yes"
     for name in ("dual", "ipopt_zL_out", "ipopt_zU_out"):
         if not hasattr(model, name):
             setattr(model, name, Suffix(direction=Suffix.IMPORT))
@@ -515,8 +555,12 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
     start = [(v, v.value) for v in model.component_data_objects(Var)]
     started = time.monotonic()
     attempt, result = "unscaled", _ipopt(model, directory, options)
+    attempts = [_attempt(attempt, result, directory)]
     remaining = wall_seconds - (time.monotonic() - started)
-    if not _optimal(result) and remaining > 0:
+    final = any(
+        m in attempts[0]["message"] for m in ("local infeasibility", "diverging")
+    )
+    if not _optimal(result) and remaining > 0 and not final:
         for v, x in start:
             v.set_value(x, skip_validation=True)
         options = options | {
@@ -526,6 +570,7 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
         }
         directory = directory / "scaled"
         attempt, result = "scaled", _ipopt(model, directory, options)
+        attempts.append(_attempt(attempt, result, directory))
     if not _optimal(result):
         raise RuntimeError(
             "IPOPT unresolved: "
@@ -534,6 +579,8 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
                 if isinstance(result, Exception)
                 else str(result.solver.termination_condition)
             )
+            + "; attempts: "
+            + json.dumps(attempts)
         )
     diagnostics = _kkt(model, directory / "ipopt.log")
     limits = {
@@ -553,6 +600,7 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
         "attempt": attempt,
         "solve_and_kkt_s": time.monotonic() - started,
         "options": options,
+        "attempts": attempts,
     }
     return model._solve
 

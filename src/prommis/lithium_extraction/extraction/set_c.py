@@ -252,6 +252,8 @@ def _chemistry(anchor, direct, constants, ratio, extractant):
         certify,
         names,
         (("extractant_mol_l", extractant), ("topo_total_mol", ratio * extractant)),
+        temperature_k=problem.T,
+        pressure_pa=problem.P,
     )
 
 
@@ -310,9 +312,8 @@ def build_flowsheet(
         na_org=r * c,
     )
     aqueous, organic = mc.inventory(boundary)
-    organic["diluent"] = (
-        ratio
-        * mc.model(SPECIES)
+    diluent = (
+        mc.model(SPECIES)
         .state(
             cc.TEMPERATURE_K,
             P=mc.PRESSURE_PA,
@@ -322,12 +323,17 @@ def build_flowsheet(
         .molar_density
         * 0.001
     )
+    organic["diluent"] = ratio * diluent
     model = stage.build_stages(declarations, aqueous, organic, stages)
     model.fs.parameters["extractant_mol_l"].fix(c)
     model.fs.parameters["topo_total_mol"].unfix()
+    # Total TOPO = O/A x c at the live O/A (the inlet diluent, as `certify` reads it), not the build-time O/A: a
+    # released O/A (#342 O6) otherwise leaves the TOPO inventory at the build-time phase ratio.
     model.fs.topo_quantity = Constraint(
         expr=model.fs.parameters["topo_total_mol"]
-        == ratio * model.fs.parameters["extractant_mol_l"]
+        == model.fs.boundary["diluent"]
+        / diluent
+        * model.fs.parameters["extractant_mol_l"]
     )
     model.fs.washed_feed_l_per_raw_l.set_value(washed["feed_l"])
     model._design, model._washed, model._physical_feed = (
@@ -446,6 +452,11 @@ def solve(
                 }
             )
             guesses.append(direct["phase_amounts_mol"])
+        flags = {
+            name: getattr(model, name)
+            for name in ("_case", "_end", "_rule")
+            if hasattr(model, name)
+        }
         model = build_flowsheet(
             model._washed,
             stages=len(rows),
@@ -454,6 +465,7 @@ def solve(
             chemistry_by_support=model._chemistry_by_support,
             physical_feed=model._physical_feed,
         )
+        model.__dict__.update(flags)
     raise AssertionError("unreachable support loop")
 
 

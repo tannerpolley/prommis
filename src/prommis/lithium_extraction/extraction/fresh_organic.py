@@ -140,6 +140,8 @@ def chemistry():
         record,
         Path(epcsaft.__file__).resolve().parent / ENGINE_ASL_LIBRARY,
         certify,
+        temperature_k=problem.T,
+        pressure_pa=problem.P,
     )
     return declaration, feed[network.SPECIES.index("diluent")]
 

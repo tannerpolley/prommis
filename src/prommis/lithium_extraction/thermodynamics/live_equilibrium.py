@@ -9,7 +9,7 @@ from pathlib import Path
 
 import epcsaft
 from epcsaft import equilibrium as eq
-from pyomo.environ import Constraint, Expression, ExternalFunction, Var, value
+from pyomo.environ import Constraint, Expression, ExternalFunction, Param, Var, value
 from pyomo.environ import units as pyunits
 
 from prommis.lithium_extraction.thermodynamics import (
@@ -176,8 +176,10 @@ def attach_live_equilibrium(model, reference: Reference | None = None):
         library=str(reference.library),
         function=ASL_FUNCTION,
         units=pyunits.mol,
-        arg_units=[pyunits.mol] * 7 + [None, None, None],
+        arg_units=[pyunits.K, pyunits.Pa] + [pyunits.mol] * 7 + [None, None, None],
     )
+    # The callback's leading T and P (ePC-SAFT #1098): the fixed temperature and the record problem's pressure.
+    fs.epcsaft_live_pressure = Param(initialize=reference.problem.P, units=pyunits.Pa)
     feed = fs.extractor.organic_inlet_state[0].conc_mol_comp
     fresh_feed = all(feed[m].fixed and value(feed[m]) == 0.0 for m in ("Li", "Na"))
     for stage in fs.extractor.elements:
@@ -204,18 +206,21 @@ def attach_live_equilibrium(model, reference: Reference | None = None):
         )
         controls, inventory = _stage_controls(block, reference)
         block.incoming_extractant_inventory = Expression(expr=inventory)
+        arguments = (
+            fs.temperature,
+            fs.epcsaft_live_pressure,
+            *controls,
+            reference.record,
+            "1",
+        )
         block.live_li_equilibrium = Constraint(
             expr=block.equilibrium_li_loading_fraction
-            == fs.epcsaft_live_response(
-                *controls, reference.record, "1", str(reference.outputs[0])
-            )
+            == fs.epcsaft_live_response(*arguments, str(reference.outputs[0]))
             / block.incoming_extractant_inventory
         )
         block.live_na_equilibrium = Constraint(
             expr=block.equilibrium_na_loading_fraction
-            == fs.epcsaft_live_response(
-                *controls, reference.record, "1", str(reference.outputs[1])
-            )
+            == fs.epcsaft_live_response(*arguments, str(reference.outputs[1]))
             / block.incoming_extractant_inventory
         )
         if fresh_feed and stage == fs.extractor.elements.last():

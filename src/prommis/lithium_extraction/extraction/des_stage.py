@@ -2,7 +2,6 @@
 
 import json
 import math
-from functools import lru_cache
 from pathlib import Path
 
 import epcsaft
@@ -30,22 +29,21 @@ def feed():
     return records.extraction_feed(brines.raw_feed("MS2"), "A", synthetic_softened=True)
 
 
-@lru_cache(None)
-def preparation(ph):
-    f = feed()["physical_feed"]
+def preparation(ph, feed_record):
+    f = (
+        feed_record["physical_feed"]
+        if feed_record.get("synthetic_softened")
+        else feed_record.get("model_feed", feed_record["physical_feed"])
+    )
+    chloride = (
+        f["Li"] + f["Na"] + f["H"]
+        if feed_record.get("synthetic_softened")
+        else f["Cl"] - f["K"]
+    )
     inventory = dict(
         zip(
             d.AQ,
-            (
-                f["water"],
-                f["Li"],
-                f["Na"],
-                f["Li"] + f["Na"] + f["H"],
-                f["H"],
-                0.0,
-                0.0,
-                0.0,
-            ),
+            (f["water"], f["Li"], f["Na"], chloride, f["H"], 0.0, 0.0, 0.0),
             strict=True,
         )
     )
@@ -58,26 +56,28 @@ def preparation(ph):
     }
 
 
-def boundary(total_n, topo_fraction):
-    f = feed()["physical_feed"]
+def boundary(total_n, topo_fraction, feed_record):
+    f = (
+        feed_record["physical_feed"]
+        if feed_record.get("synthetic_softened")
+        else feed_record.get("model_feed", feed_record["physical_feed"])
+    )
+    chloride = (
+        f["Li"] + f["Na"] + f["H"]
+        if feed_record.get("synthetic_softened")
+        else f["Cl"] - f["K"]
+    )
     aqueous = dict(
         zip(
             d.AQ,
-            (
-                f["water"],
-                f["Li"],
-                f["Na"],
-                f["Li"] + f["Na"] + f["H"],
-                f["H"],
-                0.0,
-                total_n,
-                0.0,
-            ),
+            (f["water"], f["Li"], f["Na"], chloride, f["H"], 0.0, total_n, 0.0),
             strict=True,
         )
     )
     kcl_mass = f["K"] * (brines.MOLAR_MASS["K"] + brines.MOLAR_MASS["Cl"]) / 1000
     mass = sum(aqueous[s] * mw for s, mw in zip(d.AQ, d.MW, strict=True)) + kcl_mass
+    if "physical_mass_kg" in feed_record:
+        mass = feed_record["physical_mass_kg"] + total_n * d.MW[6]
     organic = dict(
         zip(
             d.ORG,
@@ -127,8 +127,8 @@ def direct(candidate, aqueous, organic, guess=None):
     }, problem
 
 
-def build(candidate, n, total_n, topo_fraction):
-    aqueous, organic, mass = boundary(total_n, topo_fraction)
+def build(candidate, n, total_n, topo_fraction, feed_record):
+    aqueous, organic, mass = boundary(total_n, topo_fraction, feed_record)
     initial, problem = direct(candidate, aqueous, organic)
     moieties = d.chemistry(candidate)[1]
     c = tuple(tuple(row.get(s, 0.0) for s in d.IDS) for row in moieties.values())
@@ -183,9 +183,12 @@ def build(candidate, n, total_n, topo_fraction):
         record,
         Path(epcsaft.__file__).resolve().parent / ENGINE_ASL_LIBRARY,
         certify,
+        temperature_k=problem.T,
+        pressure_pa=problem.P,
     )
     model = stage.build_stages(chemistry, aqueous, organic, n)
     model._candidate, model._initial = candidate, initial
+    model._physical_feed = feed_record
 
     def solve_stage(k, aq, org, guess):
         try:
@@ -212,7 +215,7 @@ def build(candidate, n, total_n, topo_fraction):
     )
     model.fs.des = Block()
     b = model.fs.des
-    low, high = [preparation(ph)["total_N_mol"] for ph in (9.5, 10.5)]
+    low, high = [preparation(ph, feed_record)["total_N_mol"] for ph in (9.5, 10.5)]
     b.total_N = Var(initialize=total_n, bounds=(low, high))
     b.total_N.fix()
     b.ammonia_feed = Constraint(expr=model.fs.boundary["ammonia"] == b.total_N)
@@ -257,7 +260,7 @@ def charge_bound(model, result):
     def roundoff(k, terms):
         return k * u / (1 - k * u) * math.fsum(map(abs, terms))
 
-    f = feed()["physical_feed"]
+    f = model._physical_feed["physical_feed"]
     inlet = {s: value(model.fs.boundary[s]) for s in d.IDS}
     # Preparation adds neutral NH3; two additions form model Cl, three form physical Cl.
     fp = {
@@ -265,6 +268,16 @@ def charge_bound(model, result):
         "physical_preparation": roundoff(3, [f[e] for e in ("Li", "Na", "K", "H")]),
     }
     qfeed = abs(math.fsum(z[i] * inlet[s] for i, s in enumerate(d.IDS)))
+    omitted_terms = []
+    if "physical_component_charge" in model._physical_feed:
+        charges = model._physical_feed["physical_component_charge"]
+        omitted_terms = [
+            charges[s] * n
+            for s, n in f.items()
+            if s not in ("Li", "Na", "K", "H", "Cl", "water")
+        ]
+        qfeed = max(qfeed, abs(math.fsum(charges[s] * n for s, n in f.items())))
+        fp["bypass_charge_sum"] = roundoff(len(omitted_terms) + 1, omitted_terms)
     fp["feed_sum"] = roundoff(5, [z[i] * inlet[s] for i, s in enumerate(d.IDS)])
     unit, stoich = (
         model.fs.extraction.mscontactor,
@@ -328,19 +341,21 @@ def charge_bound(model, result):
     physical_cl = f["Cl"] + (out["chloride-anion"] - inlet["chloride-anion"])
     physical_terms = [
         out[s] * d.CHARGE[s] for s in d.AQ if d.CHARGE[s] and s != "chloride-anion"
-    ] + [-physical_cl, f["K"]]
+    ] + [-physical_cl, f["K"], *omitted_terms]
     fp["physical_KCl_reconstruction"] = roundoff(
         8, [f["Cl"], out["chloride-anion"], inlet["chloride-anion"], *physical_terms]
     )
     eta = math.fsum(fp.values())
     limits = [qfeed + amplification * j * 1e-12 + eta for j in range(1, 6)]
     physical_charge = math.fsum(physical_terms)
+    perturbation = math.copysign(1e-10, physical_charge) if omitted_terms else 1e-10
     injections = [
         {
             "N": j,
             "Q_DES": limit,
-            "injected_actual_charge": physical_charge + 1e-10,
-            "rejected": abs(physical_charge + 1e-10) > limit,
+            "injected_actual_charge": physical_charge + perturbation,
+            "perturbation_eq": perturbation,
+            "rejected": abs(physical_charge + perturbation) > limit,
         }
         for j, limit in enumerate(limits, 1)
     ]
@@ -380,7 +395,7 @@ def injected_ion_check(model, limit):
     before = value(actual)
     actual.set_value(before + 1e-10)
     try:
-        physical = feed()["physical_feed"]
+        physical = model._physical_feed["physical_feed"]
         out = model.fs.stage[k].outlet
         cl = physical["Cl"] + (
             value(out["chloride-anion"]) - value(model.fs.boundary["chloride-anion"])
@@ -411,12 +426,16 @@ def metrics(model, result):
     """Physical quantities per raw litre; source priors and prohibited-phase losses stay explicit."""
     from scipy.optimize import brentq
 
+    feed_record = model._physical_feed
     aqueous, organic = model._feeds
     total_n = value(model.fs.des.total_N)
     ph = brentq(
-        lambda ph: preparation(ph)["total_N_mol"] - total_n, 9.5, 10.5, xtol=1e-12
+        lambda ph: preparation(ph, feed_record)["total_N_mol"] - total_n,
+        9.5,
+        10.5,
+        xtol=1e-12,
     )
-    prepared = preparation(ph)["amounts"]
+    prepared = preparation(ph, feed_record)["amounts"]
     initial_aq_volume = (
         sum(prepared.values())
         / d.phase_state(d.model(T, model._candidate), T, prepared).molar_density

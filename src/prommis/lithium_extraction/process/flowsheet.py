@@ -6,22 +6,17 @@ import json
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from prommis.lithium_extraction.paths import REPO_ROOT
+from prommis.lithium_extraction.paths import ENGINE_CONDA_RELEASES, REPO_ROOT
 from prommis.lithium_extraction.process import strip_and_carbonation as downstream
 
-# Engine source commit of each pinned wheel, keyed by wheel sha256: the wheel itself carries no commit.
+# Engine source commit of each declared wheel, keyed by wheel sha256: the wheel itself carries no commit. Only wheels
+# with the (T, P, *controls) equilibrium callback of Engine #1098 run this code (Lithium #354).
 ENGINE_COMMITS = {
-    "94b55dfcf72f21b43010c7125d71f103f41fd56f7a6b6fe0774903eef71cc72a": "026b30311b959f1a5db4feef4c15e243f7044a5f",
-    "da5a2b65668ab5647e51b917a659614bdcb4afbe7e5c3149aee2294b86a4c1bd": "36485a88d7867928e7033036dbddc18ea416e7ca",
-    "a974c0e0c1d1049ffd144c003815a47f313820c5c3065aa395faa0a58e70a60d": "0bec2bdf42e31bf37e8d4679169c8174b580408f",
-    "d2f61e3a5961b859151fbe0487f4ab633405b11620d9dd64682656a68a110357": "21e761c318c2ac5b555a245365c844d38a93e4cb",
-    "8897a0caab9f2508ed642f42c8b5226957fbe7035ed7bfdad71e4166798785b3": "8298c6029ebb8b467929badc4a223c580ec591ab",
-    "ca80755f1c17c8d2995b3a3f723c5a06cd20d22775c44599037521d1cf9ecfd5": "ca719012c31e8b41edcb98ae82a388117b58d343",
-    "2d16ddf7d109433b234b802cd4b010bc4ad3bdbadaccfa29961ac9e2484614b0": "c358de722be1b5c1ad34d9a5b1c1a0e304cba9f5",
-    "4321f20e7084ae3a9d6e588671987562635ddf242a88ac82e7d667499d643f4a": "4cb87490b3260511dec7af8b7690db8d4163afc6",
+    "e2668bb17d6e3468586802f77b30dc2e8953b38a9b3603cbce02ed9a6ebe5860": "5cb4867fd9e690bff74043a32eaec4a0ec97306d",
+    "e904494fbc17fb18837e2d9725a2f685bc484fb03e45db5c56a62d83237efdb3": "d180b2e24f9f71b0cd103eea13fbc307c90904cd",
+    "16f8d54caf704d235db6dd093634161c4c1028c96285be44ad247a0ba2f08025": "ce6b4fcbd91d77de638089b1631b0b53b1322fc1",
+    "7e7ef16f989913a4618b0eb50a345a71e645fe4d648c2556df9e07ea55663bba": "7316df21d03dc406e235e92d1abf14353a7a2e02",
 }
-# Engine source commit of each public epcsaft release, for installs without a wheel file (conda).
-ENGINE_RELEASES = {"1.2.0": "4cb87490b3260511dec7af8b7690db8d4163afc6"}
 
 
 MASS_KG_PER_MOL = {
@@ -35,9 +30,7 @@ MASS_KG_PER_MOL = {
 
 
 def installed_engine():
-    """Installed Engine identity: a wheel listed by sha256 in ENGINE_COMMITS (this repository's .venv) or a public
-    release listed by version in ENGINE_RELEASES, installed by conda or from an index; refuses source-tree installs.
-    """
+    """Identify a declared wheel or a conda release allowed by the tutorial export."""
     from prommis.lithium_extraction.thermodynamics.reaction_topology import (
         _sha256,
         _verify_wheel,
@@ -50,27 +43,28 @@ def installed_engine():
         sha256 = _sha256(wheel)
         if sha256 not in ENGINE_COMMITS:
             raise ValueError(
-                f"Installed Engine wheel {wheel} ({sha256}) has no declared source commit"
+                f"Installed Engine wheel {wheel} ({sha256}) is not a declared wheel; wheels before "
+                "Engine #1098, including epcsaft 1.2.0, lack the (T, P, *controls) equilibrium "
+                "callback this code calls (Lithium #354)"
             )
         return _verify_wheel(wheel, sha256, ENGINE_COMMITS[sha256]) | {
             "identified_by": "wheel sha256"
         }
-    # The conda package records its build directory as dir_info, so its installer, not direct_url, marks it a release.
-    if direct and (distribution.read_text("INSTALLER") or "").strip() != "conda":
-        raise ValueError(
-            f"Installed epcsaft comes from a source tree ({direct.get('url')}), not a declared wheel or release"
-        )
     version = distribution.version
-    if version not in ENGINE_RELEASES:
-        raise ValueError(
-            f"Installed epcsaft {version} is neither a declared wheel nor a release in {sorted(ENGINE_RELEASES)}"
-        )
-    return {
-        "filename": f"epcsaft-{version}",
-        "version": version,
-        "source_commit": ENGINE_RELEASES[version],
-        "identified_by": "release version",
-    }
+    # A conda package's direct URL points to its source build directory.
+    if (
+        distribution.read_text("INSTALLER") or ""
+    ).strip() == "conda" and version in ENGINE_CONDA_RELEASES:
+        return {
+            "filename": f"epcsaft-{version}",
+            "version": version,
+            "source_commit": ENGINE_CONDA_RELEASES[version],
+            "identified_by": "conda release version",
+        }
+    raise ValueError(
+        f"Installed epcsaft {version} needs a wheel declared by SHA-256 or a supported conda release. "
+        f"Allowed conda versions: {sorted(ENGINE_CONDA_RELEASES)}"
+    )
 
 
 def washed_feed(
@@ -111,14 +105,16 @@ def washed_feed(
             continue
         before = ps._record(system, state, ps.PHASES)
         if reagent == "HCl":
+            unconditioned = state
             dose, state = ps._to_ph(
                 system,
                 solver,
-                state,
+                unconditioned,
                 "HCl",
                 feed["pH"],
                 upper=2 * before["aq"]["C"] + 1,
             )
+            ph_acceptance = ph_limit(ps, system, solver, unconditioned, dose)
         else:
             dose = reagent_mol[reagent]
             state = ps._dosed(system, solver, state, reagent, dose)
@@ -251,11 +247,43 @@ def washed_feed(
         "moisture": moisture,
         "wash_volumes": wash_volumes,
         "pH": fin["pH"],
+        "pH_acceptance": ph_acceptance,
         "ca_mg_mg_l": (
             fin["aq"]["Ca"] * ps.MOLAR_MASS["Ca"]
             + fin["aq"]["Mg"] * ps.MOLAR_MASS["Mg"]
         )
         * 1000,
+    }
+
+
+def ph_limit(ps, system, solver, state, dose):
+    """How far the reached washed pH may lie from the process pH, from the two solvers' own precision (#342; owner
+    rule: acceptance limits come from upstream precision, #219).
+
+    1. Reaktoro's Optima solver stops when the optimality error of the Gibbs-energy/RT minimization is below its
+       convergence tolerance (Reaktoro 2.13 default 1e-8). That residual is in units of mu/RT = ln a for an aqueous
+       species, so ln a(H+) is within the tolerance and pH = -log10 a(H+) within tolerance / ln 10 (4.34e-9).
+    2. brentq returns the HCl dose within xtol + rtol * dose (mol) of the root; the pH error is that times |dpH/dn| at
+       the root, taken by a forward difference of 1e-4 of the dose.
+    The limit is their sum; it changes no equilibrium calculation.
+    """
+    import math
+
+    equilibrium = ps.rkt.EquilibriumOptions().optima.convergence.tolerance / math.log(
+        10
+    )
+    step = max(1e-4 * dose, 1e-9)
+    ph = [
+        float(ps.rkt.AqueousProps(ps._dosed(system, solver, state, "HCl", n)).pH())
+        for n in (dose, dose + step)
+    ]
+    slope, root = abs(ph[1] - ph[0]) / step, ps.PH_XTOL + ps.PH_RTOL * dose
+    return {
+        "equilibrium_tolerance_ph": equilibrium,
+        "dose_tolerance_mol": root,
+        "slope_ph_per_mol": slope,
+        "limit_ph": equilibrium + slope * root,
+        "basis": "Optima optimality tolerance / ln 10 plus |dpH/dn| times the brentq dose tolerance",
     }
 
 
@@ -289,6 +317,19 @@ def _row(path, key, value):
         return next(r for r in csv.DictReader(stream) if r[key] == value)
 
 
+def strip_li_fraction():
+    """Measured Li strip fraction at 2.5 M HCl (Zhang 2017, Fig. 6)."""
+    observation = "data/reference/extraction_models/hbta_topo_li_na/observations.csv"
+    return (
+        float(
+            _row(observation, "observation_id", "zhang2017_fig6_li_strip_2p5m_hcl")[
+                "value"
+            ]
+        )
+        / 100
+    )
+
+
 def costs_and_balances(
     feed, extraction, case, assumptions, scrub_na=None, *, nacl_coordinate=None
 ):
@@ -302,17 +343,9 @@ def costs_and_balances(
     x, loaded = extraction["raffinate"], extraction["loaded_organic"]
     c = assumptions["extractant_mol_l"]
     li, na, bta = (v * loaded[k] for k in ("li", "na", "hbta"))
-    observation = "data/reference/extraction_models/hbta_topo_li_na/observations.csv"
     scrub_eff = assumptions["scrub_na_efficiency"] if scrub_na is None else scrub_na
     scrub_li = assumptions["scrub_li_loss"]
-    strip_eff = (
-        float(
-            _row(observation, "observation_id", "zhang2017_fig6_li_strip_2p5m_hcl")[
-                "value"
-            ]
-        )
-        / 100
-    )
+    strip_eff = strip_li_fraction()
     scrub_waste = {"Li": scrub_li * li, "Na": scrub_eff * na}
     scrub_acid = max(
         assumptions["scrub_hcl_mol_l"] * organic_volume / 10, sum(scrub_waste.values())
@@ -353,7 +386,16 @@ def costs_and_balances(
         )
     )
     sap = extraction.get("saponification_mol_per_raw_l", 0.7 * c * v)
-    solvent_loss = assumptions["organic_loss"]
+    retained = (
+        "organic_loss" in assumptions
+    )  # a retained #176 record replays on its own loss and price basis
+    # #342: shared entrainment on the raffinate (v) and the scrub and strip liquors (organic/10 each), per circulated
+    # organic litre; no purge (owner decision, 12 Nov 2026).
+    solvent_loss = (
+        assumptions["organic_loss"]
+        if retained
+        else assumptions["entrainment_l_per_l"] * (v / organic_volume + 2 / 10)
+    )
     hbta_loss_mol = v * x["bta"] + solvent_loss * bta
     masses = {
         "softening_NaOH": feed["reagent_mol"]["NaOH"] * MASS_KG_PER_MOL["NaOH"],
@@ -379,13 +421,10 @@ def costs_and_balances(
             front_sorbent=front["make_up_kg_per_raw_l"][case],
             front_water=front["fresh_water_l_per_raw_l"],
         )
+    # #342: the active set (HBTA, TOPO) is lost mass, priced only from the register and kept outside the cost C_r.
+    active = {} if retained else {k: masses.pop(k) for k in ("HBTA", "TOPO")}
     reg = "data/reference/tea/hbta_topo_screening_cost_assumptions.csv"
     pret = "data/reference/tea/pretreatment_cost_assumptions.csv"
-    organic = _row(
-        "data/reference/tea/hbta_topo_organic_cost_scenarios.csv",
-        "scenario_id",
-        "base_screening_case" if case == "base" else "low_screening_case",
-    )
     naoh = float(_row(reg, "assumption_id", "naoh_price")["base"])
     hcl = float(_row(reg, "assumption_id", "hcl_price")["base"])
     soda = (
@@ -406,11 +445,17 @@ def costs_and_balances(
         )
         for k in masses
     }
-    prices.update(
-        HBTA=float(organic["hbta_marginal_price_usd_kg"]),
-        TOPO=float(organic["topo_marginal_price_usd_kg"]),
-        diluent=assumptions["diluent_usd_kg"],
-    )
+    prices["diluent"] = assumptions["diluent_usd_kg"]
+    if retained:
+        organic = _row(
+            "data/reference/tea/hbta_topo_organic_cost_scenarios.csv",
+            "scenario_id",
+            "base_screening_case" if case == "base" else "low_screening_case",
+        )
+        prices.update(
+            HBTA=float(organic["hbta_marginal_price_usd_kg"]),
+            TOPO=float(organic["topo_marginal_price_usd_kg"]),
+        )
     if front and front["kind"] == "sorbent":
         prices.update(
             front_sorbent=front_prices(case)["sorbent"],
@@ -436,11 +481,14 @@ def costs_and_balances(
         )
         for k in masses
     }
-    source_rows.update(
-        HBTA=f"hbta_topo_organic_cost_scenarios.csv:{organic['scenario_id']}:HBTA; not a vendor quote",
-        TOPO=f"hbta_topo_organic_cost_scenarios.csv:{organic['scenario_id']}:TOPO; not a vendor quote",
-        diluent="EIA EER_EPJK_PF4_RGC_DPG Aug 2026:3.724 USD/US gal; jet-fuel analogue",
+    source_rows["diluent"] = (
+        "EIA EER_EPJK_PF4_RGC_DPG Aug 2026:3.724 USD/US gal; jet-fuel analogue"
     )
+    if retained:
+        source_rows.update(
+            HBTA=f"hbta_topo_organic_cost_scenarios.csv:{organic['scenario_id']}:HBTA; not a vendor quote",
+            TOPO=f"hbta_topo_organic_cost_scenarios.csv:{organic['scenario_id']}:TOPO; not a vendor quote",
+        )
     if front and front["kind"] == "sorbent":
         source_rows.update(
             front_sorbent="front_end_price_register.csv:Dong and Federal Reserve 2025",
@@ -495,9 +543,9 @@ def costs_and_balances(
     if max(map(abs, closure.values())) > 1e-9:
         raise RuntimeError(f"Chain balances exceed 1e-9 mol/L raw brine: {closure}")
     soda_mass = sum(m for k, m in masses.items() if "Na2CO3" in k)
-    extractant_mass = masses["HBTA"] + masses["TOPO"]
     breaks = []
-    for lce_price in (17.5, 20.9, 25.0):
+    for lce_price in (17.5, 20.9, 25.0) if retained else ():
+        extractant_mass = masses["HBTA"] + masses["TOPO"]
         revenue = kg_li * lce_factor * lce_price
         other_soda = total - soda_mass * soda
         other_extractant = total - breakdown["HBTA"] - breakdown["TOPO"]
@@ -551,4 +599,27 @@ def costs_and_balances(
         "break_even_lce_usd_kg": total / kg_li / lce_factor,
         "break_even_li_usd_kg": total / kg_li,
         "price_break_evens": breaks,
+        **({} if retained else rule_accounts(case, active, total, kg_li)),
+    }
+
+
+def rule_accounts(case, active, cost, kg_li):
+    """#339 decision 1 terms per m3 raw water from per-litre amounts: q, C_r, L and the affordable price theta at
+    this design; published prices of the active set are listed beside it, never filled in.
+    """
+    from prommis.lithium_extraction.process.costing import (
+        CARBONATE_USD_KG,
+        LI2CO3_PER_LI,
+        register_price,
+    )
+
+    q, loss = 1000 * kg_li * LI2CO3_PER_LI, 1000 * sum(active.values())
+    return {
+        "active_mass_kg_per_l": active,
+        "active_prices_usd_kg": {k: register_price(k) for k in active},
+        "carbonate_kg_m3": q,
+        "cost_outside_active_usd_m3": 1000 * cost,
+        "active_loss_kg_m3": loss,
+        "carbonate_price_usd_kg": CARBONATE_USD_KG[case],
+        "affordable_price_usd_kg": (CARBONATE_USD_KG[case] * q - 1000 * cost) / loss,
     }

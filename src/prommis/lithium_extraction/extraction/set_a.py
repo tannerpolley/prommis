@@ -92,6 +92,8 @@ def chemistry(anchor):
         reference.record,
         reference.library,
         certify,
+        temperature_k=reference.problem.T,
+        pressure_pa=reference.problem.P,
     )
     return declaration, reference
 

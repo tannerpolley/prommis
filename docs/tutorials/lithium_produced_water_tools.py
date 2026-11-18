@@ -449,6 +449,7 @@ def solve(m, name):
 
 def whole_process_result(m, site, softened):
     """The repository's independent report of the solved process, and its check of every process requirement."""
+    m._case = m._full_process["case"]
     result = optimization.report(m, "full_process", softened[site])
     assert (
         fixed_disposition(result, "C")["status"] == "grid"
@@ -1106,6 +1107,9 @@ STATUS = {
     "grid": "solved at the fixed design",
     "infeasible": "no admissible design",
     "unresolved": "not resolved",
+    "no_product": "no carbonate product at this design",
+    "target_not_met": "extraction target not met at this design",
+    "outside_domain": "outside the model input domain",
 }
 compared = []  # every selection shown so far, in order
 

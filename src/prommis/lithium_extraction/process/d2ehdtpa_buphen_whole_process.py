@@ -67,8 +67,17 @@ def cleanup(stripped, acid, assumptions):
     }
 
 
+ACTIVE = {
+    "BuPhen": "BuPhen_loss_kg_m3",
+    "D2EHDTPA": "D2EHDTPA_loss_kg_m3",
+}  # #339 decision 1 active set
+ACCOUNT_RELATIVE_LIMIT = (
+    1e-9  # #339 check 8: connected accounts against the independent recomputation
+)
+
+
 def accounts(strip, assumptions, feed_li):
-    """Priced operating subtotal on product Li; D2EHDTPA and BuPhen remain unpriced."""
+    """Operating cost outside the active set (C_r) on product Li, and the unpriced BuPhen and D2EHDTPA losses."""
     stripped = {
         e: strip[f"strip_{e}_mol_L_feed"] for e in ("Li", "Na", "Mg", "Ca", "Sr")
     }
@@ -79,10 +88,10 @@ def accounts(strip, assumptions, feed_li):
     case = strip["case"]
     octanol = float(
         flowsheet._row(
-            "data/reference/tea/d2ehdtpa_buphen_price_register.csv",
+            "data/reference/tea/extractant_price_register.csv",
             "component_id",
             "1_octanol",
-        )["delivered_price_usd_kg"]
+        )["price_usd_kg"]
     )
     masses = {
         "regeneration_NaOH": strip["NaOH_mol_L_feed"]
@@ -123,26 +132,7 @@ def accounts(strip, assumptions, feed_li):
     costs = {k: 1000 * m * prices[k] for k, m in masses.items()}
     li_kg_m3 = 2 * carbon["product_li2co3_mol"] * d2_stage.owner.MASSES["Li"] * 1000
     total = sum(costs.values())
-    ceilings = []
-    for price in (17.5, 20.9):
-        ceiling = (li_kg_m3 * costing.LI2CO3_PER_LI * price - total) / strip[
-            "BuPhen_loss_kg_m3"
-        ]
-        prior = (
-            strip["li_recovered_kg_m3"] * costing.LI2CO3_PER_LI * price
-            - strip["priced_subtotal_usd_m3"]
-        ) / strip["BuPhen_loss_kg_m3"]
-        if ceiling >= prior:
-            raise RuntimeError(
-                "F7 product-basis BuPhen ceiling is not lower than its matching strip basis"
-            )
-        ceilings.append(
-            dict(
-                li2co3_usd_kg=price,
-                buphen_ceiling_usd_kg=ceiling,
-                strip_basis_ceiling_usd_kg=prior,
-            )
-        )
+    active = {k: strip[key] / 1000 for k, key in ACTIVE.items()}
     return carbon | {
         "case": case,
         "assumptions": assumptions,
@@ -156,14 +146,46 @@ def accounts(strip, assumptions, feed_li):
         "operating_usd_kg_li": total / li_kg_m3,
         "li_product_kg_m3": li_kg_m3,
         "raw_li_recovery": 2 * carbon["product_li2co3_mol"] / feed_li,
-        "buphen_ceilings": ceilings,
+        **flowsheet.rule_accounts(case, active, total / 1000, li_kg_m3 / 1000),
         "claim": "conditional on ideal complete cleanup and no Li2CO3 co-precipitation; no purity claim; "
         "BuPhen and D2EHDTPA unpriced; capital, labour and energy excluded",
     }
 
 
-def connect_units(model, initial, assumptions):
-    """Connect the charge-weighted strip, ideal cleanup and common carbonation to live extraction."""
+def carbonation_interval(nacl):
+    """The measured Ge 2025 NaCl interval holding `nacl` (enumerated outside the solver), or None outside the data."""
+    with downstream.carbonation.GE_TABLE.open() as stream:
+        knots = [
+            float(r["nacl_mol_kg"])
+            for r in csv.DictReader(stream)
+            if r["series"] == "NaCl"
+        ]
+    return next(
+        ([lo, hi] for lo, hi in zip(knots, knots[1:]) if lo <= nacl <= hi), None
+    )
+
+
+def set_interval(model, interval):
+    """Move the connected carbonation to another measured interval (its bounds and linear interpolation)."""
+    carbon, (lo, hi) = model.fs.carbonation, interval
+    s0, s1 = (
+        downstream.carbonation.empirical_solubility(
+            model._d2_full_process["carbonation_temperature_k"], salt
+        )
+        for salt in (lo, hi)
+    )
+    carbon.interval.set_value((lo, carbon.nacl_mol_kg, hi))
+    carbon.interpolation.set_value(
+        carbon.solubility_mol_kg
+        == s0 + (s1 - s0) * (carbon.nacl_mol_kg - lo) / (hi - lo)
+    )
+    model._carbonation_interval = list(interval)
+
+
+def connect_units(model, initial, assumptions, interval):
+    """Connect the charge-weighted strip, ideal cleanup and common carbonation to live extraction; every account is
+    an expression of the solved stage outlets and design (#342), and `interval` is the measured Ge NaCl interval.
+    """
     fs, rc = model.fs, d2_stage.rc
     org = fs.stage[1].outlet
     complexes = {e: s for e, s in dict(rc.COMPLEX, Na="naa").items() if s in org}
@@ -225,14 +247,7 @@ def connect_units(model, initial, assumptions):
     fs.cleanup.liquor = Expression(
         ("Li", "Na", "Cl"), rule=lambda b, e: cleaned["cleaned_mol"][e]
     )
-    with downstream.carbonation.GE_TABLE.open() as stream:
-        knots = [
-            float(r["nacl_mol_kg"])
-            for r in csv.DictReader(stream)
-            if r["series"] == "NaCl"
-        ]
-    salt = initial["mother_nacl_mol_kg"]
-    interval = next([lo, hi] for lo, hi in zip(knots, knots[1:]) if lo <= salt <= hi)
+    model._d2_full_process = assumptions
     downstream.connect(
         fs,
         dict(fs.cleanup.liquor.items(), H=0.0, C=0.0),
@@ -240,6 +255,7 @@ def connect_units(model, initial, assumptions):
         {"carbonation_interval_mol_kg": interval},
         initial,
     )
+    model._carbonation_interval = list(interval)
     for e, n in cleaned["cleaned_mol"].items():
         fs.carbonation.mixer.concentrate_state[0].flow_mol_comp[e].set_value(value(n))
     fs.carbonation.mixer.concentrate_state[0].flow_mol_comp["H2O"].set_value(
@@ -249,30 +265,49 @@ def connect_units(model, initial, assumptions):
     )
     fs.carbonation.mixer.concentrate_state[0].flow_mol_comp["C"].set_value(0.0)
     downstream.initialize(fs, initial, assumptions["mother_recycle"])
+    # Design-dependent accounts (#342): the shared entrainment on raffinate and strip liquor, octanol, BuPhen,
+    # D2EHDTPA and dodecane losses and the saponification NaOH follow the solved design and stage outlets.
+    d = model._decisions if hasattr(model, "_decisions") else model._design
+    ratio, n = d["O_A"], len(fs.stages)
+    lost = d2_stage.owner.losses_kg_per_l(
+        d2_stage.owner.entrained_l(assumptions, strip.metals["Li"]),
+        d["S"],
+        ratio,
+        fs.boundary["buphen"] / ratio,
+        0.0,
+        fs.stage[n].outlet["buphen"] / ratio,
+        fs.boundary["diluent"] / ratio,
+        site_basis_li_mol_l=model._design["site_basis_li_mol_l"],
+    )
+    fs.losses = Expression(tuple(lost), rule=lambda b, k: lost[k])
     live = {
+        "regeneration_NaOH": fs.boundary["naa"] * flowsheet.MASS_KG_PER_MOL["NaOH"],
         "strip_HCl31": strip.acid_mol * flowsheet.MASS_KG_PER_MOL["HCl31"],
+        "octanol_dissolution": fs.losses["octanol_dissolution"],
+        "octanol_entrainment": fs.losses["octanol_entrainment"],
+        "diluent": fs.losses["diluent"],
         "cleanup_NaOH": fs.cleanup.naoh_mol * flowsheet.MASS_KG_PER_MOL["NaOH"],
         "cleanup_Na2CO3": fs.cleanup.na2co3_mol * flowsheet.MASS_KG_PER_MOL["Na2CO3"],
         "sludge": fs.cleanup.wet_sludge_kg,
         "carbonation_Na2CO3": fs.carbonation.carbonate_mol
         * flowsheet.MASS_KG_PER_MOL["Na2CO3"],
     }
+    active = {
+        "BuPhen": fs.losses["BuPhen_dissolution"] + fs.losses["BuPhen_entrainment"],
+        "D2EHDTPA": fs.losses["D2EHDTPA_entrainment"],
+    }
+    if set(live) != set(initial["mass_kg_per_l"]) or set(active) != set(ACTIVE):
+        raise ValueError("every account must be a live expression")
+    kg = costing.RAW_L_H * pyunits.kg
     costing.attach(
         fs,
         {
-            k: (
-                live.get(k, mass) * costing.RAW_L_H * pyunits.kg,
-                initial["prices_usd_kg"][k] * costing.usd_per(pyunits.kg),
-            )
-            for k, mass in initial["mass_kg_per_l"].items()
+            k: (m * kg, initial["prices_usd_kg"][k] * costing.usd_per(pyunits.kg))
+            for k, m in live.items()
         },
-        2
-        * fs.carbonation.product_mol
-        * d2_stage.owner.MASSES["Li"]
-        * costing.RAW_L_H
-        * pyunits.kg,
+        2 * fs.carbonation.product_mol * d2_stage.owner.MASSES["Li"] * kg,
+        active={k: m * kg for k, m in active.items()},
     )
-    model._d2_full_process = assumptions
 
 
 def report(model, result):
@@ -329,6 +364,26 @@ def report(model, result):
     if max(abs(n) for n in unit_errors.values()) > 1e-12:
         raise RuntimeError(
             f"Connected carbonation differs from arithmetic: {unit_errors}"
+        )
+    # #339 check 8: every reagent, loss and product account of the connected model against the independent
+    # recomputation from the solved stage outlets at the solved design, relative.
+    pairs = {
+        **{
+            k: (value(getattr(fs.costing, "aggregate_flow_" + k)) / 1000, m)
+            for k, m in owner["mass_kg_per_l"].items()
+        },
+        **{
+            k: (value(fs.costing.active_loss[k]) / 1000, m)
+            for k, m in owner["active_mass_kg_per_l"].items()
+        },
+        "li_product_kg_m3": (value(fs.costing.li_kg_h), owner["li_product_kg_m3"]),
+    }
+    account_differences = {
+        k: abs(a / b - 1) if b else abs(a) for k, (a, b) in pairs.items()
+    }
+    if max(account_differences.values()) > ACCOUNT_RELATIVE_LIMIT:
+        raise RuntimeError(
+            f"Connected accounts differ from the independent recomputation: {account_differences}"
         )
     balances = {
         c.name: value(c.body - c.lower)
@@ -387,6 +442,8 @@ def report(model, result):
         "strip_proton_closure_mol": proton_error,
         "strip_fraction_difference_mol": differences,
         "owner_differences": unit_errors,
+        "account_relative_differences": account_differences,
+        "carbonation_interval_mol_kg": model._carbonation_interval,
         "downstream_balance_residuals_mol_per_raw_l": balances,
         "water_streams_kg_per_raw_l": {
             "cleanup concentrate": owner["cleanup"]["concentrate_water_kg"],

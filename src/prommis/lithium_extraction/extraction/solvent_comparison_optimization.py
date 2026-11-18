@@ -49,16 +49,24 @@ def build(
 ):
     if arm.startswith("DES"):
         design = dict(
-            total_N_mol=des.preparation((9.5, 10.0, 10.5)[start])["total_N_mol"],
+            total_N_mol=des.preparation(
+                (9.5, 10.0, 10.5)[start], des.feed() if feed is None else feed
+            )["total_N_mol"],
             topo_wt_fraction=(0.2, 0.3, 0.4)[start],
         )
         design.update(fixed or {})
         if initialization_log is not None:
             initialization_log.update(design)
-        model = des.build(arm[-1], n, design["total_N_mol"], design["topo_wt_fraction"])
+        model = des.build(
+            arm[-1],
+            n,
+            design["total_N_mol"],
+            design["topo_wt_fraction"],
+            des.feed() if feed is None else feed,
+        )
         if initialization_log is not None:
             initialization_log.update(cascade=model._initialization)
-        model._design, model._physical_feed = design, des.feed()
+        model._design = design
         model._decisions = dict(
             total_N_mol=model.fs.des.total_N,
             topo_wt_fraction=model.fs.des.topo_fraction,

@@ -84,10 +84,12 @@ def _number(value):
     return value if math.isfinite(value) and value >= 0 else None
 
 
-def raw_feed(name, scale=1.0, *, reference_cations=None):
+def raw_feed(name, scale=1.0, *, lithium_scale=1.0, reference_cations=None):
     """Curated feed or an ID in the retained USGS tables; missing optional analytes are labelled."""
     if not math.isfinite(scale) or scale < 0:
         raise ValueError("Ca/Mg scale must be finite and nonnegative")
+    if not math.isfinite(lithium_scale) or lithium_scale < 0:
+        raise ValueError("Lithium scale must be finite and nonnegative")
     identity = CURATED.get(name, str(name))
     matches = []
     for path, key in ((SOUTH_AR, "SITEID"), (PWGD, "IDUSGS")):
@@ -167,6 +169,9 @@ def raw_feed(name, scale=1.0, *, reference_cations=None):
         raise ValueError(
             f"USGS ID {identity}: Ca/Mg scaling requires negative chloride"
         )
+    original_li = mol["Li"]
+    mol["Li"] *= lithium_scale
+    mol["Cl"] += mol["Li"] - original_li
     locator = f"{path}: " + (
         f'SITEID={identity}; IDDB={row["IDDB"]}'
         if path == SOUTH_AR
@@ -192,6 +197,15 @@ def raw_feed(name, scale=1.0, *, reference_cations=None):
             scale * (ions["Ca"] + ions["Mg"]) / ions["Li"] if ions["Li"] else None
         ),
     }
+    if lithium_scale != 1.0:
+        result["lithium_scale"] = lithium_scale
+        result["li_mg_per_raw_l"] = mol["Li"] * MOLAR_MASS["Li"] * 1000
+        result["ca_mg_li_mass_ratio"] = (
+            sum(mol[e] * MOLAR_MASS[e] for e in ("Ca", "Mg"))
+            / (mol["Li"] * MOLAR_MASS["Li"])
+            if mol["Li"]
+            else None
+        )
     if name == "MS2":
         result["T_C"] = float(row["TEMP"])
     return result

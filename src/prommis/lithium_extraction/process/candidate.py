@@ -1,7 +1,8 @@
-"""One campaign candidate of the modular produced-water process (#201): its build, solve and disposition, solved
-in a fresh process with a wall limit. The caller owns the records folder and saves the record.
-"""
+"""One cell of the modular produced-water process (#201, #341): a water, a solvent record, a scope, a case, a stage
+count and a variant; its build, solve and disposition, solved in a fresh process with a wall limit. The caller owns the
+records folder and saves the record."""
 
+import functools
 import hashlib
 import itertools
 import json
@@ -16,13 +17,102 @@ import time
 import traceback
 
 from prommis.lithium_extraction.paths import REPO_ROOT
+from prommis.lithium_extraction.process import waters as brines, feeds as records
+from prommis.lithium_extraction.process.feeds import SOLVENTS
 
 STUDY = REPO_ROOT / "analyses/prototypes/modular_process"
+MATRIX = STUDY / "results/site_solvent_matrix"
+CAMPAIGN_SOLVENTS = ("fresh", "A", "C", "D2EHDTPA-Held", "D2EHDTPA-Figiel")
+# Every status a record can carry. A fixed design point that misses a requirement is 'target_not_met' or
+# 'no_product' (#339; before #342 both were 'infeasible'), and one whose reconstructed hydrogen is negative is
+# 'outside_domain'; 'infeasible' is reserved for a bound that proves a cell infeasible over its whole design range.
+DISPOSITIONS = (
+    "grid",
+    "optimal",
+    "infeasible",
+    "unresolved",
+    "outside_domain",
+    "no_product",
+    "target_not_met",
+)
+FIXED_POINT_FAILURES = ("infeasible", "no_product", "target_not_met", "outside_domain")
 
 
-def assumptions(site, case, front_end=None):
-    result = json.loads(
-        (STUDY / f"results/full_process/{site}_{case}.json").read_text()
+@functools.cache
+def case_assumptions(case, rule=False):
+    """Prices, cake moisture, wash volumes, scrub and strip fractions, acid recovery, concentrate molality and recycle
+    belong to the case, not the water. Read once per case from the MS-2 R4 replay: the four retained replays agree on
+    them except the starting extractant (a design start, kept with each water) and the last digit of the diluent
+    price conversion. The shared sourced entrainment (#342) is added for D2EHDTPA/BuPhen; saponified HBTA/TOPO keeps
+    the replay's own organic loss and HBTA/TOPO prices unless `rule` (a #342 rule job), which drops them: HBTA and
+    TOPO are then the unpriced active set and lose organic by the shared entrainment."""
+    from prommis.lithium_extraction.process.costing import entrainment_l_per_l
+
+    a = json.loads((STUDY / f"results/full_process/MS2_{case}.json").read_text())[
+        "full_process"
+    ]["assumptions"]
+    dropped = ("extractant_mol_l", "band_end") + (
+        ("organic_loss", "organic_loss_provenance") if rule else ()
+    )
+    return {k: n for k, n in a.items() if k not in dropped} | {
+        "entrainment_l_per_l": entrainment_l_per_l(case),
+        "entrainment_provenance": f"data/reference/tea/solvent_entrainment.csv:{case} (#342); no purge",
+    }
+
+
+def washed_lithium(softening, case):
+    washed = softening[case]
+    return washed["aqueous_mol"]["Li"] / washed["feed_l"]
+
+
+def assumptions(site, case, front_end=None, composition=None, rule=False):
+    """One cell's inputs: the case assumptions and the water's softened state.
+
+    A curated water keeps its retained #176/#177 replay (softening, starting design, initial downstream accounts).
+    Any other sample ID reads its softening record for the case from this matrix (`run_softening --brine <ID> --case
+    <case>`; each case has its own acceptance) and starts from the
+    retained profile and extractant of the curated water nearest in washed-inlet lithium.
+    """
+    path = STUDY / f"results/full_process/{site}_{case}.json"
+    if path.exists():
+        result = json.loads(path.read_text())
+        result["initial_accounts"] = result[
+            "full_process"
+        ]  # the replay's accounts start the downstream units
+    else:
+        softening = json.loads(
+            (MATRIX / "softening" / f"{site}_{case}.json").read_text()
+        )
+        retained = {
+            s: json.loads((STUDY / f"results/full_process/{s}_{case}.json").read_text())
+            for s in brines.CURATED
+        }
+        lithium = washed_lithium(softening, case)
+        nearest = min(
+            retained,
+            key=lambda s: abs(washed_lithium(retained[s]["softening"], case) - lithium),
+        )
+        near = retained[nearest]
+        result = {
+            "softening": softening,
+            "fixed_design": near["fixed_design"],
+            "starting_water": nearest,
+            "starting_profile": {
+                "organic": [
+                    {
+                        "li": r["li_org_out_mol_l"],
+                        "na": r["na_org_out_mol_l"],
+                        "hbta": r["hbta_org_out_mol_l"],
+                    }
+                    for r in near["initial_direct_cascade"]["stages"]
+                ],
+                "guesses": [
+                    r["certificate"]["phase_amounts_mol"] for r in near["stages"]
+                ],
+            },
+        }
+    result["full_process"] = dict(
+        result.get("full_process", {}), assumptions=case_assumptions(case, rule)
     )
     if front_end is not None:
         result["softening"] = json.loads(
@@ -30,86 +120,151 @@ def assumptions(site, case, front_end=None):
                 STUDY / f"results/front_end/softening/{front_end}_{site}_{case}.json"
             ).read_text()
         )
+    if (
+        composition is not None
+    ):  # a scaled water (#342 target paths): its own softening; accounts from that state
+        result["softening"] = json.loads(
+            (REPO_ROOT / composition["softening"]).read_text()
+        )
+        result.pop("initial_accounts", None)
     return result
 
 
-def jobs():
+def raw_feed(job):
+    """The job's raw water: measured, or with Ca/Mg or lithium scaled (`job['composition']`, #342 target paths)."""
+    c = job.get("composition") or {}
+    return brines.raw_feed(
+        job["site"], c.get("scale", 1.0), lithium_scale=c.get("lithium_scale", 1.0)
+    )
+
+
+def unavailable(site):
+    """Why a water cannot enter a cell (a required analyte or its water mass is missing), else None."""
+    try:
+        raw = brines.raw_feed(site)
+    except ValueError as error:
+        if "missing required analytes" in str(error):
+            return str(error)
+        raise
+    return (
+        None
+        if raw["water_kg"] is not None
+        else f"{site}: water mass unavailable: SG or TDS not reported"
+    )
+
+
+def bound_disposition(job, reference):
+    """A cell is infeasible only when a bound proves it over the whole design range (#201 campaign bounds)."""
+    from prommis.lithium_extraction.process import flowsheet
+
+    design = SOLVENTS[job["solvent"]]["design"]
+    bounds, target = (
+        records.bounds(job["solvent"], job.get("end"), job.get("rule", False)),
+        design["li_target"],
+    )
+    softening = reference["softening"][job["case"]]
+    inlet_li = (
+        softening["aqueous_mol"]["Li"] / softening["feed_l"]
+        if job["scope"] == "full_process"
+        else raw_feed(job)["mol"]["Li"]
+    )
+    capacity = (
+        0.72 * bounds["organic_to_aqueous_ratio"][1] * bounds["extractant_mol_l"][1]
+    )
+    if target is not None and capacity < target * inlet_li:
+        return dict(
+            status="infeasible",
+            reason="Li target exceeds maximum loaded-organic capacity throughout decision bounds",
+            capacity_mol_per_nominal_l=capacity,
+            required_li_mol_per_nominal_l=target * inlet_li,
+        )
+    if job["scope"] == "full_process":
+        a = reference["full_process"]["assumptions"]
+        li_max = (
+            min(inlet_li, capacity)
+            * (1 - a["scrub_li_loss"])
+            * flowsheet.strip_li_fraction()
+        )
+        salt_min = a["concentrate_li_mol_kg"] * (
+            a["acid_recovery"]
+            + (1 - a["acid_recovery"])
+            * 0.25
+            * bounds["organic_to_aqueous_ratio"][0]
+            / li_max
+        )
+        if salt_min > 3:
+            return dict(
+                status="infeasible",
+                reason="carbonation outside the measured solubility data throughout decision bounds",
+                minimum_mother_nacl_mol_kg=salt_min,
+            )
+    return None
+
+
+def jobs(sites=tuple(brines.CURATED), solvents=CAMPAIGN_SOLVENTS):
+    """Cells of every site and solvent, from each solvent record's scopes, cases, stage counts and variants."""
     rows = []
-    for solvent, site, scope, case, n in itertools.product(
-        ("fresh", "A", "C"),
-        ("MS2", "BR2", "MarsHill", "Westmoreland"),
-        ("extraction_only", "full_process"),
-        ("base", "optimistic"),
-        range(1, 6),
-    ):
-        for end in ("low", "high") if solvent == "C" else ("fitted",):
-            identity = f"{solvent}_{site}_{scope}_{case}_n{n}_{end}"
-            rows.append(
-                dict(
-                    id=identity,
-                    solvent=solvent,
-                    site=site,
-                    scope=scope,
-                    case=case,
-                    stages=n,
-                    end=end,
+    for solvent in solvents:
+        record = SOLVENTS[solvent]
+        design = record["design"]
+        for site, (scope, cases) in itertools.product(sites, design["scopes"].items()):
+            for case, n, end in itertools.product(
+                cases, design["stages"], record["variants"]
+            ):
+                identity = record.get("cell_id", {}).get(
+                    scope, "{solvent}_{site}_{scope}_{case}_n{stages}_{end}"
                 )
-            )
-    for basis, site in itertools.product(
-        ("Held", "Figiel"), ("MS2", "BR2", "MarsHill", "Westmoreland")
-    ):
-        rows.append(
-            dict(
-                id=f"D2{basis}_{site}",
-                solvent="D2EHDTPA-" + basis,
-                site=site,
-                scope="extraction_only",
-                case="base",
-                stages=5,
-                end="fitted",
-            )
-        )
-    for basis, site, case in itertools.product(
-        ("Held", "Figiel"),
-        ("MS2", "BR2", "MarsHill", "Westmoreland"),
-        ("base", "optimistic"),
-    ):
-        rows.append(
-            dict(
-                id=f"D2{basis}_{site}_full_process_{case}",
-                solvent="D2EHDTPA-" + basis,
-                site=site,
-                scope="full_process",
-                case=case,
-                stages=5,
-                end="fitted",
-            )
-        )
+                rows.append(
+                    dict(
+                        id=identity.format(
+                            solvent=solvent,
+                            site=site,
+                            scope=scope,
+                            case=case,
+                            stages=n,
+                            end=end,
+                        ),
+                        solvent=solvent,
+                        site=site,
+                        scope=scope,
+                        case=case,
+                        stages=n,
+                        end=end,
+                    )
+                )
     return rows
 
 
+def interpolated(rows, n):
+    """`n` stage rows taken from a retained profile of another stage count."""
+    return [rows[round(k * (len(rows) - 1) / max(n - 1, 1))] for k in range(n)]
+
+
 def build(job, fixed=None):
-    from prommis.lithium_extraction.process import waters as brines, feeds as records
-    from prommis.lithium_extraction.extraction import (
-        fresh_organic as fresh,
-        set_a,
-        set_c,
-        stage,
-    )
+    from prommis.lithium_extraction.extraction import set_c, stage
     from prommis.lithium_extraction.extraction import countercurrent as cc
 
     solvent, site, scope = (job[k] for k in ("solvent", "site", "scope"))
-    reference = assumptions(site, job["case"], job.get("front_end"))
+    record = SOLVENTS[solvent]
+    adapter = records.stage_adapter(record["stage_adapter"])
+    bounds = records.bounds(solvent, job["end"], job.get("rule", False))
+    reference = assumptions(
+        site,
+        job["case"],
+        job.get("front_end"),
+        job.get("composition"),
+        job.get("rule", False),
+    )
     soft = reference["softening"]
     washed = soft[job["case"]]
-    raw = brines.raw_feed(site)
+    raw = raw_feed(job)
     if scope == "full_process":
         feed = set_c.washed_feed(washed)
         feed["raw_brine"] = raw
         feed["labels"] = [
-            s for s in feed["labels"] if solvent == "C" or "#158 set C" not in s
+            s for s in feed["labels"] if adapter is set_c or "#158 set C" not in s
         ]
-        feed["labels"] += raw["labels"] + records.SOLVENTS[solvent]["labels"]
+        feed["labels"] += raw["labels"] + record["labels"]
     else:
         feed = records.extraction_feed(raw, solvent)
         feed["raw_brine"] = raw
@@ -121,43 +276,56 @@ def build(job, fixed=None):
             },
             "pH": -math.log10(feed["model_feed"]["H"]),
         }
-    if solvent == "C":
-        c = reference["fixed_design"]["extractant_mol_l"]
-        if (
-            job["phase"] != "fixed"
-            and fixed
-            and fixed.get("status") in ("grid", "optimal")
-        ):
-            c = fixed["fixed_design"]["extractant_mol_l"]
-        constants = json.loads(
-            (
-                REPO_ROOT
-                / "analyses/prototypes/hbta_topo_ms2_prototype/results/set_c_summary.json"
-            ).read_text()
-        )["ends"][job["end"]]["ln_k"]
-        design = dict(
-            organic_to_aqueous_ratio=1.0,
-            extractant_mol_l=c,
-            saponification_ratio=0.7,
-            ln_k=constants,
+    released = (
+        job["phase"] != "fixed" and fixed and fixed.get("status") in ("grid", "optimal")
+    )
+    if record.get("support_rebuild"):  # stage supports come from a direct cascade
+        start = (fixed if released else reference)["fixed_design"]
+        # A fixed solve uses the record's retained design. A released solve starts each free decision from its warm
+        # record (#342 O6); a decision it holds (`job['hold']`) or cannot move keeps the record's retained value.
+        retained = record["design"].get("fixed", {})
+        free = {k for k, (lo, hi) in bounds.items() if lo != hi} - set(
+            job.get("hold", ())
         )
-        if fixed and "stages" in fixed:
+        design = {
+            k: (
+                start[k]
+                if released and (k in free or k not in retained)
+                else retained.get(k, start[k])
+            )
+            for k in bounds
+        }
+        design |= job.get("design", {})
+        c = design["extractant_mol_l"]
+        constants = json.loads(
+            (REPO_ROOT / job.get("constants", record["constants"])).read_text()
+        )["ends"][job["end"]]["ln_k"]
+        design["ln_k"] = constants
+        if (
+            fixed and "stages" in fixed and not job.get("cold_start")
+        ):  # cold start: a direct cascade at this design
             direct = direct_from_result(
                 fixed, job["stages"], front_end=job.get("front_end")
             )
         else:
+            start = reference.get("starting_profile")
+            if start is not None:
+                start = {
+                    k: interpolated(rows, job["stages"]) for k, rows in start.items()
+                }
             direct = cc.countercurrent(
                 constants,
                 reaction_set="C",
                 stage_count=job["stages"],
-                organic_to_aqueous=1.0,
+                organic_to_aqueous=design["organic_to_aqueous_ratio"],
                 extractant=c,
-                saponification_fraction=0.7,
+                saponification_fraction=design["saponification_ratio"],
                 feed_li=washed["aqueous_mol"]["Li"] / washed["feed_l"],
                 feed_na=washed["aqueous_mol"]["Na"] / washed["feed_l"],
                 feed_acidity=cc.acidity_at_ph(washed["pH"]),
+                start=start,
             )
-        model = set_c.build_flowsheet(
+        model = adapter.build_flowsheet(
             washed,
             stages=job["stages"],
             scenario=design,
@@ -167,41 +335,26 @@ def build(job, fixed=None):
         if scope == "extraction_only":
             model._physical_feed = feed
     else:
-        owner = fresh if solvent == "fresh" else set_a
-        source = json.loads(
-            (
-                STUDY
-                / (
-                    "results/fresh_r1.json"
-                    if solvent == "fresh"
-                    else "results/set_a_r2.json"
-                )
-            ).read_text()
-        )
+        source = json.loads((STUDY / record["starting_record"]).read_text())
         design = dict(source["fixed_design"])
-        if (
-            job["phase"] != "fixed"
-            and fixed
-            and fixed.get("status") in ("grid", "optimal")
-        ):
+        if released:
             design = dict(fixed["fixed_design"])
-            if solvent == "fresh":
+            if not record["saponified"]:
                 design.pop("saponification_ratio", None)
         if scope == "full_process":
             v = washed["feed_l"]
             nominal = dict(
                 feed, model_feed={k: n / v for k, n in feed["model_feed"].items()}
             )
-            model = owner.build_flowsheet(
+            model = adapter.build_flowsheet(
                 nominal, stages=job["stages"], scenario=design
             )
             model._washed, model._physical_feed = washed, feed
         else:
-            model = owner.build_flowsheet(feed, stages=job["stages"], scenario=design)
+            model = adapter.build_flowsheet(feed, stages=job["stages"], scenario=design)
         profiles = []
         old_rows = fixed["stages"] if fixed and "stages" in fixed else source["stages"]
-        for k in range(job["stages"]):
-            old = old_rows[round(k * (len(old_rows) - 1) / max(job["stages"] - 1, 1))]
+        for old in interpolated(old_rows, job["stages"]):
             profile = dict(
                 old.get("outlet_mol_per_nominal_l", old.get("outlet_mol_per_raw_l"))
             )
@@ -212,7 +365,11 @@ def build(job, fixed=None):
                         profile[s] *= model._feeds[0].get(s, 0) / original[s]
             profiles.append(profile)
         stage.initialize(model, profiles)
-    model._case = job["case"]
+    model._case, model._end, model._rule = (
+        job["case"],
+        job["end"],
+        job.get("rule", False),
+    )
     return model, soft, reference
 
 
@@ -260,8 +417,11 @@ def direct_from_result(result, stage_count=None, *, front_end=None):
                 )
                 for s in set_c.SPECIES
             }
+        # Per litre of organic at the record's own O/A (#342 O6; retained records are all at O/A 1).
         state = set_c.state_from_inlet(
-            inlet, 1.0, result["fixed_design"]["extractant_mol_l"]
+            inlet,
+            result["fixed_design"]["organic_to_aqueous_ratio"],
+            result["fixed_design"]["extractant_mol_l"],
         )
         certificate = row["certificate"]
         rows.append(
@@ -285,50 +445,71 @@ def direct_from_result(result, stage_count=None, *, front_end=None):
     return {"stages": rows, "start": {"guesses": guesses}}
 
 
-def d2_simulation(job, directory, remaining, records, brine=None, start=None):
-    """`records` is the campaign records folder, read for the whole-process initialization; `brine` replaces the site's
-    raw feed; the site still sets the design's site basis; `start` replaces the extraction-only stage profiles (#245).
+def d2_start(job, li_mol_l):
+    """The record's starting design, moved to the nearest point inside the organic-site range S x Li / (O/A) (#375):
+    O/A first, then S, each within its bounds. A start already inside is unchanged; one no design reaches stays outside.
     """
+    record = SOLVENTS[job["solvent"]]["design"]
+    design = (
+        record["fixed"]
+        | record["site_fixed"].get(job["site"], {})
+        | job.get("design", {})
+    )
+    domain = job.get("design_range") or record
+    (lo, hi), bounds = domain["sites_mol_l"], domain["bounds"]
+    sites = design["S"] * li_mol_l / design["O_A"]
+    if lo <= sites <= hi:
+        return design
+    target = min(
+        max(sites, lo * (1 + 1e-9)), hi * (1 - 1e-9)
+    )  # just inside: the range check is inclusive
+    o_a = min(max(design["S"] * li_mol_l / target, bounds["O_A"][0]), bounds["O_A"][1])
+    return dict(
+        design,
+        O_A=o_a,
+        S=min(max(target * o_a / li_mol_l, bounds["S"][0]), bounds["S"][1]),
+    )
+
+
+def d2_simulation(job, directory, remaining, records, brine=None, start=None):
+    """One D2EHDTPA/BuPhen cell at its stage count. The extraction is solved at the retained #188/#214 design (or
+    `job['design']`); a full-process job then connects strip, cleanup and carbonation with every account live (#342)
+    in the measured Ge interval of that start. A 'selected' job releases the #188 design range under `job['objective']`
+    and moves between adjacent measured intervals outside the solver while its objective improves.
+
+    `records` is kept for callers; `brine` replaces the site's raw feed (the site still sets the site basis);
+    `start` replaces the starting stage profiles (#245)."""
+    from pyomo.environ import Var, value
     from prommis.lithium_extraction.process import (
-        waters as brines,
         d2ehdtpa_buphen_whole_process as d2_full_process,
+        optimization,
     )
     from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_stage as d2, stage
 
     raw = brines.raw_feed(job["site"])
     source, old = d2.reference_record(job["solvent"])
-    ratio = 1.25 if job["site"] == "MarsHill" else 1.0
+    fixed = d2_start(job, raw["mol"]["Li"])
+    ratio = fixed["O_A"]
     design = dict(
-        B=1.0,
-        S=1.2,
-        O_A=ratio,
-        Sr_decade=0.0,
-        site_basis_li_mol_l=raw["mol"]["Li"],
-        ln_K_Li_Mg_Ca=old["ln_K_Li_Mg_Ca"],
+        fixed, site_basis_li_mol_l=raw["mol"]["Li"], ln_K_Li_Mg_Ca=old["ln_K_Li_Mg_Ca"]
     )
     model = d2.build_flowsheet(
         raw if brine is None else brine,
         solvent=job["solvent"],
         scope=job["scope"],
+        stages=job["stages"],
         scenario=design,
+        design_range=job.get("design_range"),
     )
-    if job["scope"] == "full_process":
-        retained = json.loads(
-            (
-                records
-                / "fixed"
-                / f'D2{job["solvent"].split("-")[-1]}_{job["site"]}.json'
-            ).read_text()
-        )
-        profiles = [row["outlet_mol_per_raw_l"] for row in retained["stages"]]
-    elif start is not None:
+    model._case = job["case"]
+    if start is not None:
         profiles = start
-    else:
+    else:  # the retained cascade, scaled to this feed and design and taken at this stage count
         profiles = []
         reference_sites = d2.owner.BASIS["site_basis_li_mol_L"] * old["case"]["S"]
         total_sites = design["S"] * design["site_basis_li_mol_l"]
         reference_feed = d2.reference_feed(job["solvent"])["model_feed"]
-        for oldrow in old["extraction"]["stages"]:
+        for oldrow in interpolated(old["extraction"]["stages"], job["stages"]):
             profile = {
                 s: sum(p.get(s, 0.0) for p in oldrow["amounts_mol"])
                 for s in model._chemistry.species
@@ -347,13 +528,18 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
     stage.solve(model, directory, wall_seconds=remaining())
     result = d2.report(model, case=job["case"])
     result["sites_mol_l_organic"] = d2.owner.site_supply(
-        1.0, 1.2, ratio, 5, site_basis_li_mol_l=raw["mol"]["Li"]
+        design["B"],
+        design["S"],
+        ratio,
+        job["stages"],
+        site_basis_li_mol_l=raw["mol"]["Li"],
+        design_range=job.get("design_range"),
     )
     result["strip_li_recovery_fraction"] = result["accounts"]["R_rec"]
     result["product_recovery_fraction"] = None
     result["cost_usd_kg_li"] = result["accounts"]["priced_subtotal_usd_kg_li"]
     result["cost_usd_m3_raw_brine"] = result["accounts"]["priced_subtotal_usd_m3"]
-    result["cost_basis"] = result["accounts"]["li_denominator"]
+    result["cost_basis"] = "kg strip-recovered Li per m3 raw brine"
     result["calibration_coverage"] = [
         {
             "quantity": name,
@@ -361,7 +547,7 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
             "unit": "mol/L aqueous",
             "basis": "nominal raw aqueous model feed",
             "comparison": "physical calibration coverage unverified",
-            "source_owner": d2.records.SOLVENTS[job["solvent"]]["feed_owner"],
+            "source_owner": SOLVENTS[job["solvent"]]["feed_owner"],
         }
         for name in ("Li", "Na")
     ] + [
@@ -370,7 +556,7 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
             "value": None,
             "unit": "dimensionless",
             "comparison": "H/pH not represented by existing D2 feed chemistry",
-            "source_owner": d2.records.SOLVENTS[job["solvent"]]["feed_owner"],
+            "source_owner": SOLVENTS[job["solvent"]]["feed_owner"],
         }
     ]
     result["na_metric"] = {
@@ -382,35 +568,110 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
         ),
     }
     result["outlet_li_loading_fractions"] = []
-    if job["scope"] == "full_process":
-        stopping_point = "construction"
+    if job["scope"] != "full_process":
+        return result
+    stopping_point = "construction"
+    try:
+        a = case_assumptions(job["case"], True)  # D2EHDTPA/BuPhen is on the #342 basis
         try:
-            a = assumptions(job["site"], job["case"])["full_process"]["assumptions"]
-            try:
-                initial = d2_full_process.accounts(
-                    d2.strip_accounts(result["accounts"], job["solvent"]),
-                    a,
-                    raw["mol"]["Li"],
-                )
-            except ValueError as error:
-                if "outside Ge" not in str(error) and "no Li2CO3 product" not in str(
-                    error
-                ):
-                    raise
-                return result | {"downstream_admissible": False, "reason": str(error)}
-            d2_full_process.connect_units(model, initial, a)
-            stopping_point = "solve"
-            stage.solve(model, directory / "full_process", wall_seconds=remaining())
-            stopping_point = "reconciliation"
-            downstream_result = result | d2.report(model, case=job["case"])
-            return d2_full_process.report(model, downstream_result)
-        except Exception as error:
+            initial = d2_full_process.accounts(
+                d2.strip_accounts(result["accounts"], job["solvent"]),
+                a,
+                raw["mol"]["Li"],
+            )
+        except ValueError as error:
+            if "no Li2CO3 product" not in str(error):
+                raise
             return result | {
-                "reason": f"{type(error).__name__}: {error}",
-                "stopping_point": stopping_point,
-                "exception_traceback": traceback.format_exc(),
+                "downstream_admissible": False,
+                "reason": f"no carbonate product: {error}",
             }
-    return result
+        interval = d2_full_process.carbonation_interval(initial["mother_nacl_mol_kg"])
+        if interval is None:
+            return result | {
+                "downstream_admissible": False,
+                "reason": "no carbonate product: outside the measured solubility data",
+            }
+        d2.decisions(model)
+        d2_full_process.connect_units(model, initial, a, interval)
+        stopping_point = "solve"
+        stage.solve(model, directory / "full_process", wall_seconds=remaining())
+        starting = optimization.rule_values(model) | {
+            "design": {k: value(v) for k, v in model._decisions.items()},
+            "carbonation_interval_mol_kg": list(interval),
+        }
+        if job["phase"] == "selected":
+            stopping_point = "optimization"
+            d2.release(
+                model,
+                job["objective"],
+                minimum_li_extraction=job.get("minimum_li_extraction"),
+            )
+            stage.solve(model, directory / "released", wall_seconds=remaining())
+            moves = []
+            while (
+                True
+            ):  # measured intervals are enumerated outside the solver, never extrapolated
+                salt, (lo, hi) = (
+                    value(model.fs.carbonation.nacl_mol_kg),
+                    model._carbonation_interval,
+                )
+                knots = d2_full_process.carbonation_interval
+                neighbour = (
+                    knots(hi + 1e-12)
+                    if abs(salt - hi) <= 1e-9
+                    else (
+                        knots(lo - 1e-12) if abs(salt - lo) <= 1e-9 and lo > 0 else None
+                    )
+                )
+                if neighbour is None or neighbour == [lo, hi]:
+                    break
+                kept = (
+                    [(v, v.value) for v in model.component_data_objects(Var)],
+                    value(model.rule),
+                    model._solve,
+                    model._solved_values,
+                    [lo, hi],
+                )
+                d2_full_process.set_interval(model, neighbour)
+                try:
+                    stage.solve(
+                        model,
+                        directory / f"interval_{neighbour[0]:g}_{neighbour[1]:g}",
+                        wall_seconds=remaining(),
+                    )
+                    improved = value(model.rule) < kept[1] - 1e-9 * abs(kept[1])
+                except RuntimeError as error:
+                    improved, error_text = False, str(error)
+                else:
+                    error_text = None
+                moves.append(
+                    dict(interval=neighbour, improved=improved, error=error_text)
+                )
+                if not improved:
+                    for v, x in kept[0]:
+                        v.set_value(x, skip_validation=True)
+                    model._solve, model._solved_values = kept[2], kept[3]
+                    d2_full_process.set_interval(model, kept[4])
+                    break
+            result["carbonation_interval_moves"] = moves
+        stopping_point = "reconciliation"
+        downstream_result = result | d2.report(model, case=job["case"])
+        reported = d2_full_process.report(model, downstream_result)
+        solved = {k: value(v) for k, v in model._decisions.items()}
+        return reported | {
+            "starting_design_rule": starting,
+            "rule": optimization.rule_values(model)
+            | {"objective": getattr(model, "_objective", None)},
+            # organic site concentration S x feed Li / (O/A) at the solved design (the #188 0.020-0.060 M range)
+            "sites_mol_l_organic": solved["S"] * raw["mol"]["Li"] / solved["O_A"],
+        }
+    except Exception as error:
+        return result | {
+            "reason": f"{type(error).__name__}: {error}",
+            "stopping_point": stopping_point,
+            "exception_traceback": traceback.format_exc(),
+        }
 
 
 def fixed_disposition(result, solvent):
@@ -425,10 +686,13 @@ def fixed_disposition(result, solvent):
             if r["certificate"].get("reason")
         ]
         return dict(status="unresolved", reason="; ".join(dict.fromkeys(reasons)))
+    # #339: 'infeasible' is reserved for a bound that proves a cell infeasible over its whole design range
+    # (bound_disposition). One fixed design point that has no product, leaves the composition mapping or misses a
+    # requirement proves nothing about the range, so it gets its own label.
     if result.get("downstream_admissible") is False:
         return dict(
-            status="infeasible",
-            reason="fixed design: carbonation outside the measured solubility data or acid bounds",
+            status="no_product",
+            reason="no carbonate product: fixed design: carbonation outside the measured solubility data or acid bounds",
         )
     failures = opt.target_failures(result, solvent)
     numerical = any(
@@ -438,9 +702,13 @@ def fixed_disposition(result, solvent):
     numerical |= any(
         not math.isfinite(n) for n in result["R7"]["physical_raffinate"].values()
     )
-    if solvent == "C" and not numerical and result["R7"]["physical_raffinate"]["H"] < 0:
+    if (
+        SOLVENTS[solvent].get("support_rebuild")
+        and not numerical
+        and result["R7"]["physical_raffinate"]["H"] < 0
+    ):
         return dict(
-            status="infeasible",
+            status="outside_domain",
             reason="; ".join(
                 [
                     "Fixed design is infeasible under the declared nominal-acidity composition mapping: reconstructed hydrogen is negative. "
@@ -450,19 +718,62 @@ def fixed_disposition(result, solvent):
             ),
         )
     return dict(
-        status="grid" if not failures else "unresolved" if numerical else "infeasible",
+        status=(
+            "grid" if not failures else "unresolved" if numerical else "target_not_met"
+        ),
         reason="fixed design grid result" if not failures else "; ".join(failures),
     )
 
 
+def objective_value(result, objective):
+    """The value an objective maximizes (sign-adjusted), from a record's rule values."""
+    rule = result["rule"]
+    if objective["kind"] == "affordable":
+        return rule["affordable_price_usd_kg"]
+    if objective["kind"] == "headroom":
+        return rule["headroom_usd_m3"]
+    return (
+        -(
+            rule["cost_outside_active_usd_m3"]
+            + objective["theta"] * rule["active_loss_kg_m3"]
+        )
+        / rule["carbonate_kg_m3"]
+    )
+
+
+def worse(result, fixed, objective):
+    """A local optimum below its own accepted starting design, beyond the 1e-6 relative comparison limit."""
+    if objective is None:
+        return result["cost_usd_kg_li"] > fixed["cost_usd_kg_li"] * (1 + 1e-6)
+    optimum, start = objective_value(result, objective), objective_value(
+        fixed, objective
+    )
+    return optimum < start - 1e-6 * abs(start)
+
+
 def starting_record(job, records):
-    """(parent fixed record, record the solve starts from, its label or None) of a non-D2 candidate."""
+    """(parent fixed record, record the solve starts from, its label or None) of a non-D2 candidate. A job's
+    `warm_start` (repository path) names the record to start from, as a #342 check starts from a solved optimum.
+    """
+    if job.get("warm_start"):
+        parent = (
+            None
+            if job["phase"] == "fixed"
+            else json.loads(
+                (records / "fixed" / (job["parent_id"] + ".json")).read_text()
+            )
+        )
+        return (
+            parent,
+            json.loads((REPO_ROOT / job["warm_start"]).read_text()),
+            job["warm_start"],
+        )
     fixed = (
         None
         if job["phase"] == "fixed"
         else json.loads((records / "fixed" / (job["parent_id"] + ".json")).read_text())
     )
-    if fixed is None and job["solvent"] == "C":
+    if fixed is None and SOLVENTS[job["solvent"]].get("support_rebuild"):
         neighbours = [
             r
             for f in (records / "fixed").glob("*.json")
@@ -553,6 +864,10 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
         candidate_wall_limit_s=wall_seconds,
         runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     )
+    if job.get("design_range"):
+        result["claim"] = (
+            "extrapolation sensitivity (#373); local solution; no physical validation"
+        )
 
     def remaining():
         left = wall_seconds - (time.monotonic() - started)
@@ -560,28 +875,61 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
             raise TimeoutError(f"{wall_seconds} s candidate wall budget exhausted")
         return left
 
+    record = SOLVENTS[job["solvent"]]
+    rebuild = record.get(
+        "support_rebuild"
+    )  # set C selects stage supports; a change rebuilds the model
     try:
-        if job["solvent"].startswith("D2EHDTPA"):
+        if (reason := unavailable(job["site"])) is not None:
+            result.update(status="unavailable", reason=reason)
+        elif (
+            record["stage_adapter"] == "d2_stage"
+        ):  # the adapter's own cell: start, connect and release in one process
+            from prommis.lithium_extraction.process import optimization as opt
+
             result.update(d2_simulation(job, directory / "solver", remaining, records))
             extraction_failed = not result["strict_certificate"] or bool(
                 result["R7"]["failures"]
             )
+            failures = (
+                []
+                if extraction_failed
+                or "exception_traceback" in result
+                or "rule" not in result
+                else opt.target_failures(
+                    result, job["solvent"], job.get("minimum_li_extraction")
+                )
+            )
+            selected = job["phase"] == "selected" and "rule" in result
+            if selected and worse(
+                result, {"rule": result["starting_design_rule"]}, job["objective"]
+            ):
+                failures.append(
+                    "optimum worse than accepted fixed design at identical conditions"
+                )
             result["status"] = (
                 "unresolved"
-                if extraction_failed or result.get("exception_traceback")
+                if extraction_failed or "exception_traceback" in result or failures
                 else (
-                    "infeasible"
+                    "no_product"
                     if result.get("downstream_admissible") is False
-                    else "grid"
+                    else "optimal" if selected else "grid"
                 )
             )
             if extraction_failed:
                 result["reason"] = "uncertified extraction; " + "; ".join(
                     result["R7"]["failures"]
                 )
+            elif failures:
+                result["reason"] = "; ".join(failures)
             result.setdefault(
                 "reason",
-                "fixed campaign simulation; conditional priced operating subtotal, no optimization",
+                (
+                    "IPOPT optimum; strict certificates, balances, account recomputation and KKT "
+                    "limits pass"
+                    if selected
+                    else "design solved at fixed decisions"
+                ),
             )
         else:
             fixed, initial, source = starting_record(job, records)
@@ -590,7 +938,7 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
             model, soft, reference = build(job, initial)
             opt.decisions(model, job["solvent"])
             if job["phase"] == "fixed":
-                if job["solvent"] == "C":
+                if rebuild:
                     # A support rebuild returns a new model; its decisions and costing join the solve.
                     model, extracted = set_c.solve(
                         model,
@@ -605,7 +953,7 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
                         model, directory / "extraction", wall_seconds=remaining()
                     )
                 if job["scope"] == "full_process":
-                    if job["solvent"] == "C":
+                    if rebuild:
                         result.update(extracted)
                     else:
                         result.update(
@@ -652,8 +1000,12 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
                     )
                     candidate = next(
                         (r for r in enumeration if r["feasible"]),
-                        reference["unit_enumeration_selected"],
+                        reference.get("unit_enumeration_selected"),
                     )
+                    if candidate is None:
+                        raise RuntimeError(
+                            "no admissible downstream interval/regime at the starting design"
+                        )
                 provisional = (
                     job["phase"] in ("selected", "feasibility")
                     and job["scope"] == "full_process"
@@ -661,6 +1013,11 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
                 selections = []
 
                 def connect(m):
+                    m._case, m._end, m._rule = (
+                        job["case"],
+                        job["end"],
+                        job.get("rule", False),
+                    )
                     if not hasattr(m, "_decisions"):
                         opt.decisions(m, job["solvent"])
                     if job["scope"] == "full_process" and not hasattr(
@@ -674,11 +1031,19 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
                             initial_accounts=(
                                 None
                                 if job.get("front_end") == "sorbent"
-                                else reference["full_process"]
+                                else (initial or {}).get(
+                                    "full_process", reference.get("initial_accounts")
+                                )
                             ),
                         )
-                    if not hasattr(m, "minimum_cost"):
-                        opt.add_optimization(m, job["scope"])
+                    if not hasattr(m, "minimum_cost") and not hasattr(m, "rule"):
+                        opt.add_optimization(
+                            m,
+                            job["scope"],
+                            objective=job.get("objective"),
+                            minimum_li_extraction=job.get("minimum_li_extraction"),
+                            hold=job.get("hold", ()),
+                        )
                         if job["phase"] == "feasibility":
                             m.minimum_cost.deactivate()
                             m.feasibility.activate()
@@ -687,7 +1052,7 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
                         m.fs.scrub.other_bound.deactivate()
 
                 while True:
-                    if job["solvent"] == "C":
+                    if rebuild:
                         model, _ = set_c.solve(
                             model,
                             directory / "released",
@@ -730,11 +1095,13 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
                     remaining()
                 result["unit_selections"] = selections
                 result.update(opt.report(model, job["scope"], soft))
-                failures = opt.target_failures(result, job["solvent"])
+                failures = opt.target_failures(
+                    result, job["solvent"], job.get("minimum_li_extraction")
+                )
                 if (
                     job["phase"] != "feasibility"
                     and fixed["status"] == "grid"
-                    and result["cost_usd_kg_li"] > fixed["cost_usd_kg_li"] * (1 + 1e-6)
+                    and worse(result, fixed, job.get("objective"))
                 ):
                     failures.append(
                         "optimum worse than accepted fixed design at identical conditions"
@@ -753,8 +1120,14 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
                     fixed.get("cost_usd_kg_li") if fixed["status"] == "grid" else None
                 )
     except Exception as error:
+        from prommis.lithium_extraction.extraction.d2ehdtpa_buphen_accounts import (
+            OutsideDomain,
+        )
+
         result.update(
-            status="unresolved",
+            status=(
+                "outside_domain" if isinstance(error, OutsideDomain) else "unresolved"
+            ),
             reason=f"{type(error).__name__}: {error}",
             stopping_point=job["phase"],
         )
@@ -881,10 +1254,12 @@ def solve_in_process(job, records, wall_seconds=290):
 
 
 if __name__ == "__main__":
-    job, records, output, wall_seconds = sys.argv[1:]
+    job, folder, output, wall_seconds = sys.argv[
+        1:
+    ]  # 'records' names the solvent-record module here
     result = solve_candidate(
         json.loads(job),
-        Path(records),
+        Path(folder),
         Path(output).parent / "scratch",
         wall_seconds=json.loads(wall_seconds),
     )

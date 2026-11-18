@@ -611,6 +611,17 @@ def _solve_once(
         (aqueous, organic),
         guess,
     )
+    outside = [
+        mixture.outside_domains(
+            tuple(phase.get(s, 0.0) / sum(phase.values()) for s in components)
+        )
+        for phase in amounts
+    ]
+    if any(outside):
+        raise RuntimeError(
+            f"{state.identity}: not evaluable outside packet domains: {outside}"
+        )
+    check["outside_domains"] = outside
     aq, org = amounts
     v = state.organic_to_aqueous
     li_org = org.get("lithium-carrier", 0.0) + org.get("lithium-chloride-topo", 0.0)
