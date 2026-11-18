@@ -1,5 +1,6 @@
 """Helpers for the produced-water process tutorial: waters, softening, the extraction feed and design, downstream
-connections, figures, the second water, the paper's other results and the check against the paper's results.
+connections, figures, the second water, Part 2's screen results and the check of the worked example against the
+earlier study's stored results.
 
 Every function that changes the flowsheet takes the model `m` as its first argument.
 """
@@ -52,6 +53,11 @@ logging.getLogger("idaes.core.base.costing_base").setLevel(logging.ERROR)
 STUDY = ROOT / "analyses/prototypes/modular_process"
 BAND = json.loads((STUDY / "results/targets/exchange_band.json").read_text())
 TARGETS = json.loads((STUDY / "results/targets/economic_targets.json").read_text())
+SCREEN = (
+    STUDY / "results/site_solvent_matrix"
+)  # Part 2's water and solvent screen: the first four waters
+ADDED = STUDY / "results/issue375"  # and the ten waters added to it
+EARLIER = "Worked example on the earlier design and cost basis"
 WATERS = {"MS2": "MS-2", "MarsHill": "Mars Hill"}
 CASE, FIT = "base", "low"  # base-case prices; 'low' is the single-stage exchange fit
 ACCEPTED = {
@@ -795,23 +801,29 @@ def plot_costs(table, site, total):
 
 
 def summary(results):
-    return pd.DataFrame(
-        {
-            WATERS[s]: {
-                "extraction stages": len(r["stages"]),
-                "HBTA (mol/L organic)": r["fixed_design"]["extractant_mol_l"],
-                "Li extraction (%)": 100 * r["li_extraction_fraction"],
-                "Li recovery to Li2CO3 (%)": 100 * r["product_recovery_fraction"],
-                "Li2CO3 product (kg per m3 raw)": r["full_process"]["li_product_kg_m3"]
-                * LCE_PER_LI,
-                "operating cost (USD/kg Li)": r["cost_usd_kg_li"],
-                "operating cost (USD/m3 raw water)": r["cost_usd_m3_raw_brine"],
-                "break-even price (USD/t LCE)": 1000
-                * r["full_process"]["break_even_lce_usd_kg"],
+    return (
+        pd.DataFrame(
+            {
+                WATERS[s]: {
+                    "extraction stages": len(r["stages"]),
+                    "HBTA (mol/L organic)": r["fixed_design"]["extractant_mol_l"],
+                    "Li extraction (%)": 100 * r["li_extraction_fraction"],
+                    "Li recovery to Li2CO3 (%)": 100 * r["product_recovery_fraction"],
+                    "Li2CO3 product (kg per m3 raw)": r["full_process"][
+                        "li_product_kg_m3"
+                    ]
+                    * LCE_PER_LI,
+                    "operating cost (USD/kg Li)": r["cost_usd_kg_li"],
+                    "operating cost (USD/m3 raw water)": r["cost_usd_m3_raw_brine"],
+                    "break-even price (USD/t LCE)": 1000
+                    * r["full_process"]["break_even_lce_usd_kg"],
+                }
+                for s, r in results.items()
             }
-            for s, r in results.items()
-        }
-    ).style.format(number)
+        )
+        .style.format(number)
+        .set_caption(EARLIER)
+    )
 
 
 def plot_profiles(results):
@@ -892,6 +904,7 @@ def plot_break_even(results):
         xlim=(0, 1.15 * max(break_even)),
         ylim=(-0.6, len(names) - 0.4),
         xlabel="lithium carbonate price (USD/t LCE)",
+        title=EARLIER,
     )
     ax.legend(fontsize=8, loc="upper right")
     plt.tight_layout()
@@ -907,7 +920,7 @@ def plot_break_even(results):
     ).T
 
 
-# ---------------------------------------------------------------- check against the paper's results
+# ---------------------------------------------------------------- check against the earlier study's stored results
 
 
 def _compare(rows, name, actual, expected, *, rel=None, abs_=None, scale=None):
@@ -970,8 +983,8 @@ def _compare_softening(rows, fresh, retained):
 
 
 KINDS = {
-    "campaign": "paper's design record",
-    "exchange band": "paper's summary table",
+    "campaign": "earlier design record",
+    "exchange band": "earlier summary table",
     "cost item": "cost item",
     "softening": "softening",
     "stage": "stage outlets",
@@ -982,7 +995,7 @@ KINDS = {
 
 
 def check_against_paper(results, softened):
-    """Every reproduced number against the paper's design record and summary table; stops on any failure.
+    """Every reproduced number against the earlier study's design record and summary table; stops on any failure.
 
     Draws every comparison against its tolerance and returns (summary per water, every comparison).
     """
@@ -1083,7 +1096,9 @@ def check_against_paper(results, softened):
     failed = checks[~checks["passed"]]
     assert failed.empty, f"reproduced numbers outside their limits:\n{failed}"
     summary = plot_checks(
-        checks, "water", f"{len(checks)} comparisons with the paper's results"
+        checks,
+        "water",
+        f"{len(checks)} comparisons with the earlier study's stored results",
     )
     return summary, checks
 
@@ -1098,7 +1113,7 @@ ALL_WATERS = {
 }
 FITS = {"low": "single-stage fit", "high": "cascade fit"}
 CALCULATIONS = {
-    "retained": "the paper's result",
+    "retained": "the stored result",
     "fixed": "solve the design",
     "selected": "optimize the design",
 }
@@ -1115,7 +1130,7 @@ compared = []  # every selection shown so far, in order
 
 
 class Options(widgets.VBox):
-    """The whole-process options of the process explorer app, as widgets; `selection` reads their values."""
+    """The whole-process options of the earlier four-water study, as widgets; `selection` reads their values."""
 
     def __init__(self):
         style, layout = {"description_width": "150px"}, widgets.Layout(width="620px")
@@ -1174,7 +1189,8 @@ def _row(record, selection):
 
 
 def run_selection(options):
-    """The selected option: read from the paper's results, or solved live by the paper's candidate solve, as in the app.
+    """The selected option: read from the earlier study's stored results, or solved live by its candidate solve, as in
+    the app.
 
     A live solve runs in a separate process, as in the app, and can take up to about five minutes.
     """
@@ -1201,7 +1217,7 @@ def run_selection(options):
 
 
 def add_selected_designs(case="base", end="low"):
-    """The selected design of every water at one price case and fit, from the paper's results."""
+    """The selected design of each of the four waters at one price case and fit, from the earlier study's stored results."""
     for group in BAND["groups"]:
         if group["case"] == case:
             run_selection(
@@ -1249,92 +1265,152 @@ def compare_selections():
     return table
 
 
-# ---------------------------------------------------------------- the paper's results, read from its result tables
+# ---------------------------------------------------------------- Part 2's screen, read from its result files
+
+SYSTEMS = {
+    "C": "saponified HBTA/TOPO, softened water",
+    "D2EHDTPA-Figiel": "D2EHDTPA/BuPhen, raw water",
+}
 
 
-def _hbta(site, case):
-    return next(
-        g[FIT] for g in BAND["groups"] if g["site"] == site and g["case"] == case
+def _screen():
+    """Margin (USD per m3 of raw water) in each price case and research-interest label of every screen cell, with the
+    waters richest in lithium first."""
+    cells = pd.read_csv(SCREEN / "screen_figure.csv", dtype={"site": str})
+    cells["Li (mg/L)"] = [
+        brines.raw_feed(site)["printed_mg_l"]["Li"] for site in cells.site
+    ]
+    cells["water"] = [
+        ALL_WATERS.get(site) or (f"USGS {site}" if site.isdigit() else site)
+        for site in cells.site
+    ]
+    return cells.sort_values("Li (mg/L)", ascending=False, kind="stable").set_index(
+        ["solvent", "site"]
     )
 
 
-def _buphen(site, case):
-    """D2EHDTPA/BuPhen with the Figiel ion parameters, the paper's main basis for that system."""
-    return next(
-        d
-        for d in TARGETS["d2_buphen_ceilings"]
-        if d["site"] == site and d["case"] == case and d["ion_basis"] == "Figiel"
+def _text(table):
+    """A table as text: numbers by `number`, a cell without a value left empty."""
+    return table.map(
+        lambda x: x if isinstance(x, str) else "" if pd.isna(x) else number(x)
     )
 
 
 def paper_headline():
-    """The paper's headline result for each measured water, from the tables the manuscript reads.
-
-    HBTA/TOPO: the selected design at each price case, with whole-water softening. D2EHDTPA/BuPhen: base prices.
-    """
-    hbta, d2 = "saponified HBTA/TOPO, softened water", "D2EHDTPA/BuPhen, raw water"
-    rows = {}
-    for site, name in ALL_WATERS.items():
-        raw = brines.raw_feed(site)
-        rows[name] = {
-            ("water", "Li (mg/L)"): raw["printed_mg_l"]["Li"],
-            ("water", "(Ca+Mg)/Li (kg/kg)"): raw["ca_mg_li_mass_ratio"],
-            (hbta, "Li to Li2CO3 (%)"): 100
-            * _hbta(site, "base")["product_recovery_fraction"],
-            (hbta, "break-even, base prices (USD/t LCE)"): 1000
-            * _hbta(site, "base")["break_even_lce_usd_kg"],
-            (hbta, "break-even, optimistic prices (USD/t LCE)"): 1000
-            * _hbta(site, "optimistic")["break_even_lce_usd_kg"],
-            (d2, "Li to Li2CO3 (%)"): 100
-            * _buphen(site, "base")["product_recovery_fraction"],
+    """Part 2's screen: each measured water, with the margin of both rated solvent systems in the base and optimistic
+    cases (USD per m3 of raw water) and their research-interest labels."""
+    cells, rows = _screen(), {}
+    for site, hbta in cells.loc["C"].iterrows():
+        row = {
+            ("water", "Li (mg/L)"): hbta["Li (mg/L)"],
+            ("water", "(Ca+Mg)/Li (kg/kg)"): brines.raw_feed(site)[
+                "ca_mg_li_mass_ratio"
+            ],
         }
+        for solvent, system in SYSTEMS.items():
+            cell = cells.loc[solvent, site]
+            row |= {
+                (system, "base margin (USD/m3)"): cell.base_usd_m3,
+                (system, "optimistic margin (USD/m3)"): cell.optimistic_usd_m3,
+                (system, "label"): (
+                    cell.label if isinstance(cell.label, str) else "not rated"
+                ),
+            }
+        rows[hbta.water] = row
     prices = [
-        number(1000 * c["li2co3_usd_kg"]) for c in _buphen("MS2", "base")["ceilings"]
+        number(1000 * c["li2co3_usd_kg"])
+        for c in TARGETS["d2_buphen_ceilings"][0]["ceilings"]
     ]
     print(
         "Assumed lithium carbonate price: {} (base) to {} (optimistic) USD/t LCE".format(
             *prices
         )
     )
-    return pd.DataFrame(rows).T
+    return _text(pd.DataFrame(rows).T)
 
 
 def buphen_results():
-    """D2EHDTPA/BuPhen at each water and price case: lithium to carbonate, and the highest BuPhen price at which the
-    process still covers its operating cost at each assumed carbonate price (ideal strip-liquor cleanup).
-    """
-    rows = {}
-    for site, name in ALL_WATERS.items():
-        for case in ("base", "optimistic"):
-            d = _buphen(site, case)
-            rows[name, case] = {
-                "Li to Li2CO3 (%)": 100 * d["product_recovery_fraction"],
-                **{
-                    f"BuPhen price ceiling at {number(1000 * c['li2co3_usd_kg'])} USD/t LCE (USD/kg)": c[
-                        "buphen_ceiling_usd_kg"
-                    ]
-                    for c in d["ceilings"]
-                },
+    """D2EHDTPA/BuPhen on each water Part 2 rates, Figiel-based calibration: the affordable ligand price and the central
+    supply estimate (USD per kg of D2EHDTPA plus BuPhen lost), the purchase of lost ligand at that estimate and the
+    margin after it (USD per m3 of raw water)."""
+    lost = pd.concat(
+        [
+            pd.read_csv(path, dtype={"water": str})
+            for path in (
+                STUDY / "ligand_prices/comparison.csv",
+                ADDED / "ligand_comparison_Figiel.csv",
+            )
+        ]
+    )
+    cells, rows = _screen().loc["D2EHDTPA-Figiel"], {}
+    for r in lost.itertuples():
+        kg = r.D2EHDTPA_loss_kg_m3 + r.BuPhen_loss_kg_m3
+        margin = (r.theta_usd_kg - r.price_central_usd_kg) * kg
+        assert math.isclose(
+            margin, cells.loc[r.water, f"{r.case}_usd_m3"], rel_tol=1e-6, abs_tol=1e-6
+        ), (r.water, r.case)
+        rows.setdefault(r.water, {}).update(
+            {
+                (r.case, "affordable ligand price (USD/kg)"): r.theta_usd_kg,
+                (r.case, "supply estimate (USD/kg)"): r.price_central_usd_kg,
+                (r.case, "ligand purchase (USD/m3)"): r.price_central_usd_kg * kg,
+                (r.case, "margin (USD/m3)"): margin,
             }
-    return pd.DataFrame(rows).T.rename_axis(["water", "price case"])
+        )
+    rated = cells[cells.index.isin(rows)]
+    return _text(
+        pd.DataFrame(rows)
+        .T.loc[rated.index]
+        .set_axis(rated.water)
+        .assign(label=rated.label.values)
+    )
 
 
 def hbta_targets():
-    """The lowest HBTA/TOPO break-even price among the paper's primary-calibration designs, and the Mars Hill calcium-plus-magnesium
-    content at which the optimistic case just covers its operating cost (calcium and magnesium scaled down).
+    """Saponified HBTA/TOPO in Part 2's screen: the highest extractant price any water could pay against the published
+    HBTA price, and the lithium and hardness at which the Mars Hill optimistic case reaches operating break-even
+    with free extractant (lithium chloride added, or calcium and magnesium scaled down, in the measured water).
     """
-    best = min(BAND["groups"], key=lambda g: g[FIT]["break_even_lce_usd_kg"])
-    low, high = BAND["mars_hill"][FIT]["ca_mg_li_bracket_kg_kg"]
-    return pd.Series(
-        {
-            "Lowest primary-calibration HBTA/TOPO break-even (USD/t LCE)": number(
-                1000 * best[FIT]["break_even_lce_usd_kg"]
-            ),
-            "lowest break-even: water, prices, stages": f"{ALL_WATERS[best['site']]}, {best['case']}, {best[FIT]['stages']}",
-            "Mars Hill (Ca+Mg)/Li, measured (kg/kg)": number(
-                brines.raw_feed("MarsHill")["ca_mg_li_mass_ratio"]
-            ),
-            "Mars Hill (Ca+Mg)/Li to break even at optimistic prices (kg/kg)": f"{number(low)} to {number(high)}",
-        },
-        name="HBTA/TOPO",
+    rule = pd.concat(
+        [
+            pd.read_csv(folder / "rule/rule_matrix.csv", dtype={"site": str})
+            for folder in (SCREEN, ADDED)
+        ]
     )
+    best = (
+        rule[(rule.solvent == "C") & (rule.objective == "affordable")]
+        .nlargest(1, "affordable_price_usd_kg")
+        .iloc[0]
+    )
+    paths = json.loads((SCREEN / "rule_targets/rule_targets.json").read_text())["paths"]
+    cells, mars_hill = _screen().loc["C"], brines.raw_feed("MarsHill")
+    rows = {
+        "Highest affordable HBTA/TOPO extractant price (USD/kg)": number(
+            best.affordable_price_usd_kg
+        ),
+        "highest affordable price: water, prices, fit": f"{cells.water[best.site]}, {best.case}, {FITS[best.variant]}",
+        "Published HBTA price (USD/kg)": f"{json.loads(best.published_active_prices_usd_kg)['HBTA']:g}",
+        "Mars Hill optimistic margin, free extractant (USD/m3)": number(
+            cells.optimistic_usd_m3["MarsHill"]
+        ),
+    }
+    for quantity, path, key, measured in (
+        (
+            "Li (mg/L)",
+            "lithium_grade",
+            "lithium_mg_per_raw_l_bracket",
+            mars_hill["printed_mg_l"]["Li"],
+        ),
+        (
+            "(Ca+Mg)/Li (kg/kg)",
+            "hardness",
+            "ca_mg_li_kg_kg_bracket",
+            mars_hill["ca_mg_li_mass_ratio"],
+        ),
+    ):
+        rows[f"Mars Hill {quantity}, measured"] = f"{measured:.1f}"
+        for fit, name in FITS.items():
+            rows[f"Mars Hill {quantity} at operating break-even, {name}"] = (
+                "{:.1f} to {:.1f}".format(*sorted(paths[path][fit][key]))
+            )
+    return pd.Series(rows, name="HBTA/TOPO")
