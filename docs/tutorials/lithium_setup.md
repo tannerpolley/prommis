@@ -8,8 +8,7 @@ closing every stage with ePC-SAFT phase and chemical equilibrium from the
 - the whole sodium-saponified HBTA/TOPO process from raw produced water to lithium carbonate (softening, extraction,
   scrub, strip, acid recovery, carbonation and operating cost) for two waters;
 - the paper's screen of 14 produced waters, read from its result files;
-- an appendix with the Engine's derivatives shown inside the model, a design optimization and widgets for trying
-  other designs, prices and waters.
+- an optional appendix with a design optimization and widgets for trying other stage designs.
 
 The models are in `prommis.lithium_extraction`, with the source data, fitted parameters and retained results they read
 under its `data/` folder. The notebook checks every number it reproduces against those retained results, which come

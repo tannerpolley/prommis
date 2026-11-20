@@ -10,7 +10,6 @@ import logging
 import math
 import time
 
-import ipywidgets as widgets
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.patches import FancyBboxPatch, Patch
@@ -37,11 +36,7 @@ from prommis.lithium_extraction.process import (
     optimization,
 )
 from prommis.lithium_extraction.extraction import set_c, stage
-from prommis.lithium_extraction.process.candidate import (
-    fixed_disposition,
-    jobs,
-    solve_in_process,
-)
+from prommis.lithium_extraction.process.candidate import fixed_disposition
 
 # IDAES warns that some cost flows are expressions without a zero lower bound; optimization.report checks every
 # cost flow is nonnegative after the solve.
@@ -456,46 +451,6 @@ def run_water(site, softened):
 # ---------------------------------------------------------------- results
 
 
-def headline(model, result, softened, site):
-    costing = model.fs.costing
-    raw_li = softened[site][CASE]["raw_mol"]["Li"]
-    return pd.Series(
-        {
-            "Li extraction (%)": 100 * result["li_extraction_fraction"],
-            "Li recovery to Li2CO3 (%)": 100
-            * 2
-            * value(model.fs.carbonation.product_mol)
-            / raw_li,
-            "Li2CO3 product (kg per m3 raw water)": value(costing.li_kg_h) * LCE_PER_LI,
-            "operating cost (USD per m3 raw water)": value(costing.operating_cost),
-            "operating cost (USD per kg Li)": value(costing.usd_kg_li),
-            "break-even price (USD per t LCE)": 1000
-            * value(costing.usd_kg_li)
-            / LCE_PER_LI,
-        },
-        name=WATERS[site],
-    )
-
-
-def stream_tables(result):
-    """Every physical stream in mmol per litre of raw water: (aqueous and reagent streams, organic streams)."""
-    streams = result["physical_streams_mol_per_raw_l"]
-    organic = {k: n for k, n in streams.items() if "organic" in k}
-    columns = ["Li", "Na", "K", "Ca", "Mg", "Sr", "Cl", "H", "OH", "C", "BTA", "water"]
-    aqueous = (
-        pd.DataFrame({k: n for k, n in streams.items() if k not in organic})
-        .T.reindex(columns=columns)
-        .mul(1000)
-    )
-    return (
-        aqueous.dropna(axis=1, how="all").style.format(number, na_rep=""),
-        pd.DataFrame(organic)
-        .T.mul(1000)
-        .rename(columns=label)
-        .style.format(number, na_rep=""),
-    )
-
-
 def lithium_path(result):
     """(step, stream kept, mol Li kept, (loss stream, mol Li lost)) per litre of raw water."""
     soft, p = result["softening"][CASE], result["physical_streams_mol_per_raw_l"]
@@ -649,78 +604,6 @@ def costs(model):
     )
 
 
-PRICE_ITEMS = {
-    "softening reagents": ("softening_Na2CO3", "softening_NaOH", "softening_HCl31"),
-    "sludge disposal": ("sludge",),
-    "HBTA": ("HBTA",),
-    "TOPO and diluent": ("TOPO", "diluent"),
-    "extraction, scrub and strip chemicals": (
-        "saponification_NaOH",
-        "scrub_HCl31",
-        "strip_HCl31",
-        "neutralization_NaOH",
-    ),
-    "carbonation soda ash": ("carbonation_Na2CO3",),
-}
-
-
-def price_sensitivity(m, result):
-    """Sliders that scale each group of prices; the operating cost and break-even price at the solved design.
-
-    The flows stay at the solved design, so this is a price sensitivity, not a new optimization: with other prices
-    the cheapest design could change.
-    """
-    c = m.fs.costing
-    assert {k for items in PRICE_ITEMS.values() for k in items} == set(c.used_flows)
-    usd_h = {
-        k: c.aggregate_flow_costs[k].value for k in c.used_flows
-    }  # USD/h at 1 m3/h raw water
-    li, base = value(c.li_kg_h), min(
-        p["lce_price_usd_kg"] for p in result["full_process"]["price_break_evens"]
-    )
-    sliders = {
-        group: widgets.FloatSlider(
-            value=1.0,
-            min=0.25,
-            max=2.0,
-            step=0.05,
-            description=group,
-            readout_format=".2f",
-            continuous_update=False,
-            style={"description_width": "230px"},
-            layout=widgets.Layout(width="600px"),
-        )
-        for group in PRICE_ITEMS
-    }
-
-    def show(**scale):
-        cost = {
-            g: sum(usd_h[k] for k in items) * scale[g] / li
-            for g, items in PRICE_ITEMS.items()
-        }
-        total = sum(cost.values())
-        fig, ax = plt.subplots(figsize=(8, 3.2))
-        ax.barh(list(cost), list(cost.values()), color="#33557a")
-        ax.invert_yaxis()
-        ax.set(
-            xlabel="operating cost (USD per kg Li)",
-            xlim=(
-                0,
-                2
-                * max(
-                    sum(usd_h[k] for k in items) / li for items in PRICE_ITEMS.values()
-                ),
-            ),
-            title=f"{number(total)} USD/kg Li; break-even {number(1000 * total / LCE_PER_LI)} USD/t LCE "
-            f"({number(total / LCE_PER_LI / base)} times the {number(1000 * base)} USD/t LCE base price)",
-        )
-        ax.spines[["top", "right"]].set_visible(False)
-        plt.tight_layout()
-        plt.show()
-
-    return widgets.interactive(show, **sliders)
-
-
 def plot_costs(table, site, total):
     fig, ax = plt.subplots(figsize=(9, 5))
     colors = dict(zip(GROUPS, ("#4c78a8", "#e45756", "#72b7b2", "#f58518")))
@@ -757,6 +640,13 @@ def summary(results):
                     "operating cost (USD/m3 raw water)": r["cost_usd_m3_raw_brine"],
                     "break-even price (USD/t LCE)": 1000
                     * r["full_process"]["break_even_lce_usd_kg"],
+                    "break-even / base price": r["full_process"][
+                        "break_even_lce_usd_kg"
+                    ]
+                    / min(
+                        p["lce_price_usd_kg"]
+                        for p in r["full_process"]["price_break_evens"]
+                    ),
                 }
                 for s, r in results.items()
             }
@@ -764,100 +654,6 @@ def summary(results):
         .style.format(number)
         .set_caption(WORKED_EXAMPLE)
     )
-
-
-def plot_profiles(results):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    colors = {"MS2": "#33557a", "MarsHill": "#e45756"}
-    for site, r in results.items():
-        k = [row["stage"] for row in r["stages"]]
-        out = [row["outlet_mol_per_nominal_l"] for row in r["stages"]]
-        axes[0].semilogy(
-            k,
-            [1000 * LI_G_MOL * o["lithium-cation"] for o in out],
-            "o",
-            color=colors[site],
-            ms=8,
-            label=WATERS[site],
-        )
-        for s, face in (("lithium-carrier", colors[site]), ("sodium-carrier", "none")):
-            axes[1].plot(
-                k,
-                [1000 * o[s] for o in out],
-                "o",
-                mec=colors[site],
-                mfc=face,
-                mew=1.5,
-                ms=8,
-                label=f"{WATERS[site]}, {'Li' if s.startswith('lithium') else 'Na'} complex",
-            )
-    axes[0].set(
-        xlabel="extraction stage",
-        ylabel="Li in water leaving stage (mg/L)",
-        title="Aqueous lithium",
-    )
-    axes[1].set(
-        xlabel="extraction stage",
-        ylabel="organic complex leaving stage (mmol/L)",
-        title="Organic-phase complexes",
-    )
-    for ax in axes:
-        ax.set_xticks(range(1, max(a["stages"] for a in ACCEPTED.values()) + 1))
-    axes[0].legend(fontsize=8)
-    axes[1].legend(fontsize=8, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.18))
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_break_even(results):
-    """Break-even LCE price of each water against the base and optimistic lithium carbonate prices."""
-    fp = results["MS2"]["full_process"]
-    prices = {
-        "base price": min(p["lce_price_usd_kg"] for p in fp["price_break_evens"]),
-        "optimistic price": json.loads(
-            (STUDY / "results/targets/economic_targets.json").read_text()
-        )["mars_hill"]["lce_usd_kg"],
-    }
-    names = [WATERS[s] for s in results]
-    break_even = [
-        1000 * r["full_process"]["break_even_lce_usd_kg"] for r in results.values()
-    ]
-    prices = {case: 1000 * price for case, price in prices.items()}
-    fig, ax = plt.subplots(figsize=(7, 3.2))
-    ax.plot(
-        break_even,
-        names,
-        "o",
-        ms=10,
-        color="#33557a",
-        label="break-even price (base-case costs)",
-    )
-    for (case, price), style in zip(prices.items(), ("--", ":")):
-        ax.axvline(
-            price, color="#a23b2a", ls=style, label=f"{case}: {number(price)} USD/t LCE"
-        )
-    for x, n in zip(break_even, names):
-        ax.annotate(
-            number(x), (x, n), textcoords="offset points", xytext=(0, 10), ha="center"
-        )
-    ax.set(
-        xlim=(0, 1.15 * max(break_even)),
-        ylim=(-0.6, len(names) - 0.4),
-        xlabel="lithium carbonate price (USD/t LCE)",
-        title=WORKED_EXAMPLE,
-    )
-    ax.legend(fontsize=8, loc="upper right")
-    plt.tight_layout()
-    plt.show()
-    return pd.DataFrame(
-        {
-            name: {
-                "break-even (USD/t LCE)": b,
-                "times base price": b / prices["base price"],
-            }
-            for name, b in zip(names, break_even)
-        }
-    ).T
 
 
 # ---------------------------------------------------------------- check against the stored worked-example results
@@ -1043,7 +839,7 @@ def check_against_paper(results, softened):
     return summary, checks
 
 
-# ---------------------------------------------------------------- exploring the options, as the process explorer app does
+# ---------------------------------------------------------------- The paper's screen, read from its result files
 
 ALL_WATERS = {
     "MS2": "MS-2",
@@ -1051,161 +847,6 @@ ALL_WATERS = {
     "MarsHill": "Mars Hill",
     "Westmoreland": "Westmoreland",
 }
-FITS = {"low": "single-stage fit", "high": "cascade fit"}
-CALCULATIONS = {
-    "retained": "the stored result",
-    "fixed": "solve the design",
-    "selected": "optimize the design",
-}
-STATUS = {
-    "optimal": "optimized",
-    "grid": "solved at the fixed design",
-    "infeasible": "no admissible design",
-    "unresolved": "not resolved",
-    "no_product": "no carbonate product at this design",
-    "target_not_met": "extraction target not met at this design",
-    "outside_domain": "outside the model input domain",
-}
-compared = []  # every selection shown so far, in order
-
-
-class Options(widgets.VBox):
-    """The whole-process options of the worked-example basis, as widgets; `selection` reads their values."""
-
-    def __init__(self):
-        style, layout = {"description_width": "150px"}, widgets.Layout(width="620px")
-        self.controls = {
-            "site": widgets.Dropdown(
-                options=[(n, k) for k, n in ALL_WATERS.items()],
-                description="produced water",
-            ),
-            "case": widgets.ToggleButtons(
-                options=[("base prices", "base"), ("optimistic prices", "optimistic")],
-                description="price case",
-            ),
-            "end": widgets.ToggleButtons(
-                options=[(n, k) for k, n in FITS.items()], description="Li/Na exchange"
-            ),
-            "stages": widgets.IntSlider(
-                value=5, min=1, max=5, description="extraction stages"
-            ),
-            "calculation": widgets.ToggleButtons(
-                options=[(n, k) for k, n in CALCULATIONS.items()],
-                description="calculation",
-            ),
-        }
-        for control in self.controls.values():
-            control.style, control.layout = style, layout
-        super().__init__(list(self.controls.values()))
-
-    @property
-    def selection(self):
-        return {k: c.value for k, c in self.controls.items()}
-
-
-def _row(record, selection):
-    """One comparison row from a campaign-format record."""
-    row = {
-        "produced water": ALL_WATERS[selection["site"]],
-        "prices": selection["case"],
-        "Li/Na exchange": FITS[selection["end"]],
-        "stages": selection["stages"],
-        "calculation": CALCULATIONS[selection["calculation"]],
-        "result": STATUS.get(record["status"], record["status"]),
-    }
-    if record["status"] in ("optimal", "grid"):
-        row |= {
-            "HBTA (mol/L)": record["fixed_design"]["extractant_mol_l"],
-            "Li extraction (%)": 100 * record["li_extraction_fraction"],
-            "Li to Li2CO3 (%)": 100 * record["product_recovery_fraction"],
-            "USD/m3 raw water": record["cost_usd_m3_raw_brine"],
-            "USD/kg Li": record["cost_usd_kg_li"],
-            "break-even (USD/t LCE)": 1000
-            * record["full_process"]["break_even_lce_usd_kg"],
-        }
-    else:
-        row["reason"] = record.get("reason", "")
-    return row
-
-
-def run_selection(options):
-    """The selected option: read from the stored results, or solved live by its candidate solve, as in
-    the app.
-
-    A live solve runs in a separate process, as in the app, and can take up to about five minutes.
-    """
-    selection = options.selection if isinstance(options, Options) else dict(options)
-    if selection["calculation"] == "retained":
-        name = "C_{site}_full_process_{case}_n{stages}_{end}.json".format(**selection)
-        record = json.loads((STUDY / "results/campaign/selected" / name).read_text())
-    else:
-        job = next(
-            j
-            for j in jobs()
-            if j["solvent"] == "C"
-            and j["scope"] == "full_process"
-            and all(j[k] == selection[k] for k in ("site", "case", "stages", "end"))
-        )
-        record = solve_in_process(
-            dict(job, phase=selection["calculation"], parent_id=job["id"]),
-            STUDY / "results/campaign",
-        )
-    row = _row(record, selection)
-    if row not in compared:  # the same selection is listed once
-        compared.append(row)
-    return pd.DataFrame([row])
-
-
-def add_selected_designs(case="base", end="low"):
-    """The selected design of each of the four waters at one price case and fit, from the stored results."""
-    for group in BAND["groups"]:
-        if group["case"] == case:
-            run_selection(
-                {
-                    "site": group["site"],
-                    "case": case,
-                    "end": end,
-                    "stages": group[end]["stages"],
-                    "calculation": "retained",
-                }
-            )
-    return compare_selections()
-
-
-def compare_selections():
-    """Every selection shown so far: a table, and the cost per kg of lithium of those with a result."""
-    table = pd.DataFrame(compared)
-    solved = (
-        table.dropna(subset=["USD/kg Li"]) if "USD/kg Li" in table else table.iloc[:0]
-    )
-    if len(solved):
-        labels = [
-            f"{r['produced water']}, {r['stages']} stages, {r['prices']}, {r['Li/Na exchange']}\n({r['calculation']})"
-            for _, r in solved.iterrows()
-        ]
-        fig, ax = plt.subplots(figsize=(9, 0.55 * len(solved) + 1))
-        ax.barh(labels, solved["USD/kg Li"], color="#33557a")
-        for y, x in enumerate(solved["USD/kg Li"]):
-            ax.annotate(
-                number(x),
-                (x, y),
-                xytext=(4, 0),
-                textcoords="offset points",
-                va="center",
-                fontsize=8,
-            )
-        ax.invert_yaxis()
-        ax.set(
-            xlabel="operating cost (USD per kg Li in Li$_2$CO$_3$)",
-            xlim=(0, 1.15 * solved["USD/kg Li"].max()),
-        )
-        ax.spines[["top", "right"]].set_visible(False)
-        plt.tight_layout()
-        plt.show()
-    return table
-
-
-# ---------------------------------------------------------------- The paper's screen, read from its result files
 
 SYSTEMS = {
     "C": "saponified HBTA/TOPO, softened water",

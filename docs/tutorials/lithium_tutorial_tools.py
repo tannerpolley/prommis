@@ -19,7 +19,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from idaes.core import FlowDirection, FlowsheetBlock, UnitModelBlockData  # noqa: E402
+from idaes.core import FlowDirection, FlowsheetBlock  # noqa: E402
 from prommis.solvent_extraction.solvent_extraction import (
     SolventExtraction,
 )  # noqa: E402
@@ -32,8 +32,7 @@ from pyomo.environ import (
     Objective,
     Param,
 )  # noqa: E402
-from pyomo.environ import RangeSet, Reference, Var, value  # noqa: E402
-from pyomo.network import Arc, Port  # noqa: E402
+from pyomo.environ import RangeSet, Reference, Var  # noqa: E402
 
 
 from prommis.lithium_extraction.paths import REPO_ROOT as ROOT
@@ -247,8 +246,12 @@ def extraction_flowsheet(chemistries, feed_l_per_raw_l=1.0):
 
 
 def solve(m, name):
-    """IPOPT with exact second derivatives and tight tolerances; its optimality conditions are checked from the log."""
-    return stage.solve(m, log_directory(name))
+    """IPOPT with exact second derivatives and tight tolerances; stops with an error unless the optimality conditions
+    in its log meet their limits."""
+    kkt = stage.solve(m, log_directory(name))["kkt"]
+    print(
+        f"IPOPT: optimal; largest optimality-condition residual {max(kkt.values()):.0e}"
+    )
 
 
 def _split(chemistry):
@@ -260,63 +263,6 @@ def _split(chemistry):
     return pivots, [j for j in range(len(chemistry.species)) if j not in pivots]
 
 
-def _engine_arguments(m, k, s):
-    """Stage k's Engine call for species s: fixed T and P, the amounts entering the stage, then the record, phase and
-    position."""
-    c = m._chemistries[k - 1]
-    names = c.record_species or c.species
-    phase = next(p for p, support in enumerate(c.supports) if s in support)
-    return (
-        [c.temperature_k, c.pressure_pa],
-        [value(m._incoming(k, q)) for q in c.control_species],
-        [c.record, str(phase), str(names.index(s))],
-    )
-
-
-def engine_check(m, k):
-    """Each Engine-closed outlet of stage k: a direct Engine call on the solved inlet beside the flowsheet value."""
-    rows = {}
-    for j in m.fs.stage[k].equilibrium:
-        s = m._chemistries[k - 1].species[j]
-        state, inputs, record = _engine_arguments(m, k, s)
-        direct, solved = m.fs.engine.evaluate([*state, *inputs, *record]), value(
-            m.fs.stage[k].outlet[s]
-        )
-        rows[s] = {
-            "direct Engine call (mol/L)": direct,
-            "flowsheet outlet (mol/L)": solved,
-            "difference (mol/L)": abs(direct - solved),
-        }
-    return pd.DataFrame(rows).T.rename(index=label).rename_axis(f"leaving stage {k}")
-
-
-def engine_derivatives(m, k, s):
-    """The Engine's exact first derivatives of outlet s of stage k against central finite differences."""
-    s = KEYS.get(s, s)
-    state, inputs, record = _engine_arguments(m, k, s)
-    _, gradient, _ = m.fs.engine.evaluate_fgh([*state, *inputs, *record])
-    gradient = gradient[len(state) :]  # the T and P columns lead
-    rows = {}
-    for i, q in enumerate(m._chemistries[k - 1].control_species):
-        h = 1e-6 * max(
-            abs(inputs[i]), 1e-3
-        )  # a step of at least 1e-9 mol/L keeps round-off below the truncation error
-        up, down = list(inputs), list(inputs)
-        up[i] += h
-        down[i] -= h
-        difference = (
-            m.fs.engine.evaluate([*state, *up, *record])
-            - m.fs.engine.evaluate([*state, *down, *record])
-        ) / (2 * h)
-        rows[f"entering {label(q)}"] = {
-            "exact (Engine)": gradient[i],
-            "finite difference": difference,
-            "relative difference": abs(gradient[i] - difference)
-            / max(abs(gradient[i]), 1e-12),
-        }
-    return pd.DataFrame(rows).T.rename_axis(f"d n(out, {label(s)}) / d n(in)")
-
-
 def stage_profile(m, species):
     """Amount of each species leaving each stage, from the model (mol per litre of extraction feed)."""
     keys = [KEYS.get(s, s) for s in species]
@@ -326,67 +272,6 @@ def stage_profile(m, species):
             for k in m.fs.stages
         }
     ).rename_axis(columns="stage")
-
-
-def stream_table(unit, basis):
-    """The streams entering and leaving a unit, as its report() lists them, in mol per litre of the named basis.
-
-    The property packages carry amounts per litre of a reference flow, so report() prints them as dimensionless.
-    """
-    table = unit._get_stream_table_contents().drop(columns="Units")
-    table.index = [label(name.removeprefix("flow_mol_comp ")) for name in table.index]
-    return shown(table.rename_axis(f"mol per L of {basis}"), "")
-
-
-# ---------------------------------------------------------------- inspecting a flowsheet
-
-PORT_LABELS = {
-    "retained": "organic kept for reuse"
-}  # display labels only; the IDAES port keeps its name
-
-
-def _port(name):
-    """A port name, or `unit.port` path, with its port shown by its display label."""
-    unit, _, port = name.removeprefix("fs.").rpartition(".")
-    port = PORT_LABELS.get(port, port)
-    return f"{unit}.{port}" if unit else port
-
-
-def unit_models(model):
-    """Every IDAES unit model on the flowsheet: its name, class and ports, in build order."""
-    rows = []
-    for unit in model.fs.component_data_objects(descend_into=True):
-        if isinstance(unit, UnitModelBlockData) and not isinstance(
-            unit.parent_block(), UnitModelBlockData
-        ):
-            ports = [
-                _port(p.local_name)
-                for p in unit.component_objects(Port, descend_into=False)
-            ]
-            rows.append(
-                {
-                    "unit": unit.name.removeprefix("fs."),
-                    "model class": type(unit)
-                    .__name__.removeprefix("_Scalar")
-                    .removesuffix("Data"),
-                    "ports": ", ".join(ports),
-                }
-            )
-    return pd.DataFrame(rows).set_index("unit")
-
-
-def arcs(model):
-    """Every Arc on the flowsheet: the outlet port it reads and the inlet port it feeds."""
-    return pd.DataFrame(
-        [
-            {
-                "arc": a.name.removeprefix("fs."),
-                "from": _port(a.source.name),
-                "to": _port(a.destination.name),
-            }
-            for a in model.fs.component_data_objects(Arc, descend_into=True)
-        ]
-    ).set_index("arc")
 
 
 # ---------------------------------------------------------------- showing the reproduction check
