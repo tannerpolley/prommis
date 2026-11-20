@@ -215,49 +215,6 @@ def design_value(arm, name, v):
     return number(v)
 
 
-def paper_results():
-    """The paper's maximum lithium recovery at 1 to 5 stages, and the sodium share of the loaded organic at 3 stages.
-
-    Read from the paper's results table; a blank cell is a stage count with no result in the paper.
-    """
-    rows = {
-        (r["arm"], int(r["N"])): r
-        for r in _rows("pmax_comparison.csv")
-        if r["comparison_set"] == "main comparison"
-    }
-    stages = sorted({n for _, n in rows})
-
-    def recovery(row):
-        if row["recovery_class"] == SATURATED:
-            return "≈ 100"
-        if not row["recovery_raw"]:
-            return ""
-        return (
-            "> 99.9"
-            if float(row["recovery_raw"]) >= 0.999
-            else f"{100 * float(row['recovery_raw']):.1f}"
-        )
-
-    table = pd.DataFrame(
-        {
-            label: {
-                **{
-                    ("Li recovery (%)", f"{n} stage" + "s" * (n > 1)): recovery(
-                        rows[arm, n]
-                    )
-                    for n in stages
-                },
-                (
-                    "Na / (Li + Na) in loaded organic (%)",
-                    f"{STAGES} stages",
-                ): f"{100 * float(retained()[arm][0]['loaded_na_fraction']):.1f}",
-            }
-            for arm, (label, _) in SYSTEMS.items()
-        }
-    ).T
-    return table.rename_axis("solvent system")
-
-
 # ---------------------------------------------------------------- the acid-form HBTA/TOPO flowsheet built in the notebook
 
 

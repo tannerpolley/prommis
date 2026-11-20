@@ -1,6 +1,6 @@
 """Helpers for the tutorial's whole process and screen: waters, softening, the extraction feed and design, downstream
-connections, figures, the second water, the paper's screen results and the check of the worked example against the
-earlier study's stored results.
+connections, figures, the second water, the paper's screen results and the check of the worked example against its
+stored results.
 
 Every function that changes the flowsheet takes the model `m` as its first argument.
 """
@@ -50,11 +50,10 @@ logging.getLogger("idaes.core.base.costing_base").setLevel(logging.ERROR)
 STUDY = ROOT / "analyses/prototypes/modular_process"
 BAND = json.loads((STUDY / "results/targets/exchange_band.json").read_text())
 TARGETS = json.loads((STUDY / "results/targets/economic_targets.json").read_text())
-SCREEN = (
-    STUDY / "results/site_solvent_matrix"
-)  # The paper's water and solvent screen: the first four waters
-ADDED = STUDY / "results/issue375"  # and the ten waters added to it
-EARLIER = "Worked example on the earlier design and cost basis"
+SCREEN = STUDY / "results/site_solvent_matrix"  # The paper's water and solvent screen
+WORKED_EXAMPLE = (
+    "Worked example: cheapest design, 1 % organic loss per pass, HBTA at 100 USD/kg"
+)
 WATERS = {"MS2": "MS-2", "MarsHill": "Mars Hill"}
 CASE, FIT = "base", "low"  # base-case prices; 'low' is the single-stage exchange fit
 ACCEPTED = {
@@ -763,7 +762,7 @@ def summary(results):
             }
         )
         .style.format(number)
-        .set_caption(EARLIER)
+        .set_caption(WORKED_EXAMPLE)
     )
 
 
@@ -845,7 +844,7 @@ def plot_break_even(results):
         xlim=(0, 1.15 * max(break_even)),
         ylim=(-0.6, len(names) - 0.4),
         xlabel="lithium carbonate price (USD/t LCE)",
-        title=EARLIER,
+        title=WORKED_EXAMPLE,
     )
     ax.legend(fontsize=8, loc="upper right")
     plt.tight_layout()
@@ -861,7 +860,7 @@ def plot_break_even(results):
     ).T
 
 
-# ---------------------------------------------------------------- check against the earlier study's stored results
+# ---------------------------------------------------------------- check against the stored worked-example results
 
 
 def _compare(rows, name, actual, expected, *, rel=None, abs_=None, scale=None):
@@ -924,8 +923,8 @@ def _compare_softening(rows, fresh, retained):
 
 
 KINDS = {
-    "campaign": "earlier design record",
-    "exchange band": "earlier summary table",
+    "campaign": "stored design record",
+    "exchange band": "stored summary table",
     "cost item": "cost item",
     "softening": "softening",
     "stage": "stage outlets",
@@ -936,7 +935,7 @@ KINDS = {
 
 
 def check_against_paper(results, softened):
-    """Every reproduced number against the earlier study's design record and summary table; stops on any failure.
+    """Every reproduced number against the worked example's stored design record and summary table; stops on any failure.
 
     Draws every comparison against its tolerance and returns (summary per water, every comparison).
     """
@@ -1039,7 +1038,7 @@ def check_against_paper(results, softened):
     summary = plot_checks(
         checks,
         "water",
-        f"{len(checks)} comparisons with the earlier study's stored results",
+        f"{len(checks)} comparisons with the stored worked-example results",
     )
     return summary, checks
 
@@ -1071,7 +1070,7 @@ compared = []  # every selection shown so far, in order
 
 
 class Options(widgets.VBox):
-    """The whole-process options of the earlier four-water study, as widgets; `selection` reads their values."""
+    """The whole-process options of the worked-example basis, as widgets; `selection` reads their values."""
 
     def __init__(self):
         style, layout = {"description_width": "150px"}, widgets.Layout(width="620px")
@@ -1130,7 +1129,7 @@ def _row(record, selection):
 
 
 def run_selection(options):
-    """The selected option: read from the earlier study's stored results, or solved live by its candidate solve, as in
+    """The selected option: read from the stored results, or solved live by its candidate solve, as in
     the app.
 
     A live solve runs in a separate process, as in the app, and can take up to about five minutes.
@@ -1158,7 +1157,7 @@ def run_selection(options):
 
 
 def add_selected_designs(case="base", end="low"):
-    """The selected design of each of the four waters at one price case and fit, from the earlier study's stored results."""
+    """The selected design of each of the four waters at one price case and fit, from the stored results."""
     for group in BAND["groups"]:
         if group["case"] == case:
             run_selection(
@@ -1268,90 +1267,3 @@ def paper_headline():
         )
     )
     return _text(pd.DataFrame(rows).T)
-
-
-def buphen_results():
-    """D2EHDTPA/BuPhen on each water the paper rates, Figiel-based calibration: the affordable ligand price and the central
-    supply estimate (USD per kg of D2EHDTPA plus BuPhen lost), the purchase of lost ligand at that estimate and the
-    margin after it (USD per m3 of raw water)."""
-    lost = pd.concat(
-        [
-            pd.read_csv(path, dtype={"water": str})
-            for path in (
-                STUDY / "ligand_prices/comparison.csv",
-                ADDED / "ligand_comparison_Figiel.csv",
-            )
-        ]
-    )
-    cells, rows = _screen().loc["D2EHDTPA-Figiel"], {}
-    for r in lost.itertuples():
-        kg = r.D2EHDTPA_loss_kg_m3 + r.BuPhen_loss_kg_m3
-        margin = (r.theta_usd_kg - r.price_central_usd_kg) * kg
-        assert math.isclose(
-            margin, cells.loc[r.water, f"{r.case}_usd_m3"], rel_tol=1e-6, abs_tol=1e-6
-        ), (r.water, r.case)
-        rows.setdefault(r.water, {}).update(
-            {
-                (r.case, "affordable ligand price (USD/kg)"): r.theta_usd_kg,
-                (r.case, "supply estimate (USD/kg)"): r.price_central_usd_kg,
-                (r.case, "ligand purchase (USD/m3)"): r.price_central_usd_kg * kg,
-                (r.case, "margin (USD/m3)"): margin,
-            }
-        )
-    rated = cells[cells.index.isin(rows)]
-    return _text(
-        pd.DataFrame(rows)
-        .T.loc[rated.index]
-        .set_axis(rated.water)
-        .assign(label=rated.label.values)
-    )
-
-
-def hbta_targets():
-    """Saponified HBTA/TOPO in the paper's screen: the highest extractant price any water could pay against the published
-    HBTA price, and the lithium and hardness at which the Mars Hill optimistic case reaches operating break-even
-    with free extractant (lithium chloride added, or calcium and magnesium scaled down, in the measured water).
-    """
-    rule = pd.concat(
-        [
-            pd.read_csv(folder / "rule/rule_matrix.csv", dtype={"site": str})
-            for folder in (SCREEN, ADDED)
-        ]
-    )
-    best = (
-        rule[(rule.solvent == "C") & (rule.objective == "affordable")]
-        .nlargest(1, "affordable_price_usd_kg")
-        .iloc[0]
-    )
-    paths = json.loads((SCREEN / "rule_targets/rule_targets.json").read_text())["paths"]
-    cells, mars_hill = _screen().loc["C"], brines.raw_feed("MarsHill")
-    rows = {
-        "Highest affordable HBTA/TOPO extractant price (USD/kg)": number(
-            best.affordable_price_usd_kg
-        ),
-        "highest affordable price: water, prices, fit": f"{cells.water[best.site]}, {best.case}, {FITS[best.variant]}",
-        "Published HBTA price (USD/kg)": f"{json.loads(best.published_active_prices_usd_kg)['HBTA']:g}",
-        "Mars Hill optimistic margin, free extractant (USD/m3)": number(
-            cells.optimistic_usd_m3["MarsHill"]
-        ),
-    }
-    for quantity, path, key, measured in (
-        (
-            "Li (mg/L)",
-            "lithium_grade",
-            "lithium_mg_per_raw_l_bracket",
-            mars_hill["printed_mg_l"]["Li"],
-        ),
-        (
-            "(Ca+Mg)/Li (kg/kg)",
-            "hardness",
-            "ca_mg_li_kg_kg_bracket",
-            mars_hill["ca_mg_li_mass_ratio"],
-        ),
-    ):
-        rows[f"Mars Hill {quantity}, measured"] = f"{measured:.1f}"
-        for fit, name in FITS.items():
-            rows[f"Mars Hill {quantity} at operating break-even, {name}"] = (
-                "{:.1f} to {:.1f}".format(*sorted(paths[path][fit][key]))
-            )
-    return pd.Series(rows, name="HBTA/TOPO")

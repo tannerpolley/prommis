@@ -64,6 +64,9 @@ def shown(table, missing):
 
 # Display names of the HBTA/TOPO organic complexes; the model's species names stay unchanged.
 LABELS = {"lithium-carrier": "LiA·T complex", "sodium-carrier": "NaA·T complex"}
+KEYS = {
+    shown_as: name for name, shown_as in LABELS.items()
+}  # the notebook names the complexes by their labels
 
 
 def label(species):
@@ -289,6 +292,7 @@ def engine_check(m, k):
 
 def engine_derivatives(m, k, s):
     """The Engine's exact first derivatives of outlet s of stage k against central finite differences."""
+    s = KEYS.get(s, s)
     state, inputs, record = _engine_arguments(m, k, s)
     _, gradient, _ = m.fs.engine.evaluate_fgh([*state, *inputs, *record])
     gradient = gradient[len(state) :]  # the T and P columns lead
@@ -315,9 +319,10 @@ def engine_derivatives(m, k, s):
 
 def stage_profile(m, species):
     """Amount of each species leaving each stage, from the model (mol per litre of extraction feed)."""
+    keys = [KEYS.get(s, s) for s in species]
     return pd.DataFrame(
         {
-            k: {label(s): m.fs.stage[k].outlet[s].value for s in species}
+            k: {label(s): m.fs.stage[k].outlet[s].value for s in keys}
             for k in m.fs.stages
         }
     ).rename_axis(columns="stage")
