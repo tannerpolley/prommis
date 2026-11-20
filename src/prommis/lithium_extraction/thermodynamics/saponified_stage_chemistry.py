@@ -13,7 +13,6 @@ contact. The live stage response uses set A's species and the seven controls of 
 from __future__ import annotations
 
 from functools import lru_cache
-import json
 import math
 from pathlib import Path
 
@@ -21,6 +20,7 @@ import epcsaft
 from epcsaft import equilibrium as eq
 from pyomo.environ import ExternalFunction
 
+from prommis.lithium_extraction.thermodynamics.reaction_networks import load_constants
 from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
 from prommis.lithium_extraction.thermodynamics.live_equilibrium import (
     ASL_FUNCTION,
@@ -66,9 +66,7 @@ FEED_MATRIX = (
 
 @lru_cache(maxsize=None)
 def fitted_ln_k(reaction_set: str) -> dict[str, float]:
-    document = json.loads(
-        (mc.RESULTS / "mechanism_candidates.json").read_text(encoding="utf-8")
-    )
+    document = load_constants((mc.RESULTS / "mechanism_candidates.json"))
     return dict(document["summary"][reaction_set]["ln_k_298"])
 
 

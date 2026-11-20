@@ -1,6 +1,7 @@
 """#216 P-max and P-min, with independent fixed-design outlet verification."""
 
 import json
+from prommis.lithium_extraction.thermodynamics.reaction_networks import load_constants
 import re
 import signal
 import sys
@@ -116,9 +117,9 @@ def build(
         stage.initialize(model, [profile] * n)
     else:
         if "acid" in arm:
-            ln_k = json.loads((H158 / "mechanism_candidates.json").read_text())[
-                "summary"
-            ]["A" if arm == "acid_A" else "C"]["ln_k_298"]
+            ln_k = load_constants((H158 / "mechanism_candidates.json"))["summary"][
+                "A" if arm == "acid_A" else "C"
+            ]["ln_k_298"]
         else:
             _, _, ln_k = constants(dict(zip(("end", "delta_case"), arm.split(":"))))
         design = dict(
@@ -366,9 +367,10 @@ def run(
         signal.signal(signal.SIGALRM, timeout)
         signal.alarm(290)
     for unit in ("0", "14", "held"):
-        assert json.loads((STUDY / f"results/f2_capacity/f2_{unit}.json").read_text())[
-            "passed"
-        ]
+        anchors = STUDY.parent / "amendments_2_4" if unit == "held" else STUDY
+        assert json.loads(
+            (anchors / f"results/f2_capacity/f2_{unit}.json").read_text()
+        )["passed"]
     label = f'{case}{"capacity_" if "acid" not in arm and not arm.startswith(("D2", "DES")) else ""}{arm.replace(":", "_")}_N{n}_{("max" if release else "fixed") if target is None else target}_start{start}'
     started = time.monotonic()
     print("optimization", label, flush=True)

@@ -1,0 +1,1794 @@
+{
+  "schema": "epcsaft.parameters",
+  "schema_version": 1,
+  "components": [
+    {
+      "component_id": "water",
+      "aliases": [],
+      "fixed": {
+        "molar_mass": {
+          "value": {
+            "magnitude": 18.0153,
+            "unit": "gram / mole"
+          },
+          "provenance": {
+            "source_id": "nist-srd-69-water",
+            "locator": "Water record, molecular weight",
+            "domain_id": "nist-water-identity"
+          }
+        },
+        "charge_number": {
+          "value": {
+            "magnitude": 0,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 2 identifies water as solvent; Table 3 separately lists ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/water/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 353.95,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 2, water column, u_i/k_B row",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/water/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.2047,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 2, water column, m_i^seg row",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/water/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1.5,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 2, water column, f_k row",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ],
+      "name": "water",
+      "cas": "7732-18-5",
+      "formula": "H2O"
+    },
+    {
+      "component_id": "lithium-cation",
+      "aliases": [],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Li+ ion label",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/lithium-cation/born_diameter",
+          "family": "born_diameter",
+          "value": {
+            "magnitude": 1.38,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-658-native-li-calibration",
+            "domain_id": "issue-658-aqueous-298-15-k",
+            "locator": "analyses/2026-lithium-chloride-refit/results/cation-mixing/native-fit.json"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 16.230077626394564,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-658-native-li-calibration",
+            "domain_id": "issue-658-aqueous-298-15-k",
+            "locator": "analyses/2026-lithium-chloride-refit/results/cation-mixing/native-fit.json"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 360.0,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Li+ row, u_i/k_B column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 3.2168766633995953,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-658-native-li-calibration",
+            "domain_id": "issue-658-aqueous-298-15-k",
+            "locator": "analyses/2026-lithium-chloride-refit/results/cation-mixing/native-fit.json"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3 footnote a, segment number is 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.6555416629540853,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-658-native-li-calibration",
+            "domain_id": "issue-658-aqueous-298-15-k",
+            "locator": "analyses/2026-lithium-chloride-refit/results/cation-mixing/native-fit.json"
+          }
+        },
+        {
+          "identity": "component/lithium-cation/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "p. 9411, Model Parameters paragraph sets the solvation parameter to 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ],
+      "name": "lithium cation",
+      "formula": "Li+"
+    },
+    {
+      "component_id": "sodium-cation",
+      "aliases": [],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Na+ ion label",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/sodium-cation/born_diameter",
+          "family": "born_diameter",
+          "value": {
+            "magnitude": 2.04,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 5.694601927542711,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 230.0,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Na+ row, u_i/k_B column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 3.130740154505647,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3 footnote a, segment number is 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.5576592664836895,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/sodium-cation/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "p. 9411, Model Parameters paragraph sets the solvation parameter to 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ],
+      "name": "sodium cation",
+      "formula": "Na+"
+    },
+    {
+      "component_id": "magnesium-cation",
+      "aliases": [
+        "Mg2+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 2,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2014",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-2014-chlorides-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/magnesium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 8.677630057903277,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 1500,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2014",
+            "locator": "Table 2 strategy 2, p.2889 magnesium-cation",
+            "domain_id": "held-2014-chlorides-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 4.439876741789056,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2014",
+            "locator": "Section 2.1 spherical ions (one segment)",
+            "domain_id": "held-2014-chlorides-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 5.045314479305746,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/born_diameter",
+          "family": "born_diameter",
+          "value": {
+            "magnitude": 1.44,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/magnesium-cation/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Figiel solvation factor 1",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ],
+      "name": "magnesium cation",
+      "formula": "Mg2+"
+    },
+    {
+      "component_id": "calcium-cation",
+      "aliases": [
+        "Ca2+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 2,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "held-2014",
+            "locator": "Table 2, ion charge label",
+            "domain_id": "held-2014-chlorides-298-15-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/calcium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 6.946318529736712,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 1060,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "held-2014",
+            "locator": "Table 2 strategy 2, p.2889 calcium-cation",
+            "domain_id": "held-2014-chlorides-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 4.081172961211141,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "held-2014",
+            "locator": "Section 2.1 spherical ions (one segment)",
+            "domain_id": "held-2014-chlorides-298-15-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 4.637696546830843,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/born_diameter",
+          "family": "born_diameter",
+          "value": {
+            "magnitude": 2.0,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        },
+        {
+          "identity": "component/calcium-cation/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Figiel solvation factor 1",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ],
+      "name": "calcium cation",
+      "formula": "Ca2+"
+    },
+    {
+      "component_id": "chloride-anion",
+      "aliases": [],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": -1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Cl- ion label",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/chloride-anion/born_diameter",
+          "family": "born_diameter",
+          "value": {
+            "magnitude": 4.1,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Cl- row, d_i^Born column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.42528,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Cl- row, sigma_i column; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 170.0,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Cl- row, u_i/k_B column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.42528,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Cl- row, sigma_i column; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3 footnote a, segment number is 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.756,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, Cl- row, sigma_i column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/chloride-anion/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "p. 9411, Model Parameters paragraph sets the solvation parameter to 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ],
+      "name": "chloride anion",
+      "formula": "Cl-"
+    },
+    {
+      "component_id": "potassium-cation",
+      "aliases": [],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, K+ ion label",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/potassium-cation/born_diameter",
+          "family": "born_diameter",
+          "value": {
+            "magnitude": 4.18131203480126,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "issue-209-stage1-exact-refit",
+            "locator": "#209 D8/D9; analyses/2026-figiel-divalent-chlorides/results/stage1-minimax-fit.json",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.940696,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, K+ row, sigma_i column; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 200.0,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, K+ row, u_i/k_B column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.940696,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, K+ row, sigma_i column; explicit d_i^pack = d_i^DH = 0.88 sigma_i",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3 footnote a, segment number is 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 3.3417,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, K+ row, sigma_i column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        },
+        {
+          "identity": "component/potassium-cation/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1.0,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "p. 9411, Model Parameters paragraph sets the solvation parameter to 1 for all ions",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ],
+      "name": "potassium cation",
+      "formula": "K+"
+    },
+    {
+      "component_id": "hydronium-cation",
+      "aliases": [
+        "H+"
+      ],
+      "fixed": {
+        "charge_number": {
+          "value": {
+            "magnitude": 1,
+            "unit": "elementary-charge"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 3, H+ ion label",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "identity": "component/hydronium-cation/born_diameter",
+          "family": "born_diameter",
+          "value": {
+            "magnitude": 2.274,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Held 2008 Table 2; declared diameter conventions and binary calibration"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/debye_huckel_diameter",
+          "family": "debye_huckel_diameter",
+          "value": {
+            "magnitude": 2.0011200000000002,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Held 2008 Table 2; declared diameter conventions and binary calibration"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/dispersion_energy_over_k",
+          "family": "dispersion_energy_over_k",
+          "value": {
+            "magnitude": 1616.4939,
+            "unit": "kelvin"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Held 2008 Table 2; declared diameter conventions and binary calibration"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/packing_diameter",
+          "family": "packing_diameter",
+          "value": {
+            "magnitude": 2.0011200000000002,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Held 2008 Table 2; declared diameter conventions and binary calibration"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/segment_count",
+          "family": "segment_count",
+          "value": {
+            "magnitude": 1,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Held 2008 Table 2; declared diameter conventions and binary calibration"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/segment_diameter",
+          "family": "segment_diameter",
+          "value": {
+            "magnitude": 2.274,
+            "unit": "angstrom"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Held 2008 Table 2; declared diameter conventions and binary calibration"
+          }
+        },
+        {
+          "identity": "component/hydronium-cation/solvation_factor",
+          "family": "solvation_factor",
+          "value": {
+            "magnitude": 1,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Held 2008 Table 2; declared diameter conventions and binary calibration"
+          }
+        }
+      ],
+      "name": "effective hydrogen cation",
+      "formula": "H3O+"
+    }
+  ],
+  "correlations": [
+    {
+      "correlation_id": "component/water/relative_permittivity/constant",
+      "component_id": "water",
+      "family": "relative_permittivity",
+      "form": "constant",
+      "independent_variables": [],
+      "constant": {
+        "identity": "component/water/relative_permittivity/constant/constant",
+        "value": {
+          "magnitude": 78.09,
+          "unit": "dimensionless"
+        }
+      },
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Table 1, water row, dielectric constant column",
+        "domain_id": "figiel-298-k-1-bar"
+      }
+    },
+    {
+      "correlation_id": "component/water/segment_diameter/constant-plus-sum-of-exponentials",
+      "component_id": "water",
+      "family": "segment_diameter",
+      "form": "constant-plus-sum-of-exponentials",
+      "independent_variables": [
+        "temperature"
+      ],
+      "constant": {
+        "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/constant",
+        "value": {
+          "magnitude": 2.7927,
+          "unit": "angstrom"
+        }
+      },
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Table 2 footnote b, water sigma(T) correlation",
+        "domain_id": "figiel-298-k-1-bar"
+      },
+      "terms": [
+        {
+          "amplitude": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-0/amplitude",
+            "value": {
+              "magnitude": 10.11,
+              "unit": "angstrom"
+            }
+          },
+          "exponent_coefficient": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-0/exponent_coefficient",
+            "value": {
+              "magnitude": -0.01775,
+              "unit": "1 / kelvin"
+            }
+          }
+        },
+        {
+          "amplitude": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-1/amplitude",
+            "value": {
+              "magnitude": -1.417,
+              "unit": "angstrom"
+            }
+          },
+          "exponent_coefficient": {
+            "identity": "component/water/segment_diameter/constant-plus-sum-of-exponentials/term-1/exponent_coefficient",
+            "value": {
+              "magnitude": -0.01146,
+              "unit": "1 / kelvin"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "lithium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/lithium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -8.841893823888611,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-658-native-li-calibration",
+            "domain_id": "issue-658-aqueous-298-15-k",
+            "locator": "analyses/2026-lithium-chloride-refit/results/cation-mixing/native-fit.json"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "potassium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/potassium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": 0.018140408942425867,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-209-stage1-exact-refit",
+            "locator": "#209 D8/D9; analyses/2026-figiel-divalent-chlorides/results/stage1-minimax-fit.json",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "sodium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/sodium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -8.594439800307182,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -0.3,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "figiel-yu-held-2025",
+            "locator": "Table 5, Cl- row, water column",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "lithium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/lithium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -2.9961478792412892,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-658-native-li-calibration",
+            "domain_id": "issue-658-aqueous-298-15-k",
+            "locator": "analyses/2026-lithium-chloride-refit/results/cation-mixing/native-fit.json"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "potassium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/potassium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -0.16478475605835785,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-209-stage1-exact-refit",
+            "locator": "#209 D8/D9; analyses/2026-figiel-divalent-chlorides/results/stage1-minimax-fit.json",
+            "domain_id": "figiel-298-k-1-bar"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "sodium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/sodium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -3.102822266917611,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "magnesium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/magnesium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -0.9641191526956133,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "chloride-anion",
+      "component_id_b": "magnesium-cation",
+      "coefficients": [
+        {
+          "identity": "pair/chloride-anion/magnesium-cation/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -5.435688650150548,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "calcium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/calcium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -1.7797791360396835,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "calcium-cation",
+      "component_id_b": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "pair/calcium-cation/chloride-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -6.580441627603148,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "issue-575-stage-a-joint-fit",
+            "locator": "stage-A joint fit, start grid-10 (analyses/2026-chloride-brine-refit)",
+            "domain_id": "issue-575-chloride-brine-298-15-k"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "hydronium-cation",
+      "component_id_b": "water",
+      "coefficients": [
+        {
+          "identity": "pair/hydronium-cation/water/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -2.4255203694263883,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Frozen two-coordinate calibration endpoint"
+          }
+        }
+      ]
+    },
+    {
+      "component_id_a": "hydronium-cation",
+      "component_id_b": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "pair/hydronium-cation/chloride-anion/k_ij",
+          "family": "k_ij",
+          "value": {
+            "magnitude": -2.25,
+            "unit": "dimensionless"
+          },
+          "provenance": {
+            "source_id": "hydrogen-chloride-calibration",
+            "locator": "Frozen two-coordinate calibration endpoint"
+          }
+        }
+      ]
+    }
+  ],
+  "model_coefficients": [
+    {
+      "identity": "model/relative_permittivity/ion_fraction_suppression_coefficient",
+      "family": "ion_fraction_suppression_coefficient",
+      "value": {
+        "magnitude": 4.84869223079712,
+        "unit": "dimensionless"
+      },
+      "provenance": {
+        "source_id": "issue-209-stage1-exact-refit",
+        "locator": "#209 D8/D9; analyses/2026-figiel-divalent-chlorides/results/stage1-minimax-fit.json",
+        "domain_id": "figiel-298-k-1-bar"
+      }
+    },
+    {
+      "identity": "model/relative_permittivity/ionic_region_relative_permittivity",
+      "family": "ionic_region_relative_permittivity",
+      "value": {
+        "magnitude": 8.0,
+        "unit": "dimensionless"
+      },
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Table 1, salts (ions) row, dielectric constant column and following prose",
+        "domain_id": "figiel-298-k-1-bar"
+      }
+    }
+  ],
+  "materialization": [
+    {
+      "packet": "figiel-2025-chloride-mixture-refit/1",
+      "components": [
+        "water",
+        "lithium-cation",
+        "sodium-cation",
+        "magnesium-cation",
+        "calcium-cation",
+        "chloride-anion",
+        "potassium-cation"
+      ],
+      "sources": [
+        {
+          "source_id": "figiel-yu-held-2025",
+          "citation": "Figiel, P.; Yu, G.; Held, C. Predicting Thermodynamic Properties of Ions in Single Solvents and in Mixed Solvents Using a Modified Born Term within the ePC-SAFT Framework. Industrial & Engineering Chemistry Research 2025, 64, 9406-9418.",
+          "doi": "10.1021/acs.iecr.5c00475",
+          "use_basis": "primary equations and parameters for bounded water, methanol, and ethanol alkali-halide reference states"
+        },
+        {
+          "source_id": "nist-srd-69-water",
+          "citation": "NIST Chemistry WebBook, SRD 69, Water, CAS 7732-18-5.",
+          "use_basis": "water identity and molecular weight"
+        },
+        {
+          "source_id": "nist-srd-69-methanol",
+          "citation": "NIST Chemistry WebBook, SRD 69, Methanol, CAS 67-56-1.",
+          "use_basis": "methanol identity and molecular weight"
+        },
+        {
+          "source_id": "nist-srd-69-ethanol",
+          "citation": "NIST Chemistry WebBook, SRD 69, Ethanol, CAS 64-17-5.",
+          "use_basis": "ethanol identity and molecular weight"
+        },
+        {
+          "source_id": "issue-209-stage1-exact-refit",
+          "citation": "ePC-SAFT issue #209, native exact-derivative stage-1 refit, 2026-10-01",
+          "use_basis": "Aqueous LiCl/NaCl/KCl activity and osmotic fitting with D6/D9 guards; analyses/2026-figiel-divalent-chlorides/"
+        },
+        {
+          "source_id": "held-2014",
+          "citation": "Held, C.; Reschke, T.; Mohammad, S.; Luza, A.; Sadowski, G. ePC-SAFT revised. Chemical Engineering Research and Design 2014, 92, 2884-2897.",
+          "doi": "10.1016/j.cherd.2014.05.017",
+          "use_basis": "Tables 1-3 strategy 2 and Eqs. (1), (15)-(22); Zotero 3DIW87Q5/TD5T732H; PDF SHA-256 dea9aa05e2ee8eb1c675873fa9d8737943312484874d844f01b45613da261acf."
+        },
+        {
+          "source_id": "marcus-1991",
+          "citation": "Marcus, Y. Thermodynamics of solvation of ions. Part 5. Gibbs free energy of hydration at 298.15 K. J. Chem. Soc., Faraday Trans. 1991, 87, 2995-2999.",
+          "doi": "10.1039/FT9918702995",
+          "use_basis": "Table 1 p. 2996; G* plus the owner-verified Figiel Eq. 18 shift 17.908 kJ/mol."
+        },
+        {
+          "source_id": "issue-209-stage2-native-fit",
+          "citation": "ePC-SAFT issue 209 native stage-2 fit, 2026-10-06",
+          "use_basis": "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending."
+        },
+        {
+          "source_id": "goldberg-nuttall-1978",
+          "citation": "Goldberg and Nuttall, J. Phys. Chem. Ref. Data 1978, 7, 263; DOI 10.1063/1.555569.",
+          "doi": "10.1063/1.555569",
+          "use_basis": "Evaluated MgCl2 Table 17 and CaCl2 Table 20, 42 molalities each; retained inputs/evaluated.csv in the Held-2014 analysis."
+        },
+        {
+          "source_id": "issue-575-stage-a-joint-fit",
+          "citation": "ePC-SAFT issue 575 stage-A native joint fit, 2026-10-16",
+          "use_basis": "Qualified by owner decision 2026-10-16 for aqueous NaCl-MgCl2-CaCl2 chloride brines at 298.15 K and 1 bar over the ionic-strength range of its training and held-out data (domain issue-575-chloride-brine-298-15-k). Qualification limit: passes every held-out bucket in 1,466 of 1,467 printed-rounding realizations under the source-agreement criterion; fails only r1408 (every Dinane-Mounir value lowered by half a printed unit), where dinane-mounir-2003 I<=3 RMS 0.001376 exceeds its limit 0.001352 by 1.7 % and the maximum 0.0026 is within 0.0040. Held-out evidence covers only the two-salt NaCl-CaCl2 (Robinson-Bower) and NaCl-MgCl2 (Dinane-Mounir) mixtures at I = 0.45-8.03 mol/kg, against training at I = 0.001-9.87 mol/kg, so ternary Na-Mg-Ca brines are a composition extrapolation; above 8.03 mol/kg only training residuals and the Rard-Miller Table III MgCl2 reference check exist, and for MgCl2-rich brines they exceed the frozen Phi limits (Rard-Miller |dPhi| up to 0.039 against the 0.03 maximum; pure-MgCl2 Phi RMS 0.029 against the 0.01 RMS limit). Refit: Na+, Mg2+ and Ca2+ refit jointly on Hamer-Wu NaCl, Goldberg-Nuttall MgCl2/CaCl2 (<= 3.3 mol/kg), Rard-Miller 1987 NaCl-MgCl2 and Saad-Padova-Marcus 1980 NaCl-KCl-CaCl2 mixture osmotic coefficients at 298.15 K on figiel-2025-chloride-activity-refit/2; water, Cl-, K+, Li+ and every u_i unchanged. Held-out water properties under the frozen #556 limits, Dinane-Mounir judged by source agreement (owner amendment 2026-10-16: per realization, the larger of the frozen limit and the Rard-Miller/Dinane-Mounir disagreement) (RMS/max, robust over 1,467 realizations): robinson-bower-1966 I<=3 0.0072/0.0146 pass; robinson-bower-1966 I>3 0.0094/0.0157 pass; dinane-mounir-2003 I<=3 0.0007/0.0015 fail (1,466/1,467 realizations pass; failing: r1408); dinane-mounir-2003 I>3 0.0016/0.0028 pass. 298.15 K only; no K+/Li+ mixture, temperature or physical-validation claim."
+        }
+      ],
+      "domains": [
+        {
+          "domain_id": "figiel-298-k-1-bar",
+          "kind": "reported-conditions",
+          "temperature_min": {
+            "magnitude": 298.15,
+            "unit": "kelvin"
+          },
+          "temperature_max": {
+            "magnitude": 298.15,
+            "unit": "kelvin"
+          },
+          "pressure_min": {
+            "magnitude": 1,
+            "unit": "bar"
+          },
+          "pressure_max": {
+            "magnitude": 1,
+            "unit": "bar"
+          },
+          "ion_mole_fraction_max": {
+            "magnitude": 0.38,
+            "unit": "dimensionless"
+          }
+        },
+        {
+          "domain_id": "nist-water-identity",
+          "kind": "unknown"
+        },
+        {
+          "domain_id": "nist-methanol-identity",
+          "kind": "unknown"
+        },
+        {
+          "domain_id": "nist-ethanol-identity",
+          "kind": "unknown"
+        },
+        {
+          "domain_id": "held-2014-chlorides-298-15-k-1-bar",
+          "kind": "reported-conditions",
+          "temperature_min": {
+            "magnitude": 298.15,
+            "unit": "kelvin"
+          },
+          "temperature_max": {
+            "magnitude": 298.15,
+            "unit": "kelvin"
+          },
+          "pressure_min": {
+            "magnitude": 1,
+            "unit": "bar"
+          },
+          "pressure_max": {
+            "magnitude": 1,
+            "unit": "bar"
+          }
+        },
+        {
+          "domain_id": "issue-209-provisional-binary-aqueous",
+          "kind": "reported-conditions",
+          "temperature_min": 298.15,
+          "temperature_max": 298.15,
+          "temperature_unit": "kelvin",
+          "pressure_min": 1,
+          "pressure_max": 1,
+          "pressure_unit": "bar",
+          "molality_min": 0.001,
+          "molality_max": 4.5,
+          "molality_unit": "mol/kg water",
+          "description": "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending."
+        },
+        {
+          "domain_id": "issue-575-chloride-brine-298-15-k",
+          "kind": "reported-conditions",
+          "temperature_min": {
+            "magnitude": 298.15,
+            "unit": "kelvin"
+          },
+          "temperature_max": {
+            "magnitude": 298.15,
+            "unit": "kelvin"
+          },
+          "pressure_min": {
+            "magnitude": 1,
+            "unit": "bar"
+          },
+          "pressure_max": {
+            "magnitude": 1,
+            "unit": "bar"
+          }
+        }
+      ]
+    }
+  ],
+  "topology": {
+    "sites": [
+      {
+        "component_id": "water",
+        "site_id": "a",
+        "site_role": "donor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "figiel-yu-held-2025",
+          "locator": "Table 2 footnote a, 2B association scheme expanded as one A site",
+          "domain_id": "figiel-298-k-1-bar"
+        }
+      },
+      {
+        "component_id": "water",
+        "site_id": "b",
+        "site_role": "acceptor",
+        "multiplicity": 1,
+        "provenance": {
+          "source_id": "figiel-yu-held-2025",
+          "locator": "Table 2 footnote a, 2B association scheme expanded as one B site",
+          "domain_id": "figiel-298-k-1-bar"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "endpoint_a": {
+          "component_id": "water",
+          "site_id": "a"
+        },
+        "endpoint_b": {
+          "component_id": "water",
+          "site_id": "b"
+        },
+        "energy_over_k": {
+          "identity": "association/water/a/water/b/energy_over_k",
+          "value": {
+            "magnitude": 2425.7,
+            "unit": "kelvin"
+          }
+        },
+        "volume": {
+          "identity": "association/water/a/water/b/volume",
+          "value": {
+            "magnitude": 0.04509,
+            "unit": "dimensionless"
+          }
+        },
+        "source": {
+          "kind": "explicit",
+          "provenance": [
+            {
+              "source_id": "figiel-yu-held-2025",
+              "locator": "Table 2, water column, epsilon^AiBi/k_B row",
+              "domain_id": "figiel-298-k-1-bar"
+            },
+            {
+              "source_id": "figiel-yu-held-2025",
+              "locator": "Table 2, water column, kappa^AiBi row",
+              "domain_id": "figiel-298-k-1-bar"
+            }
+          ]
+        }
+      }
+    ],
+    "no_cross_association": []
+  },
+  "model_families": [
+    {
+      "family_id": "model/base",
+      "kind": "base",
+      "choice": "pc-saft",
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Table 2, water column, m_i^seg row",
+        "domain_id": "figiel-298-k-1-bar"
+      }
+    },
+    {
+      "family_id": "model/association",
+      "kind": "association",
+      "choice": "general-site",
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Table 2 footnote a, 2B association scheme expanded as one A site",
+        "domain_id": "figiel-298-k-1-bar"
+      }
+    },
+    {
+      "family_id": "model/electrolyte",
+      "kind": "electrolyte",
+      "choice": "born",
+      "ionic_dispersion": "exclude-same-sign-ion-pairs",
+      "c_shell": 1.0,
+      "c_dielectric": 1.0,
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Table 2 identifies water as solvent; Table 3 separately lists ions. Figiel, Yu & Held 2025, \u00a72 states that the dispersion energy between cation-cation pairs and anion-anion pairs is set to zero (u_ii = 0)",
+        "domain_id": "figiel-298-k-1-bar"
+      }
+    },
+    {
+      "family_id": "model/relative_permittivity",
+      "kind": "permittivity",
+      "choice": "ion-fraction-suppression",
+      "provenance": {
+        "source_id": "figiel-yu-held-2025",
+        "locator": "Eq. 11, bulk relative-permittivity formulation",
+        "domain_id": "figiel-298-k-1-bar"
+      }
+    }
+  ],
+  "document_id": "figiel-2025-chloride-mixture-refit",
+  "document_version": 4,
+  "purpose": "Frozen chloride and hydrogen basis with two calibrated cation-pair mixing coefficients; binary64 preservation and held-out HCl checks.",
+  "sources": [
+    {
+      "source_id": "figiel-yu-held-2025",
+      "citation": "Figiel, P.; Yu, G.; Held, C. Predicting Thermodynamic Properties of Ions in Single Solvents and in Mixed Solvents Using a Modified Born Term within the ePC-SAFT Framework. Industrial & Engineering Chemistry Research 2025, 64, 9406-9418.",
+      "doi": "10.1021/acs.iecr.5c00475",
+      "use_basis": "primary equations and parameters for bounded water, methanol, and ethanol alkali-halide reference states"
+    },
+    {
+      "source_id": "nist-srd-69-water",
+      "citation": "NIST Chemistry WebBook, SRD 69, Water, CAS 7732-18-5.",
+      "use_basis": "water identity and molecular weight"
+    },
+    {
+      "source_id": "nist-srd-69-methanol",
+      "citation": "NIST Chemistry WebBook, SRD 69, Methanol, CAS 67-56-1.",
+      "use_basis": "methanol identity and molecular weight"
+    },
+    {
+      "source_id": "nist-srd-69-ethanol",
+      "citation": "NIST Chemistry WebBook, SRD 69, Ethanol, CAS 64-17-5.",
+      "use_basis": "ethanol identity and molecular weight"
+    },
+    {
+      "source_id": "issue-209-stage1-exact-refit",
+      "citation": "ePC-SAFT issue #209, native exact-derivative stage-1 refit, 2026-10-01",
+      "use_basis": "Aqueous LiCl/NaCl/KCl activity and osmotic fitting with D6/D9 guards; analyses/2026-figiel-divalent-chlorides/"
+    },
+    {
+      "source_id": "held-2014",
+      "citation": "Held, C.; Reschke, T.; Mohammad, S.; Luza, A.; Sadowski, G. ePC-SAFT revised. Chemical Engineering Research and Design 2014, 92, 2884-2897.",
+      "doi": "10.1016/j.cherd.2014.05.017",
+      "use_basis": "Tables 1-3 strategy 2 and Eqs. (1), (15)-(22); Zotero 3DIW87Q5/TD5T732H; PDF SHA-256 dea9aa05e2ee8eb1c675873fa9d8737943312484874d844f01b45613da261acf."
+    },
+    {
+      "source_id": "marcus-1991",
+      "citation": "Marcus, Y. Thermodynamics of solvation of ions. Part 5. Gibbs free energy of hydration at 298.15 K. J. Chem. Soc., Faraday Trans. 1991, 87, 2995-2999.",
+      "doi": "10.1039/FT9918702995",
+      "use_basis": "Table 1 p. 2996; G* plus the owner-verified Figiel Eq. 18 shift 17.908 kJ/mol."
+    },
+    {
+      "source_id": "issue-209-stage2-native-fit",
+      "citation": "ePC-SAFT issue 209 native stage-2 fit, 2026-10-06",
+      "use_basis": "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending."
+    },
+    {
+      "source_id": "goldberg-nuttall-1978",
+      "citation": "Goldberg and Nuttall, J. Phys. Chem. Ref. Data 1978, 7, 263; DOI 10.1063/1.555569.",
+      "doi": "10.1063/1.555569",
+      "use_basis": "Evaluated MgCl2 Table 17 and CaCl2 Table 20, 42 molalities each; retained inputs/evaluated.csv in the Held-2014 analysis."
+    },
+    {
+      "source_id": "issue-575-stage-a-joint-fit",
+      "citation": "ePC-SAFT issue 575 stage-A native joint fit, 2026-10-16",
+      "use_basis": "Qualified by owner decision 2026-10-16 for aqueous NaCl-MgCl2-CaCl2 chloride brines at 298.15 K and 1 bar over the ionic-strength range of its training and held-out data (domain issue-575-chloride-brine-298-15-k). Qualification limit: passes every held-out bucket in 1,466 of 1,467 printed-rounding realizations under the source-agreement criterion; fails only r1408 (every Dinane-Mounir value lowered by half a printed unit), where dinane-mounir-2003 I<=3 RMS 0.001376 exceeds its limit 0.001352 by 1.7 % and the maximum 0.0026 is within 0.0040. Held-out evidence covers only the two-salt NaCl-CaCl2 (Robinson-Bower) and NaCl-MgCl2 (Dinane-Mounir) mixtures at I = 0.45-8.03 mol/kg, against training at I = 0.001-9.87 mol/kg, so ternary Na-Mg-Ca brines are a composition extrapolation; above 8.03 mol/kg only training residuals and the Rard-Miller Table III MgCl2 reference check exist, and for MgCl2-rich brines they exceed the frozen Phi limits (Rard-Miller |dPhi| up to 0.039 against the 0.03 maximum; pure-MgCl2 Phi RMS 0.029 against the 0.01 RMS limit). Refit: Na+, Mg2+ and Ca2+ refit jointly on Hamer-Wu NaCl, Goldberg-Nuttall MgCl2/CaCl2 (<= 3.3 mol/kg), Rard-Miller 1987 NaCl-MgCl2 and Saad-Padova-Marcus 1980 NaCl-KCl-CaCl2 mixture osmotic coefficients at 298.15 K on figiel-2025-chloride-activity-refit/2; water, Cl-, K+, Li+ and every u_i unchanged. Held-out water properties under the frozen #556 limits, Dinane-Mounir judged by source agreement (owner amendment 2026-10-16: per realization, the larger of the frozen limit and the Rard-Miller/Dinane-Mounir disagreement) (RMS/max, robust over 1,467 realizations): robinson-bower-1966 I<=3 0.0072/0.0146 pass; robinson-bower-1966 I>3 0.0094/0.0157 pass; dinane-mounir-2003 I<=3 0.0007/0.0015 fail (1,466/1,467 realizations pass; failing: r1408); dinane-mounir-2003 I>3 0.0016/0.0028 pass. 298.15 K only; no K+/Li+ mixture, temperature or physical-validation claim."
+    },
+    {
+      "source_id": "issue-658-native-li-calibration",
+      "citation": "ePC-SAFT issue 658 native Li calibration, owner-amended design section 10, 2026-10-19",
+      "use_basis": "Aqueous liquid at 298.15 K and 100000 Pa. Yao is calibration, scored I <= 8.3 mol/kg; 455 printed-rounding realizations are sensitivity checks. Owner-amended Yao Phi RMS 0.0105 and upper-I El Guendouzi water-activity RMS 0.0032; the sampled 289-point tradeoff justified these amendments, with all other limits unchanged. Five Li coordinates refitted natively, theta=-0.2205 kg/mol and psi=0.024 kg^2/mol^2 fixed by discrete grid selection. Born diameter is at its 1.38 angstrom lower bound, so covariance is withheld. Song theta=0.010196 kg/mol and psi=-0.0005947 kg^2/mol^2 are report-only Pitzer comparators, not fitted EOS inputs or independent validation. Frozen /1 non-Li basis and its r1408 exception are retained. No independent Li-Mg validation, Li-Ca, K-Ca, ternary, vapor, mixed-solvent, nonaqueous, temperature, caloric or stability qualification. Lead delivered review and application adoption remain separate."
+    },
+    {
+      "source_id": "yao-1992",
+      "citation": "Yao et al. (1992), Thermodynamics of Aqueous Electrolyte Solution: Isopiestic Determination of Osmotic and Activity Coefficients in LiCl-MgCl2-H2O at 25 C, Table 1, p. 841; Zotero PELPB487",
+      "use_basis": "Calibration on original unshifted observations; printed-rounding sensitivity, not independent validation."
+    },
+    {
+      "source_id": "song-2010",
+      "citation": "Song et al. (2010), section 2, p. 1287, Eqs. 1, 2, 10-1 and 10-2; Table 5 p. 1292; Zotero W3AX2GHK",
+      "use_basis": "Short-range theta/psi structure only; published Pitzer coefficients are report-only and share Yao data lineage."
+    },
+    {
+      "source_id": "hydrogen-chloride-calibration",
+      "citation": "Hamer and Wu 1972; Jiang 1996; Held 2008; native two-coordinate HCl calibration",
+      "use_basis": "70 fitted observations and 14 adjusted-water guards of zero fitting weight"
+    },
+    {
+      "source_id": "hcl-cation-mixing-calibration",
+      "citation": "Native two-coordinate HCl cation-pair calibration; Jiang 1996 NaCl I=4\u20136 and Roy 1980 MgCl2 I=0.1\u20135.",
+      "use_basis": "298.15 K, 100000 Pa; kg pure water, no water consumed by H+. Equal log-ratio weights; psi=0. No covariance or mixed-cation acid validation."
+    },
+    {
+      "source_id": "jiang-1996",
+      "citation": "Jiang, C. J. Chem. Eng. Data 1996, 41, 113\u2013116.",
+      "doi": "10.1021/je950182q",
+      "use_basis": "NaCl Table 1 I=4\u20136 training, I=7 held out; LiCl unchanged reference. EMF-only precision is not total uncertainty."
+    },
+    {
+      "source_id": "roy-1980",
+      "citation": "Roy et al., HCl\u2013MgCl2\u2013water activities, J. Solution Chem. 1980.",
+      "doi": "10.1007/BF00646403",
+      "use_basis": "47 nonzero-salt rows for theta(H,Mg), I=0.1\u20135; stated log10 gamma uncertainty \u00b10.0006."
+    },
+    {
+      "source_id": "khoo-1977-mg",
+      "citation": "Khoo et al., HCl\u2013MgCl2\u2013water activities, J. Solution Chem. 1977.",
+      "doi": "10.1007/BF00648074",
+      "use_basis": "25 held-out mixtures through I=3; no row gamma uncertainty stated."
+    },
+    {
+      "source_id": "hawkins-1932",
+      "citation": "Hawkins, J. E. The Activity Coefficients of Hydrochloric Acid in Uni-Univalent Chloride Solutions at Constant Total Molality. J. Am. Chem. Soc. 1932, 54, 4480\u20134487, Table I part 2.",
+      "doi": "10.1021/ja01351a002",
+      "use_basis": "29 primary-paper observed-column values checked; 27 inventory matches and two additional rows. I=4\u20136 are 19 new measurements; 10 lower-I rows recalculate earlier Harned data. Zotero RQ3CV7VT/5DTGL4II."
+    },
+    {
+      "source_id": "harned-1959",
+      "citation": "Harned, H. S. The Thermodynamic Properties of the System: Hydrochloric Acid, Sodium Chloride and Water from 0 to 50\u00b0. J. Phys. Chem. 1959, 63, Table I p.1299 and Eq.1.",
+      "doi": "10.1021/j150578a020",
+      "use_basis": "30 source-smoothed evaluations of three checked 25 C coefficient pairs at I=1,2,3; not independent experiments. Zotero G3TGWURP/TYQDDUX5."
+    }
+  ],
+  "domains": [
+    {
+      "domain_id": "figiel-298-k-1-bar",
+      "kind": "reported-conditions",
+      "temperature_min": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "temperature_max": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "pressure_min": {
+        "magnitude": 1,
+        "unit": "bar"
+      },
+      "pressure_max": {
+        "magnitude": 1,
+        "unit": "bar"
+      },
+      "ion_mole_fraction_max": {
+        "magnitude": 0.38,
+        "unit": "dimensionless"
+      }
+    },
+    {
+      "domain_id": "nist-water-identity",
+      "kind": "unknown"
+    },
+    {
+      "domain_id": "nist-methanol-identity",
+      "kind": "unknown"
+    },
+    {
+      "domain_id": "nist-ethanol-identity",
+      "kind": "unknown"
+    },
+    {
+      "domain_id": "held-2014-chlorides-298-15-k-1-bar",
+      "kind": "reported-conditions",
+      "temperature_min": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "temperature_max": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "pressure_min": {
+        "magnitude": 1,
+        "unit": "bar"
+      },
+      "pressure_max": {
+        "magnitude": 1,
+        "unit": "bar"
+      }
+    },
+    {
+      "domain_id": "issue-209-provisional-binary-aqueous",
+      "kind": "reported-conditions",
+      "temperature_min": 298.15,
+      "temperature_max": 298.15,
+      "temperature_unit": "kelvin",
+      "pressure_min": 1,
+      "pressure_max": 1,
+      "pressure_unit": "bar",
+      "molality_min": 0.001,
+      "molality_max": 4.5,
+      "molality_unit": "mol/kg water",
+      "description": "provisional: relaxed target. MgCl2: gamma max/mean 0.06407599491/0.02947203674, Phi max/mean 0.03957717574/0.01578270588 decade; CaCl2: gamma max/mean 0.04834780429/0.02311442551, Phi max/mean 0.0334417264/0.01328778411 decade. Binary aqueous MgCl2/CaCl2 at 298.15 K, 1 bar, 0.001-4.5 mol/kg on unchanged /1 aqueous LiCl/NaCl/KCl basis. Original 0.02-decade target not met; relaxed by owner 2026-10-06. Boundary optimum, k_ij not identified. No mixed-salt, ternary, temperature, density, caloric or alcohol qualification. No global-optimum, covariance or physical-validation claim. Inherits /1 Na/K feasible-point and identification limits. Delivered review and owner acceptance pending."
+    },
+    {
+      "domain_id": "issue-575-chloride-brine-298-15-k",
+      "kind": "reported-conditions",
+      "temperature_min": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "temperature_max": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "pressure_min": {
+        "magnitude": 1,
+        "unit": "bar"
+      },
+      "pressure_max": {
+        "magnitude": 1,
+        "unit": "bar"
+      }
+    },
+    {
+      "domain_id": "issue-658-aqueous-298-15-k",
+      "kind": "reported-conditions",
+      "temperature_min": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "temperature_max": {
+        "magnitude": 298.15,
+        "unit": "kelvin"
+      },
+      "pressure_min": {
+        "magnitude": 1,
+        "unit": "bar"
+      },
+      "pressure_max": {
+        "magnitude": 1,
+        "unit": "bar"
+      },
+      "description": "Aqueous liquid, scored LiCl-MgCl2 ionic strength through 8.3 mol/kg; inherited /1 chloride-brine limits remain."
+    }
+  ],
+  "cation_mixing": [
+    {
+      "solvent": "water",
+      "cations": [
+        "lithium-cation",
+        "magnesium-cation"
+      ],
+      "anion": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "mixing/Li-Mg-Cl/theta",
+          "family": "cation_pair_mixing",
+          "value": {
+            "magnitude": -0.2205,
+            "unit": "kilogram / mole"
+          }
+        },
+        {
+          "identity": "mixing/Li-Mg-Cl/psi",
+          "family": "cation_triple_mixing",
+          "value": {
+            "magnitude": 0.024,
+            "unit": "kilogram ** 2 / mole ** 2"
+          }
+        }
+      ]
+    },
+    {
+      "solvent": "water",
+      "cations": [
+        "hydronium-cation",
+        "sodium-cation"
+      ],
+      "anion": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "hydronium-cation/sodium-cation/cation_pair_mixing",
+          "family": "cation_pair_mixing",
+          "value": {
+            "magnitude": -0.10973794650049357,
+            "unit": "kilogram / mole"
+          }
+        },
+        {
+          "identity": "hydronium-cation/sodium-cation/cation_triple_mixing",
+          "family": "cation_triple_mixing",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "kilogram ** 2 / mole ** 2"
+          }
+        }
+      ]
+    },
+    {
+      "solvent": "water",
+      "cations": [
+        "hydronium-cation",
+        "magnesium-cation"
+      ],
+      "anion": "chloride-anion",
+      "coefficients": [
+        {
+          "identity": "hydronium-cation/magnesium-cation/cation_pair_mixing",
+          "family": "cation_pair_mixing",
+          "value": {
+            "magnitude": -0.3059175877590649,
+            "unit": "kilogram / mole"
+          }
+        },
+        {
+          "identity": "hydronium-cation/magnesium-cation/cation_triple_mixing",
+          "family": "cation_triple_mixing",
+          "value": {
+            "magnitude": 0.0,
+            "unit": "kilogram ** 2 / mole ** 2"
+          }
+        }
+      ]
+    }
+  ]
+}

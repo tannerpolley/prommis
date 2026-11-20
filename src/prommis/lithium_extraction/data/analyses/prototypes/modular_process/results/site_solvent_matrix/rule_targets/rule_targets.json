@@ -1,5 +1,5 @@
 {
-  "basis": "#339 decision 1 rule; shared entrainment; HBTA/TOPO unpriced active set",
+  "basis": "#339 decision 1 rule; shared entrainment; HBTA/TOPO unpriced active set; #270 target-dose softening",
   "claim_limits": [
     "Model predictions with numerical verification; no physical validation.",
     "Operating cost only; energy, capital and labor excluded.",
@@ -9,27 +9,25 @@
   "issue": 342,
   "measured_point": {
     "high": {
-      "composition_path": -0.33074680363076314,
-      "relative_difference": 1.0946799022804043e-13,
-      "rule_matrix": -0.33074680363072695
+      "composition_path": 40.85484232851283,
+      "relative_difference": 0.0,
+      "rule_matrix": 40.85484232851283
     },
     "low": {
-      "composition_path": -0.6427519611966556,
-      "relative_difference": 1.555823025967129e-09,
-      "rule_matrix": -0.6427519601966473
+      "composition_path": 39.28607780274,
+      "relative_difference": 0.0,
+      "rule_matrix": 39.28607780274
     }
   },
   "paths": {
     "hardness": {
       "high": {
         "ca_mg_li_kg_kg_bracket": [
-          73.40458776595744,
-          74.56973995271868
+          94.37732712765957,
+          95.5424793144208
         ],
         "endpoint_unresolved_released_stages": [
-          [
-            2
-          ],
+          [],
           []
         ],
         "lithium_mg_per_raw_l_bracket": [
@@ -58,20 +56,59 @@
                 "variable": "Li extraction"
               }
             ],
-            "affordable_price_usd_kg": 120.40453229636235,
+            "affordable_price_usd_kg": 142.7552654099664,
             "ca_mg_li_kg_kg": 37.28486997635934,
             "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.5/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999974,
-              "organic_to_aqueous_ratio": 0.8812447951749098,
-              "saponification_ratio": 0.483000000000002
+              "extractant_mol_l": 0.39999999999999786,
+              "organic_to_aqueous_ratio": 0.7617629885975605,
+              "saponification_ratio": 0.48300000000000165
             },
-            "headroom_usd_m3": 10.941844976631256,
+            "headroom_usd_m3": 14.909475031075463,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
             "scale": 0.5,
+            "sign": 1,
+            "stages": 1,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "lower",
+                "kind": "requirement (95 %)",
+                "value": 0.95,
+                "variable": "Li extraction"
+              }
+            ],
+            "affordable_price_usd_kg": 89.3196011634317,
+            "ca_mg_li_kg_kg": 55.927304964539005,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.75/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999965,
+              "organic_to_aqueous_ratio": 0.7643357286818568,
+              "saponification_ratio": 0.48300000000000265
+            },
+            "headroom_usd_m3": 8.823132156410637,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 0.75,
             "sign": 1,
             "stages": 1,
             "unresolved_released_stages": []
@@ -97,20 +134,61 @@
                 "variable": "saponification_ratio"
               }
             ],
-            "affordable_price_usd_kg": 56.62212890507046,
-            "ca_mg_li_kg_kg": 55.927304964539005,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.75/cell_high.json",
+            "affordable_price_usd_kg": 61.29886119153767,
+            "ca_mg_li_kg_kg": 65.24852245862884,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.875/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999906,
-              "organic_to_aqueous_ratio": 0.5000000000000164,
-              "saponification_ratio": 0.4830000000000033
+              "extractant_mol_l": 0.399999999999992,
+              "organic_to_aqueous_ratio": 0.5000000000000169,
+              "saponification_ratio": 0.4830000000000031
             },
-            "headroom_usd_m3": 6.412840073041519,
+            "headroom_usd_m3": 8.49417410263652,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 0.75,
+            "scale": 0.875,
+            "sign": 1,
+            "stages": 2,
+            "unresolved_released_stages": [
+              1
+            ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 51.25849304922337,
+            "ca_mg_li_kg_kg": 69.90913120567376,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.9375/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999898,
+              "organic_to_aqueous_ratio": 0.5000000000000184,
+              "saponification_ratio": 0.48300000000000365
+            },
+            "headroom_usd_m3": 6.986501594120391,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 0.9375,
             "sign": 1,
             "stages": 2,
             "unresolved_released_stages": []
@@ -136,22 +214,100 @@
                 "variable": "saponification_ratio"
               }
             ],
-            "affordable_price_usd_kg": 24.557012713381486,
-            "ca_mg_li_kg_kg": 65.24852245862884,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.875/cell_high.json",
+            "affordable_price_usd_kg": 46.101868507596755,
+            "ca_mg_li_kg_kg": 72.23943557919621,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.96875/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999573,
-              "organic_to_aqueous_ratio": 0.5000000000000222,
-              "saponification_ratio": 0.48300000000000665
+              "extractant_mol_l": 0.39999999999998814,
+              "organic_to_aqueous_ratio": 0.5000000000000193,
+              "saponification_ratio": 0.483000000000004
             },
-            "headroom_usd_m3": 2.914588714960292,
+            "headroom_usd_m3": 6.232828089296735,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 0.875,
+            "scale": 0.96875,
             "sign": 1,
-            "stages": 3,
+            "stages": 2,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 43.489629359551245,
+            "ca_mg_li_kg_kg": 73.40458776595744,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.984375/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999871,
+              "organic_to_aqueous_ratio": 0.5000000000000199,
+              "saponification_ratio": 0.4830000000000042
+            },
+            "headroom_usd_m3": 5.856031187570881,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 0.984375,
+            "sign": 1,
+            "stages": 2,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 40.85484232851283,
+            "ca_mg_li_kg_kg": 74.56973995271868,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999858,
+              "organic_to_aqueous_ratio": 0.5000000000000203,
+              "saponification_ratio": 0.4830000000000045
+            },
+            "headroom_usd_m3": 5.479260570550313,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.0,
+            "sign": 1,
+            "stages": 2,
             "unresolved_released_stages": []
           },
           {
@@ -167,42 +323,6 @@
                 "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
                 "value": 0.483,
                 "variable": "saponification_ratio"
-              }
-            ],
-            "affordable_price_usd_kg": 9.80163761460944,
-            "ca_mg_li_kg_kg": 69.90913120567376,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.9375/cell_high.json",
-            "checks": [],
-            "design": {
-              "extractant_mol_l": 0.315651336076109,
-              "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.4830000000000151
-            },
-            "headroom_usd_m3": 1.4701620963463924,
-            "lithium_mg_per_raw_l": 423.0,
-            "outcome": "positive affordable price",
-            "required_credit_usd_m3": null,
-            "scale": 0.9375,
-            "sign": 1,
-            "stages": 3,
-            "unresolved_released_stages": [
-              4,
-              5
-            ]
-          },
-          {
-            "active_bounds": [
-              {
-                "bound": "lower",
-                "kind": "numerical: lower end of the set C accepted range (#216)",
-                "value": 0.5,
-                "variable": "organic_to_aqueous_ratio"
-              },
-              {
-                "bound": "lower",
-                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
-                "value": 0.483,
-                "variable": "saponification_ratio"
               },
               {
                 "bound": "upper",
@@ -211,67 +331,64 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 4.110933227614177,
-            "ca_mg_li_kg_kg": 72.23943557919621,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.96875/cell_high.json",
+            "affordable_price_usd_kg": 1.7935849592500746,
+            "ca_mg_li_kg_kg": 93.21217494089835,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.25/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.2710117174645023,
+              "extractant_mol_l": 0.24855641906435932,
               "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.48300000000003646
+              "saponification_ratio": 0.48300000000008353
             },
-            "headroom_usd_m3": 0.7349331331949713,
+            "headroom_usd_m3": 0.404751735267304,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 0.96875,
-            "sign": 1,
-            "stages": 5,
-            "unresolved_released_stages": [
-              2,
-              3
-            ]
-          },
-          {
-            "active_bounds": [
-              {
-                "bound": "lower",
-                "kind": "numerical: lower end of the set C accepted range (#216)",
-                "value": 0.5,
-                "variable": "organic_to_aqueous_ratio"
-              },
-              {
-                "bound": "lower",
-                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
-                "value": 0.483,
-                "variable": "saponification_ratio"
-              },
-              {
-                "bound": "upper",
-                "kind": "design range (1-5 stages)",
-                "value": 5,
-                "variable": "stage count"
-              }
-            ],
-            "affordable_price_usd_kg": 1.549732340438645,
-            "ca_mg_li_kg_kg": 73.40458776595744,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.984375/cell_high.json",
-            "checks": [],
-            "design": {
-              "extractant_mol_l": 0.2606108379851785,
-              "organic_to_aqueous_ratio": 0.5000000000001285,
-              "saponification_ratio": 0.48300000000009546
-            },
-            "headroom_usd_m3": 0.28633542231882103,
-            "lithium_mg_per_raw_l": 423.0,
-            "outcome": "positive affordable price",
-            "required_credit_usd_m3": null,
-            "scale": 0.984375,
+            "scale": 1.25,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": [
               2
             ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 0.14508047597911847,
+            "ca_mg_li_kg_kg": 94.37732712765957,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.265625/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.24716265534954657,
+              "organic_to_aqueous_ratio": 0.5,
+              "saponification_ratio": 0.4830000000007811
+            },
+            "headroom_usd_m3": 0.03275759501302389,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.265625,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": []
           },
           {
             "active_bounds": [
@@ -294,44 +411,161 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": -0.33074680363076314,
-            "ca_mg_li_kg_kg": 74.56973995271868,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_high.json",
+            "affordable_price_usd_kg": -0.49308337746949527,
+            "ca_mg_li_kg_kg": 95.5424793144208,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.28125/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.1838741449174804,
-              "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.6999999999994213
+              "extractant_mol_l": 0.17651067228175019,
+              "organic_to_aqueous_ratio": 0.5000000000029184,
+              "saponification_ratio": 0.6999999999996225
             },
-            "headroom_usd_m3": -0.20612970332007308,
+            "headroom_usd_m3": -0.36790343418269345,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-            "required_credit_usd_m3": 0.1837730417375596,
-            "scale": 1.0,
+            "required_credit_usd_m3": 0.33997001383843184,
+            "scale": 1.28125,
+            "sign": -1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "design range (#201); single-stage fit under-predicts D_Li by 0.25-0.42 decade at 0.1 M (Ni 2024 Fig. 10)",
+                "value": 0.1,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "upper",
+                "kind": "calibration: highest supported degree (Zhang 2020 Table 2; Zhang 2021 Table 9)",
+                "value": 0.7,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": -1.3231346429648376,
+            "ca_mg_li_kg_kg": 97.87278368794327,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.3125/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.10000000000336276,
+              "organic_to_aqueous_ratio": 0.9044072607244881,
+              "saponification_ratio": 0.7
+            },
+            "headroom_usd_m3": -1.432634625945461,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "negative: no nonnegative extractant price reaches operating break-even",
+            "required_credit_usd_m3": 1.085373353615914,
+            "scale": 1.3125,
+            "sign": -1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "design range (#201); single-stage fit under-predicts D_Li by 0.25-0.42 decade at 0.1 M (Ni 2024 Fig. 10)",
+                "value": 0.1,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "upper",
+                "kind": "calibration: highest supported degree (Zhang 2020 Table 2; Zhang 2021 Table 9)",
+                "value": 0.7,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": -2.8385547641638595,
+            "ca_mg_li_kg_kg": 102.53339243498817,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.375/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.10000000000010863,
+              "organic_to_aqueous_ratio": 0.9046454588653956,
+              "saponification_ratio": 0.7
+            },
+            "headroom_usd_m3": -3.1013596642715626,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "negative: no nonnegative extractant price reaches operating break-even",
+            "required_credit_usd_m3": 2.746473102960813,
+            "scale": 1.375,
+            "sign": -1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "design range (#201); single-stage fit under-predicts D_Li by 0.25-0.42 decade at 0.1 M (Ni 2024 Fig. 10)",
+                "value": 0.1,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "upper",
+                "kind": "calibration: highest supported degree (Zhang 2020 Table 2; Zhang 2021 Table 9)",
+                "value": 0.7,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": -5.951401208216327,
+            "ca_mg_li_kg_kg": 111.85460992907801,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.5/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.10000000000003582,
+              "organic_to_aqueous_ratio": 0.9036191772564528,
+              "saponification_ratio": 0.7
+            },
+            "headroom_usd_m3": -7.055783594605053,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "negative: no nonnegative extractant price reaches operating break-even",
+            "required_credit_usd_m3": 6.6773763522757505,
+            "scale": 1.5,
             "sign": -1,
             "stages": 5,
             "unresolved_released_stages": []
           }
         ],
-        "relative_width": 0.015748031496062992,
+        "relative_width": 0.012269938650306749,
         "scale_bracket": [
-          0.984375,
-          1.0
+          1.265625,
+          1.28125
         ],
         "status": "bracketed"
       },
       "low": {
         "ca_mg_li_kg_kg_bracket": [
-          72.23943557919621,
-          73.40458776595744
+          92.04702275413712,
+          93.21217494089835
         ],
         "endpoint_unresolved_released_stages": [
           [
-            2,
             3,
             4
           ],
           [
+            3,
             4,
             5
           ]
@@ -362,16 +596,16 @@
                 "variable": "saponification_ratio"
               }
             ],
-            "affordable_price_usd_kg": 108.37374919520582,
+            "affordable_price_usd_kg": 108.73291586837554,
             "ca_mg_li_kg_kg": 37.28486997635934,
             "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.5/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999966,
-              "organic_to_aqueous_ratio": 0.5000000000000205,
-              "saponification_ratio": 0.48300000000000193
+              "extractant_mol_l": 0.39999999999999647,
+              "organic_to_aqueous_ratio": 0.5000000000000174,
+              "saponification_ratio": 0.4830000000000019
             },
-            "headroom_usd_m3": 13.484377617032266,
+            "headroom_usd_m3": 16.854170978315864,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
@@ -399,6 +633,45 @@
                 "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
                 "value": 0.483,
                 "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 75.7074278427646,
+            "ca_mg_li_kg_kg": 55.927304964539005,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.75/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.39999999999999514,
+              "organic_to_aqueous_ratio": 0.5000000000000299,
+              "saponification_ratio": 0.48300000000000276
+            },
+            "headroom_usd_m3": 11.490994723136776,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 0.75,
+            "sign": 1,
+            "stages": 4,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
               },
               {
                 "bound": "upper",
@@ -407,20 +680,114 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 54.246637728467164,
-            "ca_mg_li_kg_kg": 55.927304964539005,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.75/cell_low.json",
+            "affordable_price_usd_kg": 58.25367703283944,
+            "ca_mg_li_kg_kg": 65.24852245862884,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.875/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999921,
-              "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.48300000000000365
+              "extractant_mol_l": 0.3999999999999932,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.4830000000000035
             },
-            "headroom_usd_m3": 6.688229951680555,
+            "headroom_usd_m3": 8.648539070140206,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 0.75,
+            "scale": 0.875,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": [
+              1
+            ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 48.951736758995246,
+            "ca_mg_li_kg_kg": 69.90913120567376,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.9375/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999915,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.4830000000000041
+            },
+            "headroom_usd_m3": 7.140010722569539,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 0.9375,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": [
+              1
+            ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 46.56929943323962,
+            "ca_mg_li_kg_kg": 71.07428339243499,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.953125/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.39999999999999086,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.48300000000000426
+            },
+            "headroom_usd_m3": 6.762948269256643,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 0.953125,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": []
@@ -452,20 +819,110 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 24.254627121676812,
-            "ca_mg_li_kg_kg": 65.24852245862884,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.875/cell_low.json",
+            "affordable_price_usd_kg": 44.1641780053907,
+            "ca_mg_li_kg_kg": 72.23943557919621,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.96875/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999663,
-              "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.4830000000000069
+              "extractant_mol_l": 0.39999999999999014,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.4830000000000044
             },
-            "headroom_usd_m3": 2.8856640549072736,
+            "headroom_usd_m3": 6.385913184781323,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 0.875,
+            "scale": 0.96875,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 39.28607780274,
+            "ca_mg_li_kg_kg": 74.56973995271868,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999883,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.4830000000000049
+            },
+            "headroom_usd_m3": 5.6319242937835945,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.0,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 18.876095700139,
+            "ca_mg_li_kg_kg": 83.89095744680851,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.125/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.399999999999947,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.48300000000000864
+            },
+            "headroom_usd_m3": 2.6170231371028585,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.125,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": []
@@ -491,23 +948,65 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 8.765289866597175,
-            "ca_mg_li_kg_kg": 69.90913120567376,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.9375/cell_low.json",
+            "affordable_price_usd_kg": 8.370155159182394,
+            "ca_mg_li_kg_kg": 88.55156619385343,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.1875/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3687770753764349,
+              "extractant_mol_l": 0.3708669241627625,
               "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.4830000000000166
+              "saponification_ratio": 0.4830000000000173
             },
-            "headroom_usd_m3": 1.1215858127093128,
+            "headroom_usd_m3": 1.2422934367698275,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 0.9375,
+            "scale": 1.1875,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": [
+              2
+            ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 3.4573669396870823,
+            "ca_mg_li_kg_kg": 90.88187056737588,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.21875/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.355360540072207,
+              "organic_to_aqueous_ratio": 0.5,
+              "saponification_ratio": 0.4830000000000419
+            },
+            "headroom_usd_m3": 0.532410424343098,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.21875,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": [
+              1,
               2,
               3
             ]
@@ -533,24 +1032,23 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 1.558401059665938,
-            "ca_mg_li_kg_kg": 72.23943557919621,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.96875/cell_low.json",
+            "affordable_price_usd_kg": 1.0406013577621773,
+            "ca_mg_li_kg_kg": 92.04702275413712,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.234375/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.35305314153701395,
+              "extractant_mol_l": 0.35059261714841633,
               "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.4830000000000923
+              "saponification_ratio": 0.48300000000013715
             },
-            "headroom_usd_m3": 0.20680028687692698,
+            "headroom_usd_m3": 0.1617848865300502,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 0.96875,
+            "scale": 1.234375,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": [
-              2,
               3,
               4
             ]
@@ -558,35 +1056,48 @@
           {
             "active_bounds": [
               {
+                "bound": "lower",
+                "kind": "design range (#201); single-stage fit under-predicts D_Li by 0.25-0.42 decade at 0.1 M (Ni 2024 Fig. 10)",
+                "value": 0.1,
+                "variable": "extractant_mol_l"
+              },
+              {
                 "bound": "upper",
                 "kind": "calibration: highest supported degree (Zhang 2020 Table 2; Zhang 2021 Table 9)",
                 "value": 0.809,
                 "variable": "saponification_ratio"
               }
             ],
-            "affordable_price_usd_kg": -0.8952540321387271,
-            "ca_mg_li_kg_kg": 73.40458776595744,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_0.984375/cell_low.json",
+            "affordable_price_usd_kg": -1.5376816161677704,
+            "ca_mg_li_kg_kg": 93.21217494089835,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.25/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.11425614058651569,
-              "organic_to_aqueous_ratio": 1.2755187232117478,
-              "saponification_ratio": 0.8089999999998286
+              "extractant_mol_l": 0.10000000000010688,
+              "organic_to_aqueous_ratio": 1.8213066440171835,
+              "saponification_ratio": 0.809
             },
-            "headroom_usd_m3": -1.326340770303105,
+            "headroom_usd_m3": -2.6260577007845924,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-            "required_credit_usd_m3": 1.1895452862831917,
-            "scale": 0.984375,
+            "required_credit_usd_m3": 2.5799244601707016,
+            "scale": 1.25,
             "sign": -1,
-            "stages": 3,
+            "stages": 2,
             "unresolved_released_stages": [
+              3,
               4,
               5
             ]
           },
           {
             "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "design range (#201); single-stage fit under-predicts D_Li by 0.25-0.42 decade at 0.1 M (Ni 2024 Fig. 10)",
+                "value": 0.1,
+                "variable": "extractant_mol_l"
+              },
               {
                 "bound": "upper",
                 "kind": "calibration: highest supported degree (Zhang 2020 Table 2; Zhang 2021 Table 9)",
@@ -600,29 +1111,29 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": -0.6427519611966556,
-            "ca_mg_li_kg_kg": 74.56973995271868,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_low.json",
+            "affordable_price_usd_kg": -3.7249336255174206,
+            "ca_mg_li_kg_kg": 111.85460992907801,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/scale_1.5/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.1522230376344863,
-              "organic_to_aqueous_ratio": 0.7393158889034553,
-              "saponification_ratio": 0.8089999997484422
+              "extractant_mol_l": 0.100000000000059,
+              "organic_to_aqueous_ratio": 1.2271161081047532,
+              "saponification_ratio": 0.809
             },
-            "headroom_usd_m3": -0.8232809368712637,
+            "headroom_usd_m3": -7.8042051084931146,
             "lithium_mg_per_raw_l": 423.0,
             "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-            "required_credit_usd_m3": 0.7390748816208159,
-            "scale": 1.0,
+            "required_credit_usd_m3": 7.320546923590655,
+            "scale": 1.5,
             "sign": -1,
             "stages": 5,
             "unresolved_released_stages": []
           }
         ],
-        "relative_width": 0.016,
+        "relative_width": 0.012578616352201259,
         "scale_bracket": [
-          0.96875,
-          0.984375
+          1.234375,
+          1.25
         ],
         "status": "bracketed"
       }
@@ -630,20 +1141,65 @@
     "lithium_grade": {
       "high": {
         "ca_mg_li_kg_kg_bracket": [
-          74.56973995271868,
-          73.42251318421532
+          93.57771288184304,
+          91.77814148026913
         ],
         "endpoint_unresolved_released_stages": [
-          [],
           [
-            2
+            2,
+            5
+          ],
+          [
+            2,
+            3
           ]
         ],
         "lithium_mg_per_raw_l_bracket": [
-          423.0,
-          429.60937499999994
+          337.078125,
+          343.68750000000006
         ],
         "points": [
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "design range (#201); single-stage fit under-predicts D_Li by 0.25-0.42 decade at 0.1 M (Ni 2024 Fig. 10)",
+                "value": 0.1,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "upper",
+                "kind": "calibration: highest supported degree (Zhang 2020 Table 2; Zhang 2021 Table 9)",
+                "value": 0.7,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": -1.4210786879373043,
+            "ca_mg_li_kg_kg": 99.42631993695824,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.75/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.10000000000039982,
+              "organic_to_aqueous_ratio": 0.7527143235662161,
+              "saponification_ratio": 0.7
+            },
+            "headroom_usd_m3": -1.665350058271443,
+            "lithium_mg_per_raw_l": 317.25,
+            "outcome": "negative: no nonnegative extractant price reaches operating break-even",
+            "required_credit_usd_m3": 1.4347887084944162,
+            "scale": 0.75,
+            "sign": -1,
+            "stages": 5,
+            "unresolved_released_stages": [
+              1
+            ]
+          },
           {
             "active_bounds": [
               {
@@ -665,20 +1221,20 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": -0.33074680363076314,
-            "ca_mg_li_kg_kg": 74.56973995271868,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_high.json",
+            "affordable_price_usd_kg": -0.5425719739545778,
+            "ca_mg_li_kg_kg": 95.44926713947991,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.78125/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.1838741449174804,
-              "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.6999999999994213
+              "extractant_mol_l": 0.1503697683427583,
+              "organic_to_aqueous_ratio": 0.500000000005243,
+              "saponification_ratio": 0.6999999999996407
             },
-            "headroom_usd_m3": -0.20612970332007308,
-            "lithium_mg_per_raw_l": 423.0,
+            "headroom_usd_m3": -0.4916317842130944,
+            "lithium_mg_per_raw_l": 330.46875,
             "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-            "required_credit_usd_m3": 0.1837730417375596,
-            "scale": 1.0,
+            "required_credit_usd_m3": 0.45867943687805734,
+            "scale": 0.78125,
             "sign": -1,
             "stages": 5,
             "unresolved_released_stages": []
@@ -690,38 +1246,27 @@
                 "kind": "numerical: lower end of the set C accepted range (#216)",
                 "value": 0.5,
                 "variable": "organic_to_aqueous_ratio"
-              },
-              {
-                "bound": "lower",
-                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
-                "value": 0.483,
-                "variable": "saponification_ratio"
-              },
-              {
-                "bound": "upper",
-                "kind": "design range (1-5 stages)",
-                "value": 5,
-                "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 1.6701739373426452,
-            "ca_mg_li_kg_kg": 73.42251318421532,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.015625/cell_high.json",
+            "affordable_price_usd_kg": -0.05245661287606482,
+            "ca_mg_li_kg_kg": 93.57771288184304,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.796875/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.2636360916592272,
-              "organic_to_aqueous_ratio": 0.5000000000001228,
-              "saponification_ratio": 0.48300000000008864
+              "extractant_mol_l": 0.16200768673569482,
+              "organic_to_aqueous_ratio": 0.5000000000009551,
+              "saponification_ratio": 0.6742518558739463
             },
-            "headroom_usd_m3": 0.30369882233654977,
-            "lithium_mg_per_raw_l": 429.60937499999994,
-            "outcome": "positive affordable price",
-            "required_credit_usd_m3": null,
-            "scale": 1.015625,
-            "sign": 1,
-            "stages": 5,
+            "headroom_usd_m3": -0.039374726501460344,
+            "lithium_mg_per_raw_l": 337.078125,
+            "outcome": "negative: no nonnegative extractant price reaches operating break-even",
+            "required_credit_usd_m3": 0.01482133627849791,
+            "scale": 0.796875,
+            "sign": -1,
+            "stages": 4,
             "unresolved_released_stages": [
-              2
+              2,
+              5
             ]
           },
           {
@@ -745,20 +1290,20 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 4.44042133388014,
-            "ca_mg_li_kg_kg": 72.31005086324234,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.03125/cell_high.json",
+            "affordable_price_usd_kg": 1.8573106590799866,
+            "ca_mg_li_kg_kg": 91.77814148026913,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.8125/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.2788522435437789,
-              "organic_to_aqueous_ratio": 0.5000000000000677,
-              "saponification_ratio": 0.4830000000000336
+              "extractant_mol_l": 0.21592010193386926,
+              "organic_to_aqueous_ratio": 0.5000000000001512,
+              "saponification_ratio": 0.4830000000000831
             },
-            "headroom_usd_m3": 0.7641667871939859,
-            "lithium_mg_per_raw_l": 436.21875000000006,
+            "headroom_usd_m3": 0.5143568725207963,
+            "lithium_mg_per_raw_l": 343.68750000000006,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 1.03125,
+            "scale": 0.8125,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": [
@@ -781,103 +1326,30 @@
                 "variable": "saponification_ratio"
               }
             ],
-            "affordable_price_usd_kg": 7.681894021578391,
-            "ca_mg_li_kg_kg": 70.18328466138229,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.0625/cell_high.json",
+            "affordable_price_usd_kg": 11.439801563386146,
+            "ca_mg_li_kg_kg": 85.2225599459642,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.875/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3816017599446088,
-              "organic_to_aqueous_ratio": 0.5000000000000497,
-              "saponification_ratio": 0.48300000000001897
+              "extractant_mol_l": 0.35500722483206426,
+              "organic_to_aqueous_ratio": 0.5,
+              "saponification_ratio": 0.4830000000000127
             },
-            "headroom_usd_m3": 0.8358273397899296,
-            "lithium_mg_per_raw_l": 449.4375,
+            "headroom_usd_m3": 1.8959824581055926,
+            "lithium_mg_per_raw_l": 370.125,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 1.0625,
+            "scale": 0.875,
             "sign": 1,
-            "stages": 2,
-            "unresolved_released_stages": [
-              3,
-              4,
-              5
-            ]
-          },
-          {
-            "active_bounds": [
-              {
-                "bound": "upper",
-                "kind": "design range (#201)",
-                "value": 0.4,
-                "variable": "extractant_mol_l"
-              },
-              {
-                "bound": "lower",
-                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
-                "value": 0.483,
-                "variable": "saponification_ratio"
-              }
-            ],
-            "affordable_price_usd_kg": 26.285623923040106,
-            "ca_mg_li_kg_kg": 66.28421329130549,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.125/cell_high.json",
-            "checks": [],
-            "design": {
-              "extractant_mol_l": 0.39999999999995395,
-              "organic_to_aqueous_ratio": 0.5341923061796005,
-              "saponification_ratio": 0.483
-            },
-            "headroom_usd_m3": 3.0113974718134173,
-            "lithium_mg_per_raw_l": 475.875,
-            "outcome": "positive affordable price",
-            "required_credit_usd_m3": null,
-            "scale": 1.125,
-            "sign": 1,
-            "stages": 3,
-            "unresolved_released_stages": [
-              2,
-              4
-            ]
-          },
-          {
-            "active_bounds": [
-              {
-                "bound": "upper",
-                "kind": "design range (#201)",
-                "value": 0.4,
-                "variable": "extractant_mol_l"
-              },
-              {
-                "bound": "lower",
-                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
-                "value": 0.483,
-                "variable": "saponification_ratio"
-              }
-            ],
-            "affordable_price_usd_kg": 61.36223533196878,
-            "ca_mg_li_kg_kg": 59.655791962174945,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.25/cell_high.json",
-            "checks": [],
-            "design": {
-              "extractant_mol_l": 0.39999999999999014,
-              "organic_to_aqueous_ratio": 0.5891860165710392,
-              "saponification_ratio": 0.4830000000000029
-            },
-            "headroom_usd_m3": 6.505625102218133,
-            "lithium_mg_per_raw_l": 528.7499999999999,
-            "outcome": "positive affordable price",
-            "required_credit_usd_m3": null,
-            "scale": 1.25,
-            "sign": 1,
-            "stages": 2,
+            "stages": 4,
             "unresolved_released_stages": []
           },
           {
             "active_bounds": [
               {
-                "bound": "upper",
-                "kind": "calibration: Zhang 2020 Fig. 7 phase-ratio check",
-                "value": 1.0,
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
                 "variable": "organic_to_aqueous_ratio"
               },
               {
@@ -888,41 +1360,265 @@
               },
               {
                 "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 40.85484232851283,
+            "ca_mg_li_kg_kg": 74.56973995271868,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999858,
+              "organic_to_aqueous_ratio": 0.5000000000000203,
+              "saponification_ratio": 0.4830000000000045
+            },
+            "headroom_usd_m3": 5.479260570550313,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.0,
+            "sign": 1,
+            "stages": 2,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 44.70901059010385,
+            "ca_mg_li_kg_kg": 73.42251318421532,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.015625/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999875,
+              "organic_to_aqueous_ratio": 0.5000000000000193,
+              "saponification_ratio": 0.4830000000000041
+            },
+            "headroom_usd_m3": 5.979126861234263,
+            "lithium_mg_per_raw_l": 429.60937499999994,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.015625,
+            "sign": 1,
+            "stages": 2,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 48.587149542059635,
+            "ca_mg_li_kg_kg": 72.31005086324234,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.03125/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.39999999999998875,
+              "organic_to_aqueous_ratio": 0.5000000000000183,
+              "saponification_ratio": 0.4830000000000038
+            },
+            "headroom_usd_m3": 6.478622810333377,
+            "lithium_mg_per_raw_l": 436.21875000000006,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.03125,
+            "sign": 1,
+            "stages": 2,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 56.144098486656354,
+            "ca_mg_li_kg_kg": 70.18328466138229,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.0625/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999904,
+              "organic_to_aqueous_ratio": 0.5050734769134709,
+              "saponification_ratio": 0.4830000000000033
+            },
+            "headroom_usd_m3": 7.460100124474689,
+            "lithium_mg_per_raw_l": 449.4375,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.0625,
+            "sign": 1,
+            "stages": 2,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 66.78163265410888,
+            "ca_mg_li_kg_kg": 66.28421329130549,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.125/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999939,
+              "organic_to_aqueous_ratio": 0.5382111930972242,
+              "saponification_ratio": 0.48300000000000304
+            },
+            "headroom_usd_m3": 9.550222462924694,
+            "lithium_mg_per_raw_l": 475.875,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.125,
+            "sign": 1,
+            "stages": 3,
+            "unresolved_released_stages": [
+              1
+            ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              }
+            ],
+            "affordable_price_usd_kg": 98.13727016613579,
+            "ca_mg_li_kg_kg": 59.655791962174945,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.25/cell_high.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999952,
+              "organic_to_aqueous_ratio": 0.5952376680867779,
+              "saponification_ratio": 0.483000000000002
+            },
+            "headroom_usd_m3": 13.14677605984232,
+            "lithium_mg_per_raw_l": 528.7499999999999,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.25,
+            "sign": 1,
+            "stages": 2,
+            "unresolved_released_stages": [
+              1
+            ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "lower",
                 "kind": "requirement (95 %)",
                 "value": 0.95,
                 "variable": "Li extraction"
               }
             ],
-            "affordable_price_usd_kg": 138.3990432201561,
+            "affordable_price_usd_kg": 220.22678998510818,
             "ca_mg_li_kg_kg": 49.71315996847912,
             "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.5/cell_high.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.39999999999999913,
-              "organic_to_aqueous_ratio": 0.9999999999999966,
-              "saponification_ratio": 0.4965866762227575
+              "extractant_mol_l": 0.3999999999999986,
+              "organic_to_aqueous_ratio": 0.9004654238663077,
+              "saponification_ratio": 0.4830000000000011
             },
-            "headroom_usd_m3": 10.335613963354731,
+            "headroom_usd_m3": 17.524521769398657,
             "lithium_mg_per_raw_l": 634.5,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
             "scale": 1.5,
             "sign": 1,
             "stages": 1,
-            "unresolved_released_stages": []
+            "unresolved_released_stages": [
+              3,
+              4,
+              5
+            ]
           }
         ],
-        "relative_width": 0.015503875968992248,
+        "relative_width": 0.019417475728155338,
         "scale_bracket": [
-          1.0,
-          1.015625
+          0.796875,
+          0.8125
         ],
         "status": "bracketed"
       },
       "low": {
         "ca_mg_li_kg_kg_bracket": [
-          73.42251318421532,
-          72.31005086324234
+          91.77814148026913,
+          90.0464784334716
         ],
         "endpoint_unresolved_released_stages": [
           [
@@ -931,18 +1627,22 @@
             5
           ],
           [
-            2,
-            3,
-            4
+            3
           ]
         ],
         "lithium_mg_per_raw_l_bracket": [
-          429.60937499999994,
-          436.21875000000006
+          343.68750000000006,
+          350.296875
         ],
         "points": [
           {
             "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "design range (#201); single-stage fit under-predicts D_Li by 0.25-0.42 decade at 0.1 M (Ni 2024 Fig. 10)",
+                "value": 0.1,
+                "variable": "extractant_mol_l"
+              },
               {
                 "bound": "upper",
                 "kind": "calibration: highest supported degree (Zhang 2020 Table 2; Zhang 2021 Table 9)",
@@ -956,20 +1656,20 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": -0.6427519611966556,
-            "ca_mg_li_kg_kg": 74.56973995271868,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_low.json",
+            "affordable_price_usd_kg": -1.1338593714516132,
+            "ca_mg_li_kg_kg": 99.42631993695824,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.75/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.1522230376344863,
-              "organic_to_aqueous_ratio": 0.7393158889034553,
-              "saponification_ratio": 0.8089999997484422
+              "extractant_mol_l": 0.10000000000036095,
+              "organic_to_aqueous_ratio": 1.0445884347669703,
+              "saponification_ratio": 0.809
             },
-            "headroom_usd_m3": -0.8232809368712637,
-            "lithium_mg_per_raw_l": 423.0,
+            "headroom_usd_m3": -2.326189824394625,
+            "lithium_mg_per_raw_l": 317.25,
             "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-            "required_credit_usd_m3": 0.7390748816208159,
-            "scale": 1.0,
+            "required_credit_usd_m3": 2.035332948142056,
+            "scale": 0.75,
             "sign": -1,
             "stages": 5,
             "unresolved_released_stages": []
@@ -989,20 +1689,20 @@
                 "variable": "saponification_ratio"
               }
             ],
-            "affordable_price_usd_kg": -1.777876801269561,
-            "ca_mg_li_kg_kg": 73.42251318421532,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.015625/cell_low.json",
+            "affordable_price_usd_kg": -1.214885177908509,
+            "ca_mg_li_kg_kg": 91.77814148026913,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.8125/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.10000000000009082,
-              "organic_to_aqueous_ratio": 1.8318853398806243,
-              "saponification_ratio": 0.8089999999999032
+              "extractant_mol_l": 0.10000000000012364,
+              "organic_to_aqueous_ratio": 1.6689436696085993,
+              "saponification_ratio": 0.809
             },
-            "headroom_usd_m3": -2.628892818155414,
-            "lithium_mg_per_raw_l": 429.60937499999994,
+            "headroom_usd_m3": -2.203550194799014,
+            "lithium_mg_per_raw_l": 343.68750000000006,
             "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-            "required_credit_usd_m3": 2.5849254744771315,
-            "scale": 1.015625,
+            "required_credit_usd_m3": 2.1670884319242525,
+            "scale": 0.8125,
             "sign": -1,
             "stages": 2,
             "unresolved_released_stages": [
@@ -1032,30 +1732,34 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 1.8520169407326732,
-            "ca_mg_li_kg_kg": 72.31005086324234,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.03125/cell_low.json",
+            "affordable_price_usd_kg": 2.2340555136095754,
+            "ca_mg_li_kg_kg": 90.0464784334716,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.828125/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.359223557617174,
+              "extractant_mol_l": 0.3227440849953726,
               "organic_to_aqueous_ratio": 0.5,
-              "saponification_ratio": 0.48300000000007776
+              "saponification_ratio": 0.4830000000000654
             },
-            "headroom_usd_m3": 0.2389282933280299,
-            "lithium_mg_per_raw_l": 436.21875000000006,
+            "headroom_usd_m3": 0.40729235748358406,
+            "lithium_mg_per_raw_l": 350.296875,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 1.03125,
+            "scale": 0.828125,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": [
-              2,
-              3,
-              4
+              3
             ]
           },
           {
             "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
               {
                 "bound": "lower",
                 "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
@@ -1069,20 +1773,61 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 9.697814968859426,
-            "ca_mg_li_kg_kg": 70.18328466138229,
-            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.0625/cell_low.json",
+            "affordable_price_usd_kg": 5.006602469461849,
+            "ca_mg_li_kg_kg": 88.37895105507398,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.84375/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.377415975042668,
-              "organic_to_aqueous_ratio": 0.503283744851072,
-              "saponification_ratio": 0.4830000000000149
+              "extractant_mol_l": 0.3348242014014402,
+              "organic_to_aqueous_ratio": 0.5,
+              "saponification_ratio": 0.4830000000000292
             },
-            "headroom_usd_m3": 1.1871965849864168,
-            "lithium_mg_per_raw_l": 449.4375,
+            "headroom_usd_m3": 0.8785316014992866,
+            "lithium_mg_per_raw_l": 356.90625,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
-            "scale": 1.0625,
+            "scale": 0.84375,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": [
+              3
+            ]
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 11.092190378280321,
+            "ca_mg_li_kg_kg": 85.2225599459642,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_0.875/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.37909265961949107,
+              "organic_to_aqueous_ratio": 0.5000000000000347,
+              "saponification_ratio": 0.48300000000001303
+            },
+            "headroom_usd_m3": 1.6979889026831216,
+            "lithium_mg_per_raw_l": 370.125,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 0.875,
             "sign": 1,
             "stages": 5,
             "unresolved_released_stages": [
@@ -1092,6 +1837,12 @@
           {
             "active_bounds": [
               {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
                 "bound": "upper",
                 "kind": "design range (#201)",
                 "value": 0.4,
@@ -1110,23 +1861,193 @@
                 "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 26.014927207179287,
+            "affordable_price_usd_kg": 39.28607780274,
+            "ca_mg_li_kg_kg": 74.56973995271868,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/measured/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999883,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.4830000000000049
+            },
+            "headroom_usd_m3": 5.6319242937835945,
+            "lithium_mg_per_raw_l": 423.0,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.0,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 42.83150232154085,
+            "ca_mg_li_kg_kg": 73.42251318421532,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.015625/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.3999999999999897,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.48300000000000454
+            },
+            "headroom_usd_m3": 6.136603507603066,
+            "lithium_mg_per_raw_l": 429.60937499999994,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.015625,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "lower",
+                "kind": "numerical: lower end of the set C accepted range (#216)",
+                "value": 0.5,
+                "variable": "organic_to_aqueous_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 46.38008318701161,
+            "ca_mg_li_kg_kg": 72.31005086324234,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.03125/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.39999999999999075,
+              "organic_to_aqueous_ratio": 0.5000000000000292,
+              "saponification_ratio": 0.48300000000000426
+            },
+            "headroom_usd_m3": 6.640992842357871,
+            "lithium_mg_per_raw_l": 436.21875000000006,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.03125,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 53.24791850726552,
+            "ca_mg_li_kg_kg": 70.18328466138229,
+            "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.0625/cell_low.json",
+            "checks": [],
+            "design": {
+              "extractant_mol_l": 0.39999999999999225,
+              "organic_to_aqueous_ratio": 0.5076028556826432,
+              "saponification_ratio": 0.48300000000000376
+            },
+            "headroom_usd_m3": 7.619843187155016,
+            "lithium_mg_per_raw_l": 449.4375,
+            "outcome": "positive affordable price",
+            "required_credit_usd_m3": null,
+            "scale": 1.0625,
+            "sign": 1,
+            "stages": 5,
+            "unresolved_released_stages": []
+          },
+          {
+            "active_bounds": [
+              {
+                "bound": "upper",
+                "kind": "design range (#201)",
+                "value": 0.4,
+                "variable": "extractant_mol_l"
+              },
+              {
+                "bound": "lower",
+                "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
+                "value": 0.483,
+                "variable": "saponification_ratio"
+              },
+              {
+                "bound": "upper",
+                "kind": "design range (1-5 stages)",
+                "value": 5,
+                "variable": "stage count"
+              }
+            ],
+            "affordable_price_usd_kg": 66.5144065320613,
             "ca_mg_li_kg_kg": 66.28421329130549,
             "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.125/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999638,
-              "organic_to_aqueous_ratio": 0.5338281177737308,
-              "saponification_ratio": 0.48300000000000637
+              "extractant_mol_l": 0.399999999999994,
+              "organic_to_aqueous_ratio": 0.5376874142488156,
+              "saponification_ratio": 0.48300000000000304
             },
-            "headroom_usd_m3": 2.9882863928845396,
+            "headroom_usd_m3": 9.51705990178018,
             "lithium_mg_per_raw_l": 475.875,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
             "scale": 1.125,
             "sign": 1,
             "stages": 5,
-            "unresolved_released_stages": []
+            "unresolved_released_stages": [
+              1
+            ]
           },
           {
             "active_bounds": [
@@ -1141,30 +2062,24 @@
                 "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
                 "value": 0.483,
                 "variable": "saponification_ratio"
-              },
-              {
-                "bound": "upper",
-                "kind": "design range (1-5 stages)",
-                "value": 5,
-                "variable": "stage count"
               }
             ],
-            "affordable_price_usd_kg": 58.99776432908437,
+            "affordable_price_usd_kg": 93.36604549793114,
             "ca_mg_li_kg_kg": 59.655791962174945,
             "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.25/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999918,
-              "organic_to_aqueous_ratio": 0.593411414980597,
-              "saponification_ratio": 0.48300000000000326
+              "extractant_mol_l": 0.3999999999999959,
+              "organic_to_aqueous_ratio": 0.5863466346953634,
+              "saponification_ratio": 0.4830000000000022
             },
-            "headroom_usd_m3": 6.774320362570094,
+            "headroom_usd_m3": 12.586427343873865,
             "lithium_mg_per_raw_l": 528.7499999999999,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
             "scale": 1.25,
             "sign": 1,
-            "stages": 5,
+            "stages": 3,
             "unresolved_released_stages": []
           },
           {
@@ -1180,31 +2095,37 @@
                 "kind": "calibration: lowest measured degree, Zhang 2020 Table 2 (48.3 %)",
                 "value": 0.483,
                 "variable": "saponification_ratio"
+              },
+              {
+                "bound": "lower",
+                "kind": "requirement (95 %)",
+                "value": 0.95,
+                "variable": "Li extraction"
               }
             ],
-            "affordable_price_usd_kg": 125.71513699110835,
+            "affordable_price_usd_kg": 152.815909498694,
             "ca_mg_li_kg_kg": 49.71315996847912,
             "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule_targets/MarsHill/lithium_scale_1.5/cell_low.json",
             "checks": [],
             "design": {
-              "extractant_mol_l": 0.3999999999999968,
-              "organic_to_aqueous_ratio": 0.7046342971892359,
-              "saponification_ratio": 0.4830000000000016
+              "extractant_mol_l": 0.39999999999999797,
+              "organic_to_aqueous_ratio": 0.7340221448536695,
+              "saponification_ratio": 0.48300000000000154
             },
-            "headroom_usd_m3": 13.844259832251936,
+            "headroom_usd_m3": 18.346624388083185,
             "lithium_mg_per_raw_l": 634.5,
             "outcome": "positive affordable price",
             "required_credit_usd_m3": null,
             "scale": 1.5,
             "sign": 1,
-            "stages": 3,
+            "stages": 2,
             "unresolved_released_stages": []
           }
         ],
-        "relative_width": 0.015267175572519083,
+        "relative_width": 0.01904761904761905,
         "scale_bracket": [
-          1.015625,
-          1.03125
+          0.8125,
+          0.828125
         ],
         "status": "bracketed"
       }
@@ -1212,94 +2133,94 @@
   },
   "required_credit": [
     {
-      "affordable_price_usd_kg": -82.37905284575517,
+      "affordable_price_usd_kg": -56.33641992377952,
       "case": "base",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_BR2_base_high.json",
-      "headroom_usd_m3": -60.89239667863543,
+      "headroom_usd_m3": -47.39721414282303,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 60.39583581080192,
+      "required_credit_usd_m3": 46.91933233135265,
       "site": "BR2",
       "solvent": "C",
       "stages": 5,
       "variant": "high"
     },
     {
-      "affordable_price_usd_kg": -46.59586478162316,
+      "affordable_price_usd_kg": -32.132593824780955,
       "case": "base",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_BR2_base_low.json",
-      "headroom_usd_m3": -61.96034265635646,
+      "headroom_usd_m3": -48.54365421236477,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 60.775126427095685,
+      "required_credit_usd_m3": 47.328312727201336,
       "site": "BR2",
       "solvent": "C",
       "stages": 5,
       "variant": "low"
     },
     {
-      "affordable_price_usd_kg": -26.88875764894693,
+      "affordable_price_usd_kg": -14.58503358787189,
       "case": "optimistic",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_BR2_optimistic_high.json",
-      "headroom_usd_m3": -24.83275330272,
+      "headroom_usd_m3": -15.712746710167632,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 24.557840091054302,
+      "required_credit_usd_m3": 15.452186624914862,
       "site": "BR2",
       "solvent": "C",
       "stages": 5,
       "variant": "high"
     },
     {
-      "affordable_price_usd_kg": -15.453561276061022,
+      "affordable_price_usd_kg": -8.592674734619154,
       "case": "optimistic",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_BR2_optimistic_low.json",
-      "headroom_usd_m3": -25.62813164071481,
+      "headroom_usd_m3": -16.53121869863526,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 25.176766393236388,
+      "required_credit_usd_m3": 16.106427992123287,
       "site": "BR2",
       "solvent": "C",
       "stages": 5,
       "variant": "low"
     },
     {
-      "affordable_price_usd_kg": -72.70052904397318,
+      "affordable_price_usd_kg": -47.22352469796198,
       "case": "base",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MS2_base_high.json",
-      "headroom_usd_m3": -58.57851661346863,
+      "headroom_usd_m3": -47.582299523269974,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 58.188172325465516,
+      "required_credit_usd_m3": 47.130228520746385,
       "site": "MS2",
       "solvent": "C",
       "stages": 5,
       "variant": "high"
     },
     {
-      "affordable_price_usd_kg": -41.147470504857566,
+      "affordable_price_usd_kg": -26.96800205478481,
       "case": "base",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MS2_base_low.json",
-      "headroom_usd_m3": -59.63419888427635,
+      "headroom_usd_m3": -48.76295568339586,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 58.54428055315382,
+      "required_credit_usd_m3": 47.51046044990863,
       "site": "MS2",
       "solvent": "C",
       "stages": 5,
       "variant": "low"
     },
     {
-      "affordable_price_usd_kg": -27.87401647923652,
+      "affordable_price_usd_kg": -15.520880437116707,
       "case": "optimistic",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MS2_optimistic_high.json",
-      "headroom_usd_m3": -27.65374858400928,
+      "headroom_usd_m3": -19.652535494859546,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 27.408618065373858,
+      "required_credit_usd_m3": 19.362333500002286,
       "site": "MS2",
       "solvent": "C",
       "stages": 5,
       "variant": "high"
     },
     {
-      "affordable_price_usd_kg": -16.001703807518677,
+      "affordable_price_usd_kg": -9.092078934871562,
       "case": "optimistic",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MS2_optimistic_low.json",
-      "headroom_usd_m3": -28.45473710021875,
+      "headroom_usd_m3": -20.487740789359655,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
       "required_credit_usd_m3": null,
       "site": "MS2",
@@ -1308,94 +2229,94 @@
       "variant": "low"
     },
     {
-      "affordable_price_usd_kg": -38.59051763986338,
+      "affordable_price_usd_kg": -22.479415278529764,
       "case": "base",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MarsHill_base_high.json",
-      "headroom_usd_m3": -31.00688216079161,
+      "headroom_usd_m3": -22.110779180205647,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 30.288916164912415,
+      "required_credit_usd_m3": 21.38500169447939,
       "site": "MarsHill",
       "solvent": "C",
       "stages": 5,
       "variant": "high"
     },
     {
-      "affordable_price_usd_kg": -22.134222686392338,
+      "affordable_price_usd_kg": -13.147656003603498,
       "case": "base",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MarsHill_base_low.json",
-      "headroom_usd_m3": -31.942374422147328,
+      "headroom_usd_m3": -23.082366136749833,
       "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 30.641181132760163,
+      "required_credit_usd_m3": 21.757570895742585,
       "site": "MarsHill",
       "solvent": "C",
       "stages": 5,
       "variant": "low"
     },
     {
-      "affordable_price_usd_kg": -0.33074680363072695,
+      "affordable_price_usd_kg": 40.85484232851283,
       "case": "optimistic",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MarsHill_optimistic_high.json",
-      "headroom_usd_m3": -0.20612970332006597,
-      "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 0.18377304173752407,
+      "headroom_usd_m3": 5.479260570550313,
+      "outcome": "positive affordable price",
+      "required_credit_usd_m3": null,
       "site": "MarsHill",
       "solvent": "C",
-      "stages": 5,
+      "stages": 2,
       "variant": "high"
     },
     {
-      "affordable_price_usd_kg": -0.6427519601966473,
+      "affordable_price_usd_kg": 39.28607780274,
       "case": "optimistic",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_MarsHill_optimistic_low.json",
-      "headroom_usd_m3": -0.8232808980347102,
-      "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 0.7390748816207804,
+      "headroom_usd_m3": 5.6319242937835945,
+      "outcome": "positive affordable price",
+      "required_credit_usd_m3": null,
       "site": "MarsHill",
       "solvent": "C",
       "stages": 5,
       "variant": "low"
     },
     {
-      "affordable_price_usd_kg": -0.2383361574706349,
+      "affordable_price_usd_kg": 0.09651837072202718,
       "case": "base",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_Westmoreland_base_high.json",
-      "headroom_usd_m3": -0.9767340099227324,
-      "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 0.8483887668551935,
-      "site": "Westmoreland",
-      "solvent": "C",
-      "stages": 5,
-      "variant": "high"
-    },
-    {
-      "affordable_price_usd_kg": -0.21074109883107997,
-      "case": "base",
-      "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_Westmoreland_base_low.json",
-      "headroom_usd_m3": -1.1368379837425824,
-      "outcome": "negative: no nonnegative extractant price reaches operating break-even",
-      "required_credit_usd_m3": 0.9475875557050868,
-      "site": "Westmoreland",
-      "solvent": "C",
-      "stages": 5,
-      "variant": "low"
-    },
-    {
-      "affordable_price_usd_kg": 4.385316523339929,
-      "case": "optimistic",
-      "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_Westmoreland_optimistic_high.json",
-      "headroom_usd_m3": 2.687817040458782,
+      "headroom_usd_m3": 0.20334419129098613,
       "outcome": "positive affordable price",
       "required_credit_usd_m3": null,
       "site": "Westmoreland",
       "solvent": "C",
-      "stages": 1,
+      "stages": 5,
       "variant": "high"
     },
     {
-      "affordable_price_usd_kg": 3.825234729963737,
+      "affordable_price_usd_kg": 0.04913894126854301,
+      "case": "base",
+      "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_Westmoreland_base_low.json",
+      "headroom_usd_m3": 0.11241193269181515,
+      "outcome": "positive affordable price",
+      "required_credit_usd_m3": null,
+      "site": "Westmoreland",
+      "solvent": "C",
+      "stages": 5,
+      "variant": "low"
+    },
+    {
+      "affordable_price_usd_kg": 3.9025172715236054,
+      "case": "optimistic",
+      "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_Westmoreland_optimistic_high.json",
+      "headroom_usd_m3": 3.7459379783465803,
+      "outcome": "positive affordable price",
+      "required_credit_usd_m3": null,
+      "site": "Westmoreland",
+      "solvent": "C",
+      "stages": 2,
+      "variant": "high"
+    },
+    {
+      "affordable_price_usd_kg": 3.8795054979198023,
       "case": "optimistic",
       "cell": "analyses/prototypes/modular_process/results/site_solvent_matrix/rule/cells/C_Westmoreland_optimistic_low.json",
-      "headroom_usd_m3": 2.882160328378858,
+      "headroom_usd_m3": 3.686906760461439,
       "outcome": "positive affordable price",
       "required_credit_usd_m3": null,
       "site": "Westmoreland",

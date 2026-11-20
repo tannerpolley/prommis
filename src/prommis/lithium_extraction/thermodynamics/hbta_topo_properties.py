@@ -2,7 +2,7 @@
 
 The packages are material-balance packages, not thermodynamic activity models.
 They keep every reported species and solvent inventory on an explicit molar
-flow basis while the source-bounded transfer closures live in ``circuit.py``.
+flow basis.
 """
 
 from __future__ import annotations

@@ -1,9 +1,3 @@
-"""Engine-wheel identity checks and the configured HBTA/TOPO reaction topology.
-
-The readiness-receipt generator that ran the manufactured oracle was retired with the
-superseded Engine interface; `results/topology_receipt.json` and its report are historical.
-"""
-
 from __future__ import annotations
 
 import csv

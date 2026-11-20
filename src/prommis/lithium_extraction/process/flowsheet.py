@@ -12,6 +12,7 @@ from prommis.lithium_extraction.process import strip_and_carbonation as downstre
 # Engine source commit of each declared wheel, keyed by wheel sha256: the wheel itself carries no commit. Only wheels
 # with the (T, P, *controls) equilibrium callback of Engine #1098 run this code (Lithium #354).
 ENGINE_COMMITS = {
+    "393e2f0f36e037cba039c5ceb21d6bd2b3786af490a6ba5baeeb33646200a7a1": "80e7ae869f4a82764dc70b4f324f7462a17240b0",
     "e2668bb17d6e3468586802f77b30dc2e8953b38a9b3603cbce02ed9a6ebe5860": "5cb4867fd9e690bff74043a32eaec4a0ec97306d",
     "e904494fbc17fb18837e2d9725a2f685bc484fb03e45db5c56a62d83237efdb3": "d180b2e24f9f71b0cd103eea13fbc307c90904cd",
     "16f8d54caf704d235db6dd093634161c4c1028c96285be44ad247a0ba2f08025": "ce6b4fcbd91d77de638089b1631b0b53b1322fc1",
@@ -27,6 +28,8 @@ MASS_KG_PER_MOL = {
     "TOPO": 0.38663,
     "diluent": 0.17033484,
 }
+REAGENT_REGISTER = "data/reference/tea/hbta_topo_screening_cost_assumptions.csv"
+PRETREATMENT_REGISTER = "data/reference/tea/pretreatment_cost_assumptions.csv"
 
 
 def installed_engine():
@@ -75,8 +78,10 @@ def washed_feed(
     unit_model=None,
     soda_multiple=1.2,
     omit_carbonate=False,
+    residual_limits=None,
+    record_steps=False,
 ):
-    """#166 equilibrium doses (1.2x) and its fully mixed exp(-wash volumes) cake model, per L raw brine."""
+    """Equilibrium dosing and cake washing per raw litre, with optional Mg and Ca targets in mg/raw L."""
     from prommis.lithium_extraction.process import precipitative_softening as ps
     from prommis.lithium_extraction.process.softening import (
         Softening,
@@ -100,6 +105,9 @@ def washed_feed(
     cake, solid = {e: 0.0 for e in tracked}, {e: 0.0 for e in tracked}
     wash_water_mol = 0.0
     dry_kg = wet_kg = 0.0
+    steps, residual_acceptance = {}, {}
+    if residual_limits is not None and omit_carbonate:
+        raise ValueError("Ca target requires the carbonate step")
     for reagent in (*reagent_mol, "HCl"):
         if reagent == "Na2CO3" and omit_carbonate:
             continue
@@ -115,10 +123,23 @@ def washed_feed(
                 upper=2 * before["aq"]["C"] + 1,
             )
             ph_acceptance = ph_limit(ps, system, solver, unconditioned, dose)
+        elif residual_limits is not None:
+            element = "Mg" if reagent == "NaOH" else "Ca"
+            dose, state, residual_acceptance[element] = ps._to_residual(
+                system,
+                solver,
+                state,
+                reagent,
+                element,
+                residual_limits[element],
+                reagent_mol[reagent],
+            )
         else:
             dose = reagent_mol[reagent]
             state = ps._dosed(system, solver, state, reagent, dose)
         step = ps._record(system, state, ps.PHASES)
+        if record_steps or residual_limits is not None:
+            steps[reagent] = step
         water_before = float(state.speciesAmount("H2O"))
         unit, next_liquid, cake_liquid, wash = units.stage(
             reagent,
@@ -221,7 +242,7 @@ def washed_feed(
     }
     if min(physical.values()) < 0 or max(map(abs, reconstruction.values())) > 1e-9:
         raise RuntimeError(f"Washed aqueous component reconstruction: {reconstruction}")
-    return {
+    result = {
         "front_end": feed.get("front_end"),
         "aqueous_mol": aqueous,
         "feed_l": value(outlet.flow_vol_phase["Liq"]) * 3600 * 1000,
@@ -254,6 +275,20 @@ def washed_feed(
         )
         * 1000,
     }
+    if record_steps or residual_limits is not None:
+        result["steps"] = steps
+    if residual_limits is not None:
+        ph_acceptance["limit_ph"] = max(1e-6, ph_acceptance["limit_ph"])
+        ph_acceptance[
+            "basis"
+        ] += ". Target mode also applies the owner pH resolution of 1e-6."
+        if abs(fin["pH"] - feed["pH"]) > ph_acceptance["limit_ph"]:
+            raise RuntimeError(f"HCl: washed pH {fin['pH']:.12g}, target {feed['pH']}")
+        result.update(
+            residual_limits_mg_per_raw_l=dict(residual_limits),
+            residual_acceptance=residual_acceptance,
+        )
+    return result
 
 
 def ph_limit(ps, system, solver, state, dose):
@@ -315,6 +350,40 @@ def extract(feed, constants, extractant):
 def _row(path, key, value):
     with (REPO_ROOT / path).open() as stream:
         return next(r for r in csv.DictReader(stream) if r[key] == value)
+
+
+def softening_masses(feed):
+    """Reagent and disposed sludge masses in kg per raw litre."""
+    dose = feed["reagent_mol"]
+    return {
+        "softening_NaOH": dose["NaOH"] * MASS_KG_PER_MOL["NaOH"],
+        "softening_Na2CO3": dose["Na2CO3"] * MASS_KG_PER_MOL["Na2CO3"],
+        "softening_HCl31": dose["HCl"] * MASS_KG_PER_MOL["HCl31"],
+        "sludge": feed["wet_sludge_kg"],
+    }
+
+
+def softening_prices(case):
+    """The screen's reagent and wet-sludge prices in USD/kg."""
+    price_column = "base_value" if case == "base" else "low_value"
+    return {
+        "softening_NaOH": float(
+            _row(REAGENT_REGISTER, "assumption_id", "naoh_price")["base"]
+        ),
+        "softening_Na2CO3": float(
+            _row(PRETREATMENT_REGISTER, "parameter", "pretreatment_soda_ash_usd_kg")[
+                price_column
+            ]
+        ),
+        "softening_HCl31": float(
+            _row(REAGENT_REGISTER, "assumption_id", "hcl_price")["base"]
+        ),
+        "sludge": float(
+            _row(PRETREATMENT_REGISTER, "parameter", "sludge_disposal_usd_kg")[
+                price_column
+            ]
+        ),
+    }
 
 
 def strip_li_fraction():
@@ -397,11 +466,7 @@ def costs_and_balances(
         else assumptions["entrainment_l_per_l"] * (v / organic_volume + 2 / 10)
     )
     hbta_loss_mol = v * x["bta"] + solvent_loss * bta
-    masses = {
-        "softening_NaOH": feed["reagent_mol"]["NaOH"] * MASS_KG_PER_MOL["NaOH"],
-        "softening_Na2CO3": feed["reagent_mol"]["Na2CO3"] * MASS_KG_PER_MOL["Na2CO3"],
-        "softening_HCl31": feed["reagent_mol"]["HCl"] * MASS_KG_PER_MOL["HCl31"],
-        "sludge": feed["wet_sludge_kg"],
+    masses = softening_masses(feed) | {
         "saponification_NaOH": sap * MASS_KG_PER_MOL["NaOH"],
         "scrub_HCl31": scrub_acid * MASS_KG_PER_MOL["HCl31"],
         "strip_HCl31": strip_acid * MASS_KG_PER_MOL["HCl31"],
@@ -423,19 +488,11 @@ def costs_and_balances(
         )
     # #342: the active set (HBTA, TOPO) is lost mass, priced only from the register and kept outside the cost C_r.
     active = {} if retained else {k: masses.pop(k) for k in ("HBTA", "TOPO")}
-    reg = "data/reference/tea/hbta_topo_screening_cost_assumptions.csv"
-    pret = "data/reference/tea/pretreatment_cost_assumptions.csv"
-    naoh = float(_row(reg, "assumption_id", "naoh_price")["base"])
-    hcl = float(_row(reg, "assumption_id", "hcl_price")["base"])
-    soda = (
-        float(_row(pret, "parameter", "pretreatment_soda_ash_usd_kg")["base_value"])
-        if case == "base"
-        else 0.2
-    )
-    sludge = float(
-        _row(pret, "parameter", "sludge_disposal_usd_kg")[
-            "base_value" if case == "base" else "low_value"
-        ]
+    reg, pret = REAGENT_REGISTER, PRETREATMENT_REGISTER
+    soft_prices = softening_prices(case)
+    naoh, soda, hcl, sludge = (
+        soft_prices[k]
+        for k in ("softening_NaOH", "softening_Na2CO3", "softening_HCl31", "sludge")
     )
     prices = {
         k: (

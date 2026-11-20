@@ -3,6 +3,7 @@
 import csv
 from dataclasses import replace
 import json
+from prommis.lithium_extraction.thermodynamics.reaction_networks import load_constants
 import math
 import sys
 
@@ -57,7 +58,7 @@ def checked(name, reference, result, fields, discrete=(), direct=None):
 
 
 def constants(r):
-    fit = json.loads((H166 / "set_c_fit.json").read_text())
+    fit = load_constants((H166 / "set_c_fit.json"))
     end = fit["low"] if r["end"] == "low" else fit["high"]["r_0.70"]
     kex, delta = end["ln_k_ex"], end["delta"]
     delta += {

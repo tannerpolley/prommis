@@ -14,6 +14,7 @@ from idaes.core import (
     register_idaes_currency_units,
 )
 from pyomo.environ import Block, Constraint, Expression, units as pyunits, value
+from pyomo.util.calc_var_value import calculate_variable_from_constraint
 
 from prommis.lithium_extraction.process.screening_costs import (
     load_screening_cost_assumptions,
@@ -459,6 +460,10 @@ def add_plant_costing(model, capacity_m3_h):
                 "CEPCI_year": "2023",
             },
         )
+        calculate_variable_from_constraint(
+            unit.costing.bare_erected_cost[account],
+            unit.costing.bare_erected_cost_eq[account],
+        )
     a1 = fs.costing
     fs.plant_rates = Block()
     for (
@@ -489,6 +494,8 @@ def add_plant_costing(model, capacity_m3_h):
         chemicals=[f for f in a1.used_flows if f != "sludge"],
         waste=["sludge"],
     )
+    calculate_variable_from_constraint(plant.total_BEC, plant.total_BEC_eq)
+    calculate_variable_from_constraint(plant.total_TPC, plant.total_TPC_eq)
     REECostingData.initialize(plant)
     plant.property_taxes_and_insurance_cost_eq.deactivate()  # EXCLUDED under the no-tax scenario
     plant.property_taxes_and_insurance_cost.fix(0)  # after initialize, which resets it

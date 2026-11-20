@@ -16,6 +16,7 @@ import tempfile
 import time
 import traceback
 
+from prommis.lithium_extraction.thermodynamics.reaction_networks import load_constants
 from prommis.lithium_extraction.paths import REPO_ROOT
 from prommis.lithium_extraction.process import waters as brines, feeds as records
 from prommis.lithium_extraction.process.feeds import SOLVENTS
@@ -214,24 +215,37 @@ def jobs(sites=tuple(brines.CURATED), solvents=CAMPAIGN_SOLVENTS):
                 identity = record.get("cell_id", {}).get(
                     scope, "{solvent}_{site}_{scope}_{case}_n{stages}_{end}"
                 )
-                rows.append(
-                    dict(
-                        id=identity.format(
-                            solvent=solvent,
-                            site=site,
-                            scope=scope,
-                            case=case,
-                            stages=n,
-                            end=end,
-                        ),
+                job = dict(
+                    id=identity.format(
                         solvent=solvent,
                         site=site,
                         scope=scope,
                         case=case,
                         stages=n,
                         end=end,
-                    )
+                    ),
+                    solvent=solvent,
+                    site=site,
+                    scope=scope,
+                    case=case,
+                    stages=n,
+                    end=end,
                 )
+                if (
+                    solvent == "C"
+                    and scope == "full_process"
+                    and site in brines.CURATED
+                ):
+                    job["composition"] = {
+                        "softening": str(
+                            (
+                                STUDY
+                                / "results/softening_to_specification/softening"
+                                / f"{site}_{case}.json"
+                            ).relative_to(REPO_ROOT)
+                        )
+                    }
+                rows.append(job)
     return rows
 
 
@@ -297,8 +311,8 @@ def build(job, fixed=None):
         }
         design |= job.get("design", {})
         c = design["extractant_mol_l"]
-        constants = json.loads(
-            (REPO_ROOT / job.get("constants", record["constants"])).read_text()
+        constants = load_constants(
+            REPO_ROOT / job.get("constants", record["constants"])
         )["ends"][job["end"]]["ln_k"]
         design["ln_k"] = constants
         if (

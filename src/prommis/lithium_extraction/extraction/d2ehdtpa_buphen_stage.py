@@ -321,7 +321,7 @@ def synchronize(model):
     )
 
 
-def report(model, result=None, *, case="base"):
+def report(model, result=None, *, case="base", reference_accounting=False):
     """Source moiety, physical raffinate and strip/loss evidence at the solved design."""
     synchronize(model)
     result = stage.report(model) if result is None else result
@@ -369,8 +369,10 @@ def report(model, result=None, *, case="base"):
     }
     from prommis.lithium_extraction.process.candidate import case_assumptions
 
-    assumptions = getattr(model, "_d2_full_process", None) or case_assumptions(
-        case, True
+    assumptions = (
+        None
+        if reference_accounting
+        else (getattr(model, "_d2_full_process", None) or case_assumptions(case, True))
     )
     accounts = owner.accounts(
         extraction,

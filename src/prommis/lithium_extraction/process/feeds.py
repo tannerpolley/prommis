@@ -112,7 +112,7 @@ SOLVENTS = {
         "chemistry_owner": f"{SAPONIFIED}.stage_chemistry",
         "conservation_owner": f"{SHARED}.mechanism_candidates:MOIETIES",
         "certificate_owner": f"{SHARED}.mechanism_candidates:is_strict",
-        "domain_owner": "analyses/prototypes/hbta_topo_ms2_saponified/README.md",
+        "domain_owner": "lithium_extraction/prototypes/hbta_topo_ms2_saponified/README.md",
         "labels": ["set A cannot evaluate a state requiring hydroxide"],
         "name": "Saponified HBTA/TOPO, set A",
         "stage_adapter": "set_a",
@@ -123,7 +123,7 @@ SOLVENTS = {
         "design": {
             "optimized": True,
             "stages": STAGES,
-            "scopes": {"extraction_only": CASES, "full_process": CASES},
+            "scopes": {"extraction_only": CASES},
             "bounds": {
                 "organic_to_aqueous_ratio": (0.5, 1.5),
                 "extractant_mol_l": (0.015, 0.030),

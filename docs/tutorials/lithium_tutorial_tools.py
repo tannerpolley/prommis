@@ -1,4 +1,4 @@
-"""Shared helpers for the lithium solvent-extraction tutorials.
+"""Shared helpers for the lithium solvent-extraction tutorial.
 
 Each function takes the flowsheet model `m` (or its results) and does one piece of work that would hide the
 flowsheet steps if it were written out in the notebook.
@@ -19,22 +19,30 @@ os.environ["OMP_NUM_THREADS"] = "1"
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from idaes.core import UnitModelBlockData  # noqa: E402
+from idaes.core import FlowDirection, FlowsheetBlock, UnitModelBlockData  # noqa: E402
+from prommis.solvent_extraction.solvent_extraction import (
+    SolventExtraction,
+)  # noqa: E402
 from pyomo.environ import (
     Block,
+    ConcreteModel,
     Constraint,
     ExternalFunction,
     NonNegativeReals,
     Objective,
     Param,
-    RangeSet,
 )  # noqa: E402
-from pyomo.environ import Reference, Var, value  # noqa: E402
+from pyomo.environ import RangeSet, Reference, Var, value  # noqa: E402
 from pyomo.network import Arc, Port  # noqa: E402
 
 
 from prommis.lithium_extraction.paths import REPO_ROOT as ROOT
+from prommis.lithium_extraction.extraction import stage
 from prommis.lithium_extraction.process.flowsheet import installed_engine
+from prommis.lithium_extraction.extraction.stage import (
+    ExtentReactions,
+    MolarFlowParameters,
+)
 
 PHASES = ("aqueous", "organic")
 
@@ -202,6 +210,42 @@ def add_stage_equilibrium(m, chemistries):
         )
     m.feasibility = Objective(expr=0.0)  # a square simulation: a constant objective
     m._chemistry, m._chemistries, m._incoming = first, tuple(chemistries), incoming
+
+
+def extraction_flowsheet(chemistries, feed_l_per_raw_l=1.0):
+    """The build of Step 4 as one call, for one compiled Engine record per stage: model and flowsheet, the two
+    property packages, the transfer extents, the PrOMMiS SolventExtraction unit, the stream names and the Engine
+    equilibrium in every stage."""
+    first = chemistries[0]
+    m = ConcreteModel()
+    m.fs = FlowsheetBlock(dynamic=False)
+    m.fs.aqueous_properties = MolarFlowParameters(
+        phase="aqueous", species=first.supports[0]
+    )
+    m.fs.organic_properties = MolarFlowParameters(
+        phase="organic", species=first.supports[1]
+    )
+    m.fs.extents = ExtentReactions(stoichiometry=extent_stoichiometry(first))
+    m.fs.extraction = SolventExtraction(
+        number_of_finite_elements=len(chemistries),
+        heterogeneous_reaction_package=m.fs.extents,
+        aqueous_stream={
+            "property_package": m.fs.aqueous_properties,
+            "flow_direction": FlowDirection.forward,
+        },
+        organic_stream={
+            "property_package": m.fs.organic_properties,
+            "flow_direction": FlowDirection.backward,
+        },
+    )
+    label_streams(m, feed_l_per_raw_l)
+    add_stage_equilibrium(m, chemistries)
+    return m
+
+
+def solve(m, name):
+    """IPOPT with exact second derivatives and tight tolerances; its optimality conditions are checked from the log."""
+    return stage.solve(m, log_directory(name))
 
 
 def _split(chemistry):

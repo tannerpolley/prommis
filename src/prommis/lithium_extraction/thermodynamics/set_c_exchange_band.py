@@ -33,6 +33,10 @@ import time
 
 from scipy.optimize import brentq, least_squares, root_scalar
 
+from prommis.lithium_extraction.thermodynamics.reaction_networks import (
+    AQUEOUS_PACKET,
+    load_constants,
+)
 from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
 from prommis.lithium_extraction.thermodynamics.apparent_reactive_lle import (
     HBTA_MOLAR_MASS,
@@ -45,9 +49,9 @@ from prommis.lithium_extraction.extraction.countercurrent import (
 from prommis.lithium_extraction.process.divalent_softening import softening
 
 RESULTS = lx.RESULTS
-SET_C_158 = json.loads((mc.RESULTS / "mechanism_candidates.json").read_text())[
-    "summary"
-]["C"]["ln_k_298"]
+SET_C_158 = load_constants(mc.RESULTS / "mechanism_candidates.json")["summary"]["C"][
+    "ln_k_298"
+]
 DELTA_BRACKET = 0.5 * math.log(10.0)  # +/- 0.5 pH unit
 AGREE = 1.0e-6
 MAX_ROUNDS = 10
@@ -313,9 +317,10 @@ def fit(args) -> None:
     started = time.perf_counter()
     path = RESULTS / "set_c_fit.json"
     document = (
-        json.loads(path.read_text())
+        load_constants(path)
         if path.exists()
         else {
+            "aqueous_basis": AQUEOUS_PACKET,
             "issue": "tannerpolley/Lithium_Extraction#166",
             "plan": "issue #166 stage 2 plan comment, fixed before fitting",
             "set_c_158_ln_k": SET_C_158,
@@ -337,7 +342,7 @@ def fit(args) -> None:
         args.part, {"status": "running", "strict_solves": 0, "wall_time_seconds": 0.0}
     )
     if args.part == "low":
-        kex0 = json.loads((RESULTS / "fit.json").read_text())[
+        kex0 = load_constants(RESULTS / "fit.json")[
             "ln_k_ex"
         ]  # stage 1 set A refit: first round's ln K_ex
         alternation_unit(state, kex0, 1, lambda r, i: fit_kex(r["delta_fit"]["value"]))
@@ -738,7 +743,7 @@ def predict(args) -> None:
     """
     engine = lx.installed_engine()
     started = time.perf_counter()
-    fitted = json.loads((RESULTS / "set_c_fit.json").read_text())
+    fitted = load_constants(RESULTS / "set_c_fit.json")
     ends = {
         "low": (fitted["low"]["ln_k_ex"], fitted["low"]["delta"]),
         "high": (
@@ -772,10 +777,8 @@ def predict(args) -> None:
     rows = [r for end in ends for r in done[f"contacts_{end}"]["rows"]]
     cascades = [c for end in ends for c in done[f"contacts_{end}"]["cascades"]]
     ms2 = [r for name in units if name.startswith("ms2_") for r in done[name]["ms2"]]
-    stage_rows = [s for name in units for s in done[name].get("stage_rows", [])]
     lx._write_csv(RESULTS / "set_c_contacts.csv", rows)
     lx._write_csv(RESULTS / "set_c_ms2_predictions.csv", ms2)
-    lx._write_csv(RESULTS / "set_c_cascade_stages.csv", stage_rows)
     summary_ends = {
         end: _end_summary(kex, delta, [r for r in rows if r["end"] == end])
         for end, (kex, delta) in ends.items()
@@ -785,6 +788,7 @@ def predict(args) -> None:
     singles = rows + [r for r in ms2 if r["stages"] == 1]
     feeds = _ms2_feeds()
     summary = {
+        "aqueous_basis": AQUEOUS_PACKET,
         "engine": engine,
         "issue": "tannerpolley/Lithium_Extraction#166",
         "plan": "issue #166 stage 2 plan comment, fixed before fitting",
@@ -944,7 +948,7 @@ def holdout_scores(args) -> None:
     Every holdouts.csv row not scored is listed with its reason.
     """
     engine = lx.installed_engine()
-    ends = json.loads((RESULTS / "set_c_summary.json").read_text())["ends"]
+    ends = load_constants(RESULTS / "set_c_summary.json")["ends"]
     retained = {
         (r["end"], r["delta_case"], r["identity"]): r
         for r in lx._csv(RESULTS / "set_c_contacts.csv")

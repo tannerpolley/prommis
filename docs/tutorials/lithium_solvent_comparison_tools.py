@@ -1,4 +1,4 @@
-"""Helpers for the solvent-comparison tutorial: the MS-2 feed, the acid-form HBTA/TOPO design, the four-solvent
+"""Helpers for the tutorial's extraction on softened MS-2: the MS-2 feed, the acid-form HBTA/TOPO design, the four-solvent
 runs, figures, and the check against the study's retained results.
 
 Every function that changes the flowsheet takes the model `m` as its first argument.
@@ -28,7 +28,7 @@ from prommis.lithium_extraction.process import waters as brines, feeds as record
 from prommis.lithium_extraction.extraction import des_stage, set_a, stage
 
 STUDY = ROOT / "analyses/prototypes/softened_ms2_epcsaft_sx"
-ROUND4 = STUDY / "runs/round4/results"
+ROUND4 = STUDY / "runs/round5/results"
 REPLAY = json.loads((STUDY / "runs/engine_c358de72/replay.json").read_text())
 AMOUNT_LIMIT, SCALED_LIMIT = (
     REPLAY["limits"]["amount_mol_l"],
@@ -152,7 +152,7 @@ def retained():
     pmax = {
         r["arm"]: r
         for r in _rows("pmax_comparison.csv")
-        if r["comparison_set"] == "Paper 1 row" and int(r["N"]) == STAGES
+        if r["comparison_set"] == "main comparison" and int(r["N"]) == STAGES
     }
     rows = _rows("optimum_quantities.csv")
     return {
@@ -223,7 +223,7 @@ def paper_results():
     rows = {
         (r["arm"], int(r["N"])): r
         for r in _rows("pmax_comparison.csv")
-        if r["comparison_set"] == "Paper 1 row"
+        if r["comparison_set"] == "main comparison"
     }
     stages = sorted({n for _, n in rows})
 
@@ -333,12 +333,7 @@ def initialize(m, brine):
     """
     for s, link in m.fs.design.organic_feed.items():
         calculate_variable_from_constraint(m.fs.boundary[s], link)
-    ln_k = json.loads(
-        (
-            ROOT
-            / "analyses/shared/hbta_topo_configured_reactive_lle/results/mechanism_candidates.json"
-        ).read_text()
-    )["summary"]["A"]["ln_k_298"]
+    ln_k = stage_chemistry.fitted_ln_k("A")
     d = m.fs.design
     start = countercurrent.countercurrent(
         ln_k,
@@ -360,11 +355,6 @@ def initialize(m, brine):
             for phases in start["start"]["guesses"]
         ],
     )
-
-
-def solve(m, name):
-    """IPOPT with exact second derivatives and tight tolerances; its optimality conditions are checked from the log."""
-    return stage.solve(m, log_directory(name))
 
 
 def optimum_table(m, brine, starting):

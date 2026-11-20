@@ -1,17 +1,13 @@
-"""Helpers for the produced-water process tutorial: waters, softening, the extraction feed and design, downstream
-connections, figures, the second water, Part 2's screen results and the check of the worked example against the
+"""Helpers for the tutorial's whole process and screen: waters, softening, the extraction feed and design, downstream
+connections, figures, the second water, the paper's screen results and the check of the worked example against the
 earlier study's stored results.
 
 Every function that changes the flowsheet takes the model `m` as its first argument.
 """
 
-import importlib.util
 import json
 import logging
 import math
-import os
-import subprocess
-import sys
 import time
 
 import ipywidgets as widgets
@@ -31,6 +27,7 @@ from pyomo.network import Arc
 from lithium_tutorial_tools import ROOT, label, log_directory, number, plot_checks
 from prommis.lithium_extraction.extraction import countercurrent as cc
 from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
+from prommis.lithium_extraction.thermodynamics.reaction_networks import load_constants
 from prommis.lithium_extraction.process import (
     waters as brines,
     costing,
@@ -55,7 +52,7 @@ BAND = json.loads((STUDY / "results/targets/exchange_band.json").read_text())
 TARGETS = json.loads((STUDY / "results/targets/economic_targets.json").read_text())
 SCREEN = (
     STUDY / "results/site_solvent_matrix"
-)  # Part 2's water and solvent screen: the first four waters
+)  # The paper's water and solvent screen: the first four waters
 ADDED = STUDY / "results/issue375"  # and the ten waters added to it
 EARLIER = "Worked example on the earlier design and cost basis"
 WATERS = {"MS2": "MS-2", "MarsHill": "Mars Hill"}
@@ -66,10 +63,8 @@ ACCEPTED = {
     )
     for site in WATERS
 }
-LN_K = json.loads(
-    (
-        ROOT / "analyses/prototypes/hbta_topo_ms2_prototype/results/set_c_summary.json"
-    ).read_text()
+LN_K = load_constants(
+    ROOT / "analyses/prototypes/hbta_topo_ms2_prototype/results/set_c_summary.json"
 )["ends"][FIT]["ln_k"]
 LCE_PER_LI = BAND["lce_to_li_mass_ratio"]  # kg Li2CO3 per kg Li
 LI_G_MOL = 6.94  # g/mol, the costing module's lithium molar mass
@@ -98,38 +93,13 @@ def waters():
     return pd.DataFrame(rows).T
 
 
-def softening_python():
-    """`LITHIUM_SOFTENING_PYTHON` if set, else this interpreter when it can import Reaktoro."""
-    if "LITHIUM_SOFTENING_PYTHON" in os.environ:
-        return os.environ["LITHIUM_SOFTENING_PYTHON"]
-    if importlib.util.find_spec("reaktoro") is None:
-        raise RuntimeError(
-            "Reaktoro is not installed here: set LITHIUM_SOFTENING_PYTHON to a Python that has it"
-        )
-    return sys.executable
-
-
 def soften(site):
-    """Run the Reaktoro softening script as a subprocess, as the campaign's whole-process runner does."""
-    output = log_directory(f"{site}_softening") / "softened.json"
-    subprocess.run(
-        [
-            softening_python(),
-            "-m",
-            "prommis.lithium_extraction.process.softened_water",
-            "--brine",
-            site,
-            "--case",
-            CASE,
-            "--output-file",
-            str(output),
-        ],
-        check=True,
-        timeout=290,
-        cwd=ROOT,
-        stdout=subprocess.DEVNULL,
-    )  # its progress log; errors still reach stderr
-    return json.loads(output.read_text())
+    """Read the target-dose Reaktoro state used by the campaign."""
+    return json.loads(
+        (
+            STUDY / f"results/softening_to_specification/softening/{site}_{CASE}.json"
+        ).read_text()
+    )
 
 
 def softening_table(softened):
@@ -448,11 +418,6 @@ def priced_flows(m, accounts):
     )
 
 
-def solve(m, name):
-    """IPOPT with exact second derivatives and tight tolerances; its optimality conditions are checked from the log."""
-    return stage.solve(m, log_directory(name))
-
-
 def whole_process_result(m, site, softened):
     """The repository's independent report of the solved process, and its check of every process requirement."""
     m._case = m._full_process["case"]
@@ -510,30 +475,6 @@ def headline(model, result, softened, site):
             / LCE_PER_LI,
         },
         name=WATERS[site],
-    )
-
-
-def stage_table(result):
-    """mmol per litre of softened water leaving each extraction stage."""
-    species = (
-        "lithium-cation",
-        "sodium-cation",
-        "lithium-carrier",
-        "sodium-carrier",
-        "hbta",
-        "bta-anion",
-    )
-    return (
-        pd.DataFrame(
-            {
-                row["stage"]: {
-                    label(s): 1000 * row["outlet_mol_per_nominal_l"][s] for s in species
-                }
-                for row in result["stages"]
-            }
-        )
-        .T.rename_axis("stage")
-        .style.format(number)
     )
 
 
@@ -1265,7 +1206,7 @@ def compare_selections():
     return table
 
 
-# ---------------------------------------------------------------- Part 2's screen, read from its result files
+# ---------------------------------------------------------------- The paper's screen, read from its result files
 
 SYSTEMS = {
     "C": "saponified HBTA/TOPO, softened water",
@@ -1297,7 +1238,7 @@ def _text(table):
 
 
 def paper_headline():
-    """Part 2's screen: each measured water, with the margin of both rated solvent systems in the base and optimistic
+    """The paper's screen: each measured water, with the margin of both rated solvent systems in the base and optimistic
     cases (USD per m3 of raw water) and their research-interest labels."""
     cells, rows = _screen(), {}
     for site, hbta in cells.loc["C"].iterrows():
@@ -1330,7 +1271,7 @@ def paper_headline():
 
 
 def buphen_results():
-    """D2EHDTPA/BuPhen on each water Part 2 rates, Figiel-based calibration: the affordable ligand price and the central
+    """D2EHDTPA/BuPhen on each water the paper rates, Figiel-based calibration: the affordable ligand price and the central
     supply estimate (USD per kg of D2EHDTPA plus BuPhen lost), the purchase of lost ligand at that estimate and the
     margin after it (USD per m3 of raw water)."""
     lost = pd.concat(
@@ -1367,7 +1308,7 @@ def buphen_results():
 
 
 def hbta_targets():
-    """Saponified HBTA/TOPO in Part 2's screen: the highest extractant price any water could pay against the published
+    """Saponified HBTA/TOPO in the paper's screen: the highest extractant price any water could pay against the published
     HBTA price, and the lithium and hardness at which the Mars Hill optimistic case reaches operating break-even
     with free extractant (lithium chloride added, or calcium and magnesium scaled down, in the measured water).
     """

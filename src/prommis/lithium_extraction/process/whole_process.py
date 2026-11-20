@@ -203,6 +203,9 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
         if initial_accounts is None
         else initial_accounts
     )
+    owner = dict(
+        owner, mass_kg_per_l=owner["mass_kg_per_l"] | flowsheet.softening_masses(washed)
+    )
     if "organic_loss" not in assumptions and "active_mass_kg_per_l" not in owner:
         # A retained replay starts a #342 solve: its values initialize the units, but HBTA and TOPO are the unpriced
         # active set, never costed accounts. Every other price is the same on both bases.

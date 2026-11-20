@@ -46,17 +46,6 @@ PACKETS = {
         "only, 298.15 K, 1 bar, 0.001-4.5 mol/kg; not qualified for mixed brines; 73/168 rows above 0.02 decade; "
         "Mg/Ca-water and Mg/Ca-chloride k_ij at bounds (not identified); no Sr2+ parameters (Sr lumped into Ca)",
     ),
-    "figiel-2025-chloride-mixture-refit/1": (
-        "21e761c318c2ac5b555a245365c844d38a93e4cb",
-        "ad1194a1dab24e5cd748e8992500e91b664715be59892cdd82ac5888a7b85004",
-        "conditional_qualified_packet",
-        "lithium-213-conditional-figiel-chloride-mixture-refit-1",
-        "qualified by the Engine owner on 2026-10-16 for aqueous NaCl-MgCl2-CaCl2 brines at 298.15 K, 1 bar; "
-        "fails one of 1,467 source rounding realizations (r1408, Dinane-Mounir I <= 3 water-activity RMS 1.7 % over); "
-        "K+ and Li+ not refit, so Li- and K-bearing brines are outside the qualification; held-out data are two-salt "
-        "mixtures at I 0.45-8.03 mol/kg, so Na-Mg-Ca brines are a composition extrapolation; numerical fit, not "
-        "physical validation; no Sr2+ parameters (Sr lumped into Ca)",
-    ),
 }
 LABEL = {
     "held": f"Held 2008 control, Sr lumped into Ca where present; {rc.ERROR_LABEL}"
@@ -608,9 +597,7 @@ def main():
     )
     parser.add_argument("--start", type=int, choices=(0, 1, 2), default=0)
     parser.add_argument("--basis", choices=("packet", "held"), default="packet")
-    parser.add_argument("--packet", choices=PACKETS, default=PACKET_ID)
     args = parser.parse_args()
-    select(args.packet)
     aqa.installed_engine()
     cs.RESULTS = aqa.RESULTS = (
         OUT  # every reused writer goes to OUT; retained #188 results are never written

@@ -2,6 +2,7 @@
 
 import csv
 import json
+from prommis.lithium_extraction.thermodynamics.reaction_networks import load_constants
 import math
 
 from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
@@ -9,7 +10,7 @@ from prommis.lithium_extraction.paths import REPO_ROOT
 from prommis.lithium_extraction.process import waters as brines, feeds as records
 from prommis.lithium_extraction.process.flowsheet import installed_engine
 
-STUDY = REPO_ROOT / "analyses/prototypes/softened_ms2_epcsaft_sx/runs/amendments_2_4"
+STUDY = REPO_ROOT / "analyses/prototypes/softened_ms2_epcsaft_sx/runs/engine_80e7ae86"
 H158 = REPO_ROOT / "analyses/shared/hbta_topo_configured_reactive_lle/results"
 
 
@@ -40,10 +41,8 @@ def compare(reference, result, names):
 
 def run():
     engine = installed_engine()
-    assert (
-        engine["sha256"]
-        == "8897a0caab9f2508ed642f42c8b5226957fbe7035ed7bfdad71e4166798785b3"
-    )
+    assert engine["source_commit"] == "80e7ae869f4a82764dc70b4f324f7462a17240b0"
+    (STUDY / "results").mkdir(parents=True, exist_ok=True)
     if not (STUDY / "results/engine.json").exists():
         save("engine.json", engine)
     feed = {
@@ -60,7 +59,7 @@ def run():
     if not (STUDY / "results/feed.json").exists():
         save("feed.json", feed)
     reference = list(csv.DictReader((H158 / "mechanism_candidates.csv").open()))
-    summary = json.loads((H158 / "mechanism_candidates.json").read_text())["summary"]
+    summary = load_constants((H158 / "mechanism_candidates.json"))["summary"]
     selected = [
         r for r in reference if r["reaction_set"] in ("A", "C") and r["role"] == "fit"
     ]
@@ -141,7 +140,7 @@ if __name__ == "__main__":
 
 def fit_residuals():
     output = {}
-    summary = json.loads((H158 / "mechanism_candidates.json").read_text())["summary"]
+    summary = load_constants((H158 / "mechanism_candidates.json"))["summary"]
     for arm in ("A", "C"):
         old, new = [], []
         for i in range(8):

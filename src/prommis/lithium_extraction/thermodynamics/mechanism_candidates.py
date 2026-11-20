@@ -62,6 +62,7 @@ from prommis.lithium_extraction.thermodynamics.apparent_reactive_lle import (
 )
 from prommis.lithium_extraction.thermodynamics.reaction_topology import _verify_wheel
 from prommis.lithium_extraction.thermodynamics.reaction_networks import (
+    AQUEOUS_PACKET,
     H_MOLAR_MASS,
     PRESSURE_RELATIVE_LIMIT,
     TOPOLOGIES,
@@ -1170,6 +1171,8 @@ def fit(reaction_set, rows, log):
         )
         if best is None or solution.cost < best.cost:
             best = solution
+    if not best.success:
+        raise RuntimeError(f"set {reaction_set}: {best.message}")
     return (
         dict(zip(names, best.x)),
         list(best.fun),
@@ -1480,6 +1483,7 @@ def main():
             writer.writeheader()
             writer.writerows(records)
     document = {
+        "aqueous_basis": AQUEOUS_PACKET,
         "engine": engine,
         "issue": "tannerpolley/Lithium_Extraction#158",
         "design": "issue #158 comment 5885287577 (fit/holdout split and criteria fixed before fitting)",

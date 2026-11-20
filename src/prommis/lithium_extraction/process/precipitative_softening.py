@@ -183,6 +183,80 @@ def _to_ph(
     return amount, _dosed(system, solver, state, reagent, amount)
 
 
+def _to_residual(system, solver, state, reagent, element, target_mg_l, upper):
+    """Dose to a dissolved element target on the one-raw-litre basis."""
+    mg_per_mol = MOLAR_MASS[element] * 1000.0
+    target = target_mg_l / mg_per_mol
+    if not 0.0 < target < float("inf"):
+        raise ValueError(f"{element} target must be finite and positive")
+
+    def residual(trial):
+        amounts = rkt.ChemicalProps(trial).elementAmountsInPhase("AqueousPhase")
+        return _elements(system, amounts)[element] - target
+
+    equilibrium = max(
+        1e-11, target * rkt.EquilibriumOptions().optima.convergence.tolerance
+    )
+    undosed = _dosed(system, solver, state, reagent, 0.0)
+    undosed_error = residual(undosed)
+    if undosed_error <= equilibrium:
+        return (
+            0.0,
+            undosed,
+            {"limit_mg_per_raw_l": equilibrium * mg_per_mol, "zero_dose": True},
+        )
+
+    def miss(amount):
+        if amount == 0.0:
+            return undosed_error
+        # Start the bracket from equilibrated speciation at the same inlet inventory.
+        try:
+            return residual(_dosed(system, solver, undosed, reagent, amount))
+        except RuntimeError as exc:
+            raise RuntimeError(
+                f"{reagent}: equilibrium at {amount:.12g} mol/raw L"
+            ) from exc
+
+    if upper <= 0.0:
+        raise RuntimeError(
+            f"{reagent}: no positive starting dose to bracket the {element} target"
+        )
+    for _ in range(8):
+        if miss(upper) <= 0.0:
+            break
+        upper *= 2.0
+    else:
+        raise RuntimeError(
+            f"{reagent}: could not bracket the {element} target up to {upper / 2:.12g} mol/raw L"
+        )
+
+    # Two OH per Mg and one carbonate per Ca convert the amount precision to dose precision.
+    equivalents = 2.0 if reagent == "NaOH" else 1.0
+    xtol = equivalents * equilibrium / 10.0
+    dose = brentq(miss, 0.0, upper, xtol=xtol, rtol=PH_RTOL)
+    fresh = _dosed(system, solver, state, reagent, dose)
+    error = residual(fresh)
+    step = max(dose * 1e-4, 1e-9)
+    slope = abs(miss(dose + step) - error) / step
+    dose_limit = xtol + PH_RTOL * dose
+    limit = equilibrium + slope * dose_limit
+    if abs(error) > limit:
+        raise RuntimeError(
+            f"{reagent}: {element} target at {dose:.12g} mol/raw L, "
+            f"error {error * mg_per_mol:.6g} and limit {limit * mg_per_mol:.6g} mg/raw L"
+        )
+    return (
+        dose,
+        fresh,
+        {
+            "limit_mg_per_raw_l": limit * mg_per_mol,
+            "dose_tolerance_mol": dose_limit,
+            "slope_mol_per_mol": slope,
+            "zero_dose": False,
+        },
+    )
+
+
 def _record(system, state, phases) -> dict:
     props = rkt.ChemicalProps(state)
     aq = rkt.AqueousProps(state)
@@ -778,12 +852,10 @@ def main() -> None:
     rows, curves, info = falsifiers()
     falsifier_seconds = time.perf_counter() - start
     _write("softening_falsifiers.csv", rows)
-    _write("softening_model_lines.csv", curves)
     start = time.perf_counter()
     ms2_rows, cakes, feeds, ms2_info = ms2(prices)
     ms2_seconds = time.perf_counter() - start
     _write("softening_ms2.csv", ms2_rows)
-    _write("softening_cake.csv", cakes)
     scored = [r for r in rows if r["variant"] == "base" and r["pass"] is not None]
     summary = {
         "scores": {
@@ -812,9 +884,6 @@ def main() -> None:
             "reaktoro": rkt.__version__,
         },
     }
-    (RESULTS / "softening_summary.json").write_text(
-        json.dumps(summary, indent=1, default=str) + "\n"
-    )
     print(
         json.dumps(
             {

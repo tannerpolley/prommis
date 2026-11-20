@@ -10,8 +10,6 @@ Engine.
 from __future__ import annotations
 
 from copy import deepcopy
-from contextlib import contextmanager
-import os
 import json
 from dataclasses import dataclass
 from functools import lru_cache
@@ -78,7 +76,7 @@ APPLICATION_AFFINITY_LIMIT = 2.0e-3
 # shifts each ln(activity) by v_i dP/RT <= 4e-8 for v_i <= 1 L/mol, far below the 1e-6 strict affinity limit.
 PRESSURE_RELATIVE_LIMIT = 1.0e-6
 # Bulow et al. (2021, Ind. Eng. Chem. Res. 60:6327, Tables 2-3) ePC-SAFT ions in Held's framework, entered like the
-# Held (2014) H+ above: electrolyte diameters 0.88 sigma, Born diameter sigma. CO2(aq) uses their pure CO2 row.
+# Held (2014) ions: electrolyte diameters 0.88 sigma, Born diameter sigma. CO2(aq) uses their pure CO2 row.
 CARBONATE_PARAMETERS = {
     "bicarbonate-anion": (0.06101684, -1, 1.0, 2.9296, 70.0),
     "carbonate-anion": (0.0600089, -2, 1.0, 2.4422, 249.26),
@@ -246,27 +244,13 @@ def _pair(
 AQUEOUS_PACKET = "figiel-2025-chloride-mixture-refit/4"
 
 
-@contextmanager
-def aqueous_basis(name: str):
-    """Select a named basis for one study process and its solver subprocesses."""
-    if name != AQUEOUS_PACKET:
-        raise ValueError(f"Unknown HBTA aqueous basis: {name}")
-    from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
-
-    previous = os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS")
-    caches = (build_model, solve_condition, mc.model, mc.offsets)
-    try:
-        os.environ["LITHIUM_HBTA_AQUEOUS_BASIS"] = name
-        for cached in caches:
-            cached.cache_clear()
-        yield
-    finally:
-        if previous is None:
-            os.environ.pop("LITHIUM_HBTA_AQUEOUS_BASIS", None)
-        else:
-            os.environ["LITHIUM_HBTA_AQUEOUS_BASIS"] = previous
-        for cached in caches:
-            cached.cache_clear()
+def load_constants(path):
+    document = json.loads(path.read_text())
+    if document.get("aqueous_basis") != AQUEOUS_PACKET:
+        raise ValueError(
+            f"{path}: expected aqueous basis {AQUEOUS_PACKET!r}, found {document.get('aqueous_basis')!r}"
+        )
+    return document
 
 
 @lru_cache(maxsize=1)
@@ -284,9 +268,7 @@ def _aqueous_packet() -> dict[str, Any]:
         "hydronium-cation",
         "chloride-anion",
     )
-    document = parameter_document(
-        root, [("figiel-2025-chloride-mixture-refit/4", names)]
-    )
+    document = parameter_document(root, [(AQUEOUS_PACKET, names)])
     # H+ remains the application's inventory species and consumes no water.
     return json.loads(
         json.dumps(document).replace("hydronium-cation", "hydrogen-cation")
@@ -296,7 +278,7 @@ def _aqueous_packet() -> dict[str, Any]:
 def parameter_payload(
     topology: IndependentTopology, diluent_id: str, carbonate: bool = False
 ) -> dict[str, Any]:
-    """Build shared ligand-derived complex priors plus Held aqueous H+."""
+    """Combine the chloride-mixture packet with the ligand-derived complex priors."""
 
     legacy = (
         LEGACY_TOPOLOGIES["zhang_apparent_2_1_1"]
@@ -307,14 +289,6 @@ def parameter_payload(
     topology_document_id = topology.identity.replace("_", "-")
     payload["document_id"] = (
         f"hbta-topo-{topology_document_id}-{diluent_id}-independent"
-    )
-    payload["sources"].append(
-        {
-            "source_id": "held-2014-hydrogen",
-            "citation": "Held et al., Chem. Eng. Res. Des. (2014)",
-            "doi": "10.1016/j.cherd.2014.05.017",
-            "use_basis": "Aqueous hydrogen-ion ePC-SAFT strategy-2 prior.",
-        }
     )
     payload["sources"].append(
         {
@@ -374,59 +348,34 @@ def parameter_payload(
     }
     by_id["free-carrier"] = free
 
-    hydrogen = deepcopy(by_id["lithium-cation"])
-    _rename_component(hydrogen, "lithium-cation", "hydrogen-cation")
-    hydrogen["fixed"]["molar_mass"]["value"]["magnitude"] = H_MOLAR_MASS
-    hydrogen["fixed"]["charge_number"]["value"]["magnitude"] = 1
-    h_provenance = {
-        "source_id": "held-2014-hydrogen",
-        "locator": "strategy-2 H+ row; electrolyte diameters 0.88 sigma",
-        "domain_id": "hbta-topo-independent-network",
-    }
-    hydrogen["fixed"]["molar_mass"]["provenance"] = h_provenance
-    hydrogen["fixed"]["charge_number"]["provenance"] = h_provenance
-    h_values = {
-        "segment_count": 1.0,
-        "segment_diameter": 3.4654,
-        "dispersion_energy_over_k": 500.0,
-        "packing_diameter": 0.88 * 3.4654,
-        "debye_huckel_diameter": 0.88 * 3.4654,
-        "born_diameter": 3.4654,
-        "solvation_factor": 1.0,
-    }
-    for coefficient in hydrogen["coefficients"]:
-        coefficient["value"]["magnitude"] = h_values[coefficient["family"]]
-        coefficient["provenance"] = h_provenance
-    by_id["hydrogen-cation"] = hydrogen
-    if os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS") == AQUEOUS_PACKET:
-        aqueous = deepcopy(_aqueous_packet())
-        aqueous_ids = set(AQUEOUS_SUPPORT)
-        for record in aqueous["components"]:
-            identity = record["component_id"]
-            if "molar_mass" not in record["fixed"]:
-                record["fixed"]["molar_mass"] = deepcopy(
-                    by_id["lithium-cation"]["fixed"]["molar_mass"]
-                    if identity == "hydrogen-cation"
-                    else by_id[identity]["fixed"]["molar_mass"]
-                )
-            if identity == "hydrogen-cation":
-                record["fixed"]["molar_mass"]["value"]["magnitude"] = H_MOLAR_MASS
-                record["fixed"]["molar_mass"]["value"]["unit"] = "kilogram / mole"
-                record["fixed"]["molar_mass"]["provenance"] = {
-                    **structural,
-                    "locator": "H+ inventory; no water consumption",
-                }
-            by_id[identity] = record
-        hydrogen = by_id["hydrogen-cation"]
-        payload["materialization"] = aqueous["materialization"]
-        payload["model_coefficients"] = aqueous["model_coefficients"]
-        payload["model_families"] = aqueous["model_families"]
-        payload["cation_mixing"] = aqueous["cation_mixing"]
-        payload["correlations"] = [
-            r for r in payload["correlations"] if r["component_id"] not in aqueous_ids
-        ] + aqueous["correlations"]
-        for key in ("sites", "edges", "no_cross_association"):
-            payload["topology"][key] = aqueous["topology"][key]
+    aqueous = deepcopy(_aqueous_packet())
+    aqueous_ids = set(AQUEOUS_SUPPORT)
+    for record in aqueous["components"]:
+        identity = record["component_id"]
+        if "molar_mass" not in record["fixed"]:
+            record["fixed"]["molar_mass"] = deepcopy(
+                by_id["lithium-cation"]["fixed"]["molar_mass"]
+                if identity == "hydrogen-cation"
+                else by_id[identity]["fixed"]["molar_mass"]
+            )
+        if identity == "hydrogen-cation":
+            record["fixed"]["molar_mass"]["value"]["magnitude"] = H_MOLAR_MASS
+            record["fixed"]["molar_mass"]["value"]["unit"] = "kilogram / mole"
+            record["fixed"]["molar_mass"]["provenance"] = {
+                **structural,
+                "locator": "H+ inventory; no water consumption",
+            }
+        by_id[identity] = record
+    hydrogen = by_id["hydrogen-cation"]
+    payload["materialization"] = aqueous["materialization"]
+    payload["model_coefficients"] = aqueous["model_coefficients"]
+    payload["model_families"] = aqueous["model_families"]
+    payload["cation_mixing"] = aqueous["cation_mixing"]
+    payload["correlations"] = [
+        r for r in payload["correlations"] if r["component_id"] not in aqueous_ids
+    ] + aqueous["correlations"]
+    for key in ("sites", "edges", "no_cross_association"):
+        payload["topology"][key] = aqueous["topology"][key]
     species = ALL_SPECIES if carbonate else SPECIES
     carbonate_provenance = {
         "source_id": "bulow-2021-carbonate",
@@ -439,7 +388,7 @@ def parameter_payload(
                 "source_id": "bulow-2021-carbonate",
                 "citation": "Bulow, Ince, Hirohama, Sadowski and Held, Ind. Eng. Chem. Res. 60 (2021) 6327-6336",
                 "doi": "10.1021/acs.iecr.1c00176",
-                "use_basis": "Aqueous carbonate ePC-SAFT priors (Held framework), as for the Held 2014 H+.",
+                "use_basis": "Aqueous carbonate ePC-SAFT priors in the Held framework.",
             }
         )
     for identity, (mass, charge, segments, diameter, energy) in (
@@ -499,26 +448,14 @@ def parameter_payload(
     for identity in SPECIES:
         if identity in {"hydrogen-cation", "lithium-cation", "sodium-cation"}:
             continue
-        value = 0.0
-        locator = "zero cross-interaction prior outside validated aqueous pairs"
-        if identity == "water":
-            value = 0.25
-            locator = "Held 2014 strategy-2 water/H+ pair"
-        elif identity == "chloride-anion":
-            value = 0.654
-            locator = "Held 2014 strategy-2 H+/Cl- pair"
         pairs.setdefault(
             frozenset(("hydrogen-cation", identity)),
             _pair(
                 "hydrogen-cation",
                 identity,
-                value,
-                source_id=(
-                    "held-2014-hydrogen"
-                    if identity in {"water", "chloride-anion"}
-                    else "hbta-topo-independent-network"
-                ),
-                locator=locator,
+                0.0,
+                source_id="hbta-topo-independent-network",
+                locator="zero cross-interaction prior outside validated aqueous pairs",
             ),
         )
     for identity in species[len(SPECIES) :]:
@@ -548,9 +485,8 @@ def parameter_payload(
                         ),
                     ),
                 )
-    if os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS") == AQUEOUS_PACKET:
-        for row in aqueous["pairs"]:
-            pairs[frozenset((row["component_id_a"], row["component_id_b"]))] = row
+    for row in aqueous["pairs"]:
+        pairs[frozenset((row["component_id_a"], row["component_id_b"]))] = row
     payload["pairs"] = list(pairs.values())
     return payload
 
@@ -857,8 +793,8 @@ def _molal_offsets(model: epcsaft.Mixture, temperature_k: float) -> dict[str, fl
         + water.residual_chemical_potential_over_rt[water_index]
     }
     ln_mass_density = math.log(
-        water.molar_density * 0.01801528
-    )  # c_i/m_i at infinite dilution, kg/m3
+        water.molar_density * model.parameters.molar_masses[water_index]
+    )  # kg/m3
     for name in ("hydrogen-cation", *CARBONATE_SPECIES):
         i = ids.index(name)
         x = [0.0] * len(ids)
@@ -1225,23 +1161,22 @@ def solve_condition(
     if chosen is None:
         return receipt
     _, _, phase_amounts, diagnostics = chosen
-    if os.environ.get("LITHIUM_HBTA_AQUEOUS_BASIS") == AQUEOUS_PACKET:
-        _, model = build_model(topology_id, diluent_id, components, complex_diluent_kij)
-        outside = [
-            model.outside_domains(
-                tuple(phase.get(s, 0.0) / sum(phase.values()) for s in components)
-            )
-            for phase in phase_amounts
-        ]
-        receipt["outside_domains"] = outside
-        if any(outside):
-            return {
-                **receipt,
-                "status": "non_evaluable",
-                "application_status": "non_evaluable",
-                "engine_status": "non_evaluable",
-                "next_probe": "outside aqueous packet composition domains",
-            }
+    _, model = build_model(topology_id, diluent_id, components, complex_diluent_kij)
+    outside = [
+        model.outside_domains(
+            tuple(phase.get(s, 0.0) / sum(phase.values()) for s in components)
+        )
+        for phase in phase_amounts
+    ]
+    receipt["outside_domains"] = outside
+    if any(outside):
+        return {
+            **receipt,
+            "status": "non_evaluable",
+            "application_status": "non_evaluable",
+            "engine_status": "non_evaluable",
+            "next_probe": "outside aqueous packet composition domains",
+        }
     li_org, na_org = (
         phase_amounts[1]["lithium-carrier"],
         phase_amounts[1]["sodium-carrier"],

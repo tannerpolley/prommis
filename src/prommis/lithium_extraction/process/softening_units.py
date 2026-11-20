@@ -3,6 +3,7 @@
 import argparse
 import itertools
 import json
+from prommis.lithium_extraction.thermodynamics.reaction_networks import load_constants
 import math
 import time
 
@@ -41,7 +42,7 @@ def run(args):
         values["wall_time_seconds"] = time.perf_counter() - started
         write("full_chain_softening.json", values)
     elif args.step == "extract":
-        summary = json.loads((RESULTS / "set_c_summary.json").read_text())
+        summary = load_constants((RESULTS / "set_c_summary.json"))
         engine = fs.installed_engine()
         units = list(
             itertools.product(
@@ -104,7 +105,7 @@ def run(args):
                 "Empirical fallback is authorized only after the failed Pitzer comparison"
             )
         rows = [r for unit in extraction.values() for r in unit["values"]]
-        costs, sensitivity, candidates = {}, [], []
+        costs = {}
         for case in ("base", "optimistic"):
             eligible = []
             for r in rows:
@@ -119,40 +120,17 @@ def run(args):
                 assumptions["diluent_usd_kg"] = (
                     assumptions["diluent_usd_gal"] / 3.785411784
                 ) / (r["diluent_mol"] * 0.17033484 / soft[case]["feed_l"])
-                candidate = {"case": case, "extractant_mol_l": r["extractant_mol_l"]}
                 try:
                     result = fs.costs_and_balances(soft[case], r, case, assumptions)
-                except ValueError as error:
-                    candidate["diagnostic"] = str(error)
+                except ValueError:
+                    continue
                 else:
-                    candidate.update(
-                        operating_usd_kg_li=result["operating_usd_kg_li"],
-                        strip_na_fraction=result["strip_na_fraction"],
-                        mother_nacl_mol_kg=result["mother_nacl_mol_kg"],
-                    )
                     eligible.append((result, r, assumptions))
-                candidates.append(candidate)
             costs[case], r, assumptions = min(
                 eligible, key=lambda item: item[0]["operating_usd_kg_li"]
             )
-            for efficiency in (0.9, 0.95, 0.9867, 0.999):
-                point = {"case": case, "assumed_na_scrub_efficiency": efficiency}
-                try:
-                    result = fs.costs_and_balances(
-                        soft[case], r, case, assumptions, efficiency
-                    )
-                except ValueError as error:
-                    point["diagnostic"] = str(error)
-                else:
-                    point.update(
-                        strip_na_fraction=result["strip_na_fraction"],
-                        operating_usd_kg_li=result["operating_usd_kg_li"],
-                    )
-                sensitivity.append(point)
         costs["wall_time_seconds"] = time.perf_counter() - started
         write("full_chain_results.json", costs)
-        _write_csv(RESULTS / "full_chain_scrub_sensitivity.csv", sensitivity)
-        _write_csv(RESULTS / "full_chain_cost_candidates.csv", candidates)
         _write_csv(
             RESULTS / "full_chain_extraction.csv",
             [
