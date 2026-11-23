@@ -7,7 +7,9 @@ import pytest
 
 
 @pytest.mark.component
-def test_ms2_fixed_design_reproduces_retained_record(tmp_path):
+def test_ms2_fixed_design_reproduces_retained_record(tmp_path, monkeypatch):
+    # The conda Engine's threaded numerical libraries can exhaust IPOPT's CPU budget at iteration zero (#425).
+    monkeypatch.setenv("OMP_NUM_THREADS", "1")
     pytest.importorskip("epcsaft")
     from prommis.lithium_extraction.process.candidate import (
         STUDY,
