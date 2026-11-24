@@ -58,6 +58,7 @@ def build_flowsheet(
     stages=5,
     scenario=None,
     design_range=None,
+    raffinate_entrainment_l=0.0,
 ):
     """One basis per process; chemistry assembly and direct certificates remain source-owned."""
     if (
@@ -222,6 +223,7 @@ def build_flowsheet(
         organic,
         stages,
         maximum_stages=max(design_range["stages"]) if design_range else 5,
+        raffinate_diluent_loss=raffinate_entrainment_l * organic["diluent"] / ratio,
     )
     model._design_range = design_range
     model._physical_feed, model._design, model._solvent = feed, dict(scenario), solvent
@@ -258,7 +260,7 @@ def reference_profiles(model):
     ]
 
 
-def decisions(model):
+def decisions(model, *, organic_recycle=False):
     """Release the record's #188 design range (#342): BuPhen B (M), site ratio S (sites per feed Li) and O/A set the
     organic inlet and the Engine's ligand totals; organic site concentration S*basis/(O/A) stays in its range.
     Starts fixed at the built design; `release` frees them."""
@@ -274,6 +276,15 @@ def decisions(model):
     B, S, ratio = (model._decisions[k] for k in ("B", "S", "O_A"))
     sites, diluent = S * d["site_basis_li_mol_l"], model._feeds[1]["diluent"] / d["O_A"]
     links = {"buphen": B * ratio, "naa": sites, "diluent": diluent * ratio}
+    if organic_recycle:
+        links = {"diluent": diluent * ratio}
+        for s, total in (("naa", sites), ("buphen", B * ratio)):
+            moiety = rc.MOIETIES["A" if s == "naa" else "B"]
+            links[s] = total - sum(
+                moiety.get(c, 0.0) * fs.boundary[c]
+                for c in rc.COMPLEX.values()
+                if c in fs.boundary
+            )
     totals = {"sites_total_mol": sites, "buphen_total_mol": B * ratio}
     for s in links:
         fs.boundary[s].unfix()
@@ -321,6 +332,29 @@ def synchronize(model):
     )
 
 
+def sodium_report(aqueous, organic, outlet, entrained_na, stages):
+    """Sodium leaving extraction in aqueous raffinate, entrained organic, and loaded organic."""
+    ion = rc.ION["Na"][0]
+    naa = outlet["naa"]
+    account = {
+        "brine_in": aqueous[ion],
+        "saponified_organic_in": organic["naa"],
+        "raffinate_out": outlet[ion],
+        "loaded_organic_out": naa,
+    }
+    if entrained_na is None:
+        return {"sodium_account_mol_per_raw_l": account}
+    account["raffinate_entrained_organic_out"] = entrained_na
+    if stages == 1:
+        account["loaded_organic_out"] -= entrained_na
+    # A one-stage split removes the same fraction of Li and NaA, so it leaves this ratio unchanged.
+    metric = {
+        "name": "loaded-organic Na/(Li+Na)",
+        "value": naa / (naa + outlet[rc.COMPLEX["Li"]]),
+    }
+    return {"sodium_account_mol_per_raw_l": account, "na_metric": metric}
+
+
 def report(model, result=None, *, case="base", reference_accounting=False):
     """Source moiety, physical raffinate and strip/loss evidence at the solved design."""
     synchronize(model)
@@ -334,9 +368,19 @@ def report(model, result=None, *, case="base", reference_accounting=False):
                 moiety.get(s, 0) * (outlet[s] - inlet[s]) for s in species
             )
     final = result["outlet_mol_per_raw_l"]
+    stage_count = len(result["stages"])
+    entrained = {
+        s: value(n)
+        for s, n in getattr(model.fs, "raffinate_entrained_organic", {}).items()
+    }
     for name, moiety in rc.MOIETIES.items():
         residuals[f"global/{name}"] = sum(
-            moiety.get(s, 0) * (final[s] - sum(p.get(s, 0) for p in model._feeds))
+            moiety.get(s, 0)
+            * (
+                final[s]
+                + (entrained.get(s, 0.0) if stage_count > 1 else 0.0)
+                - sum(p.get(s, 0) for p in model._feeds)
+            )
             for s in species
         )
     ratio = model._design["O_A"]
@@ -374,6 +418,8 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         if reference_accounting
         else (getattr(model, "_d2_full_process", None) or case_assumptions(case, True))
     )
+    recycle = hasattr(model.fs, "organic_recycle")
+    strip_volume = ratio - assumptions["entrainment_l_per_l"] if recycle else None
     accounts = owner.accounts(
         extraction,
         model._design["S"],
@@ -384,6 +430,7 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         case_assumptions=assumptions,
         feed_li_mol_l=li_feed,
         site_basis_li_mol_l=model._design["site_basis_li_mol_l"],
+        strip_volume=strip_volume,
     )
     accounts.update(
         accounting_basis="historical #188 extraction-plus-strip intermediate; neither user scope",
@@ -391,6 +438,12 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         total_usd_kg_li=None,
         can_minimize_total=False,
         completeness="partial: " + accounts["missing_accounts"],
+    )
+    sodium = sodium_report(
+        *model._feeds,
+        final,
+        entrained.get("naa", 0.0) if recycle else None,
+        stage_count,
     )
     return {
         **result,
@@ -405,12 +458,7 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         "organic_inlet_mol_per_raw_l": model._feeds[1],
         "li_extraction_fraction": extraction["li_extraction_fraction"],
         "accounts": accounts,
-        "sodium_account_mol_per_raw_l": {
-            "brine_in": model._feeds[0][rc.ION["Na"][0]],
-            "saponified_organic_in": model._feeds[1]["naa"],
-            "raffinate_out": final[rc.ION["Na"][0]],
-            "loaded_organic_out": final["naa"],
-        },
+        **sodium,
         "labels": model._physical_feed["labels"]
         + [label for label in owner.LABELS.values() if isinstance(label, str)]
         + [

@@ -6,6 +6,7 @@ from pyomo.environ import Block, Constraint, Expression, Var, units as pyunits, 
 from pyomo.common.collections import ComponentSet
 from pyomo.contrib.incidence_analysis import solve_strongly_connected_components
 from pyomo.util.subsystems import TemporarySubsystemManager, create_subsystem_block
+from pyomo.util.calc_var_value import calculate_variable_from_constraint
 
 from prommis.lithium_extraction.process import (
     waters as brines,
@@ -13,6 +14,7 @@ from prommis.lithium_extraction.process import (
     strip_and_carbonation as downstream,
     flowsheet,
     feeds as records,
+    retained_references as references,
 )
 from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_stage as d2_stage
 
@@ -182,11 +184,10 @@ def set_interval(model, interval):
     model._carbonation_interval = list(interval)
 
 
-def connect_units(model, initial, assumptions, interval):
-    """Connect the charge-weighted strip, ideal cleanup and common carbonation to live extraction; every account is
-    an expression of the solved stage outlets and design (#342), and `interval` is the measured Ge NaCl interval.
-    """
+def connect_strip(model, case, recycle_assumptions=None):
+    """Strip the loaded organic and, when requested, return the residual complexes."""
     fs, rc = model.fs, d2_stage.rc
+    n = len(fs.stages)
     org = fs.stage[1].outlet
     complexes = {e: s for e, s in dict(rc.COMPLEX, Na="naa").items() if s in org}
     ions = {e: rc.ION[e][0] for e in complexes}
@@ -198,6 +199,8 @@ def connect_units(model, initial, assumptions, interval):
         }
         for e, s in complexes.items()
     }
+    fractions = d2_stage.owner.BASIS["strip_fractions"][case]
+    spectators = ("diluent",) if recycle_assumptions is not None else ()
     strip = downstream.fixed_fraction_strip(
         fs,
         "strip",
@@ -205,15 +208,25 @@ def connect_units(model, initial, assumptions, interval):
         ions,
         charges,
         released,
-        d2_stage.owner.BASIS["strip_fractions"][initial["case"]],
+        fractions,
+        spectators=spectators,
     )
+    raffinate_loss = getattr(
+        fs,
+        "raffinate_entrained_organic",
+        dict.fromkeys(model._chemistry.supports[1], 0.0),
+    )
+    strip_feed = {
+        s: org[s] - (raffinate_loss[s] if n == 1 else 0.0)
+        for s in model._chemistry.supports[1]
+    }
     inlet = strip.unit.mscontactor.organic_inlet_state[0].flow_mol_comp
     strip.loaded = Constraint(
         fs.loaded_properties.component_list,
-        rule=lambda b, s: inlet[s] == (org[s] if s in org else 0.0),
+        rule=lambda b, s: inlet[s] == strip_feed.get(s, 0.0),
     )
     strip.acid_mol = Expression(
-        expr=sum(charges[e] * org[s] for e, s in complexes.items())
+        expr=sum(charges[e] * strip_feed[s] for e, s in complexes.items())
     )
     strip.acid = Constraint(
         ("hydrogen-cation", "chloride-anion"),
@@ -233,6 +246,42 @@ def connect_units(model, initial, assumptions, interval):
     block = create_subsystem_block(equations, list(variables))
     with TemporarySubsystemManager(to_fix=list(block.input_vars.values())):
         solve_strongly_connected_components(block)
+    if recycle_assumptions is None:
+        return
+    fs.organic_recycle = recycle = Block()
+    raffinate_l = recycle_assumptions["entrainment_l_per_l"]
+    strip_l = (
+        d2_stage.owner.entrained_l(recycle_assumptions, strip.metals["Li"])
+        - raffinate_l
+    )
+    volume = model._decisions["O_A"] - raffinate_l
+    recycle.strip_loss = Expression(
+        strip.organic_out.index_set(),
+        rule=lambda b, s: strip.organic_out[s] * strip_l / volume,
+    )
+    recycle.returned = Expression(
+        strip.organic_out.index_set(),
+        rule=lambda b, s: strip.organic_out[s] - b.strip_loss[s],
+    )
+    recycle.regeneration_naoh = Expression(
+        expr=fs.boundary["naa"] - recycle.returned["naa"]
+    )
+    recirculated = [s for e, s in complexes.items() if e != "Na" and fractions[e] < 1]
+    for s in recirculated:
+        fs.boundary[s].unfix()
+        fs.boundary[s].set_value(value(recycle.returned[s]))
+    recycle.metals = Constraint(
+        recirculated, rule=lambda b, s: fs.boundary[s] == b.returned[s]
+    )
+    for s in ("naa", "buphen"):
+        calculate_variable_from_constraint(fs.boundary[s], fs.design.organic_inlet[s])
+
+
+def connect_units(model, initial, assumptions, interval):
+    """Connect ideal cleanup and common carbonation in the selected measured Ge NaCl interval."""
+    if not hasattr(model.fs, "strip"):
+        connect_strip(model, initial["case"])
+    fs, strip = model.fs, model.fs.strip
     fs.cleanup = Block()
     amounts = d2_stage.strip_accounts(
         {f"strip_{e}_mol_L_feed": n for e, n in strip.metals.items()}, model._solvent
@@ -269,11 +318,14 @@ def connect_units(model, initial, assumptions, interval):
     # D2EHDTPA and dodecane losses and the saponification NaOH follow the solved design and stage outlets.
     d = model._decisions if hasattr(model, "_decisions") else model._design
     ratio, n = d["O_A"], len(fs.stages)
+    recycle = getattr(fs, "organic_recycle", None)
+    buphen = d["B"] if recycle is not None else fs.boundary["buphen"] / ratio
+    naoh = recycle.regeneration_naoh if recycle is not None else fs.boundary["naa"]
     lost = d2_stage.owner.losses_kg_per_l(
         d2_stage.owner.entrained_l(assumptions, strip.metals["Li"]),
         d["S"],
         ratio,
-        fs.boundary["buphen"] / ratio,
+        buphen,
         0.0,
         fs.stage[n].outlet["buphen"] / ratio,
         fs.boundary["diluent"] / ratio,
@@ -281,7 +333,7 @@ def connect_units(model, initial, assumptions, interval):
     )
     fs.losses = Expression(tuple(lost), rule=lambda b, k: lost[k])
     live = {
-        "regeneration_NaOH": fs.boundary["naa"] * flowsheet.MASS_KG_PER_MOL["NaOH"],
+        "regeneration_NaOH": naoh * flowsheet.MASS_KG_PER_MOL["NaOH"],
         "strip_HCl31": strip.acid_mol * flowsheet.MASS_KG_PER_MOL["HCl31"],
         "octanol_dissolution": fs.losses["octanol_dissolution"],
         "octanol_entrainment": fs.losses["octanol_entrainment"],
@@ -308,6 +360,83 @@ def connect_units(model, initial, assumptions, interval):
         2 * fs.carbonation.product_mol * d2_stage.owner.MASSES["Li"] * kg,
         active={k: m * kg for k, m in active.items()},
     )
+
+
+def recycle_report(model, result, owner, actual):
+    fs, rc = model.fs, d2_stage.rc
+    recycle = fs.organic_recycle
+    returned = {s: value(n) for s, n in recycle.returned.items()}
+    strip_loss = {s: value(n) for s, n in recycle.strip_loss.items()}
+    raff_loss = {
+        s: value(n) for s, n in getattr(fs, "raffinate_entrained_organic", {}).items()
+    }
+    recycled = {
+        e: returned[s] for e, s in dict(rc.COMPLEX, Na="naa").items() if s in returned
+    }
+    boundary = result["organic_inlet_mol_per_raw_l"]
+    residuals = {
+        s: boundary[s] - returned[s] for s in rc.COMPLEX.values() if s in boundary
+    }
+    limit = result["solve"]["options"]["constr_viol_tol"]
+    if max(map(abs, residuals.values())) > limit:
+        raise RuntimeError(f"Organic recycle exceeds {limit} mol/raw L: {residuals}")
+    naoh = value(recycle.regeneration_naoh)
+    external = {}
+    for e, s in dict(rc.COMPLEX, Na="naa").items():
+        if e not in recycled:
+            continue
+        ion = rc.ION[e][0]
+        external[e] = (
+            result["aqueous_inlet_mol_per_raw_l"][ion]
+            + (naoh if e == "Na" else 0.0)
+            - result["outlet_mol_per_raw_l"][ion]
+            - actual[e]
+            - raff_loss.get(s, 0.0)
+            - strip_loss[s]
+        )
+    if (
+        max(map(abs, external.values()))
+        > references.load_reference("R7")["balance_mol_per_raw_l_limit"]
+    ):
+        raise RuntimeError(f"External metal balance exceeds R7: {external}")
+    mm = d2_stage.owner.MOLAR_MASS_KG_MOL
+    makeup = {
+        "A": owner["active_mass_kg_per_l"]["D2EHDTPA"] / mm["D2EHDTPA"],
+        "B": owner["active_mass_kg_per_l"]["BuPhen"] / mm["BuPhen"],
+        "diluent": owner["mass_kg_per_l"]["diluent"] / (0.75 * mm["dodecane"]),
+    }
+    dissolved_b = result["accounts"]["BuPhen_dissolved_kg_m3"] / (1000 * mm["BuPhen"])
+    ligand_balance = {}
+    for name, fresh in makeup.items():
+        row = rc.MOIETIES[name] | ({"ha": 1.0} if name == "A" else {})
+        ligand_balance[name] = (
+            fresh
+            - (dissolved_b if name == "B" else 0.0)
+            - sum(
+                c * (boundary.get(s, 0.0) - returned.get(s, 0.0))
+                for s, c in row.items()
+            )
+        )
+    if (
+        max(map(abs, ligand_balance.values()))
+        > references.load_reference("R7")["balance_mol_per_raw_l_limit"]
+    ):
+        raise RuntimeError(f"Organic makeup balance exceeds R7: {ligand_balance}")
+    return {
+        "strip_li_recovery_fraction": result["accounts"]["R_rec"],
+        "organic_recycle": {
+            "returned_species_mol_per_raw_l": returned,
+            "returned_metals_mol_per_raw_l": recycled,
+            "raffinate_entrainment_mol_per_raw_l": raff_loss,
+            "strip_entrainment_mol_per_raw_l": strip_loss,
+            "regeneration_naoh_mol_per_raw_l": naoh,
+            "residual_mol_per_raw_l": residuals,
+            "organic_makeup_mol_per_raw_l": makeup,
+            "makeup_balance_mol_per_raw_l": ligand_balance,
+            "external_metal_balance_mol_per_raw_l": external,
+            "constraint_tolerance_mol_per_raw_l": limit,
+        },
+    }
 
 
 def report(model, result):
@@ -433,6 +562,11 @@ def report(model, result):
     return result | {
         "full_process": owner,
         "product_recovery_fraction": owner["raw_li_recovery"],
+        **(
+            recycle_report(model, result, owner, actual)
+            if hasattr(fs, "organic_recycle")
+            else {}
+        ),
         "cost_usd_kg_li": owner["operating_usd_kg_li"],
         "cost_usd_m3_raw_brine": sum(owner["cost_usd_m3"].values()),
         "cost_basis": records.SCOPES["full_process"]["li_denominator"],

@@ -502,7 +502,23 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
 
     raw = brines.raw_feed(job["site"])
     source, old = d2.reference_record(job["solvent"])
-    fixed = d2_start(job, raw["mol"]["Li"])
+    reference = job.get("fixed_design_record")
+    full = job["scope"] == "full_process"
+    recycle = full and job.get("organic_recycle", False)
+    a = case_assumptions(job["case"], True) if full else None
+    if reference:
+        retained = json.loads((REPO_ROOT / reference).read_text())
+        if any(
+            retained["candidate"][k] != job[k]
+            for k in ("site", "solvent", "case", "stages")
+        ):
+            raise ValueError(
+                f"Fixed design and candidate conditions differ: {reference}"
+            )
+        fixed = {k: retained["fixed_design"][k] for k in ("B", "S", "O_A", "Sr_decade")}
+        start = [r["outlet_mol_per_raw_l"] for r in retained["stages"]]
+    else:
+        fixed = d2_start(job, raw["mol"]["Li"])
     ratio = fixed["O_A"]
     design = dict(
         fixed, site_basis_li_mol_l=raw["mol"]["Li"], ln_K_Li_Mg_Ca=old["ln_K_Li_Mg_Ca"]
@@ -514,6 +530,7 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
         stages=job["stages"],
         scenario=design,
         design_range=job.get("design_range"),
+        raffinate_entrainment_l=a["entrainment_l_per_l"] if recycle else 0.0,
     )
     model._case = job["case"]
     if start is not None:
@@ -539,6 +556,10 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
             profile["buphen"] = ratio * design["B"] - 2 * profile[d2.rc.COMPLEX["Li"]]
             profiles.append(profile)
     stage.initialize(model, profiles)
+    if recycle:
+        d2.decisions(model, organic_recycle=True)
+        d2_full_process.connect_strip(model, job["case"], a)
+        stage.initialize(model, profiles)
     stage.solve(model, directory, wall_seconds=remaining())
     result = d2.report(model, case=job["case"])
     result["sites_mol_l_organic"] = d2.owner.site_supply(
@@ -573,20 +594,17 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
             "source_owner": SOLVENTS[job["solvent"]]["feed_owner"],
         }
     ]
-    result["na_metric"] = {
-        "name": "loaded-organic Na/(Li+Na)",
-        "value": result["outlet_mol_per_raw_l"]["naa"]
-        / (
-            result["outlet_mol_per_raw_l"]["naa"]
-            + result["outlet_mol_per_raw_l"][d2.rc.COMPLEX["Li"]]
-        ),
-    }
+    if not recycle:
+        outlet = result["outlet_mol_per_raw_l"]
+        result["na_metric"] = {
+            "name": "loaded-organic Na/(Li+Na)",
+            "value": outlet["naa"] / (outlet["naa"] + outlet[d2.rc.COMPLEX["Li"]]),
+        }
     result["outlet_li_loading_fractions"] = []
-    if job["scope"] != "full_process":
+    if not full:
         return result
     stopping_point = "construction"
     try:
-        a = case_assumptions(job["case"], True)  # D2EHDTPA/BuPhen is on the #342 basis
         try:
             initial = d2_full_process.accounts(
                 d2.strip_accounts(result["accounts"], job["solvent"]),
@@ -606,7 +624,9 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
                 "downstream_admissible": False,
                 "reason": "no carbonate product: outside the measured solubility data",
             }
-        d2.decisions(model)
+        extraction_strip_solve = result["solve"]
+        if not recycle:
+            d2.decisions(model)
         d2_full_process.connect_units(model, initial, a, interval)
         stopping_point = "solve"
         stage.solve(model, directory / "full_process", wall_seconds=remaining())
@@ -673,13 +693,17 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
         downstream_result = result | d2.report(model, case=job["case"])
         reported = d2_full_process.report(model, downstream_result)
         solved = {k: value(v) for k, v in model._decisions.items()}
-        return reported | {
-            "starting_design_rule": starting,
-            "rule": optimization.rule_values(model)
-            | {"objective": getattr(model, "_objective", None)},
-            # organic site concentration S x feed Li / (O/A) at the solved design (the #188 0.020-0.060 M range)
-            "sites_mol_l_organic": solved["S"] * raw["mol"]["Li"] / solved["O_A"],
-        }
+        return (
+            reported
+            | ({"extraction_strip_solve": extraction_strip_solve} if recycle else {})
+            | {
+                "starting_design_rule": starting,
+                "rule": optimization.rule_values(model)
+                | {"objective": getattr(model, "_objective", None)},
+                # organic site concentration S x feed Li / (O/A) at the solved design (the #188 0.020-0.060 M range)
+                "sites_mol_l_organic": solved["S"] * raw["mol"]["Li"] / solved["O_A"],
+            }
+        )
     except Exception as error:
         return result | {
             "reason": f"{type(error).__name__}: {error}",
@@ -905,14 +929,17 @@ def solve_candidate(job, records, scratch, *, wall_seconds=290):
             extraction_failed = not result["strict_certificate"] or bool(
                 result["R7"]["failures"]
             )
+            minimum = (
+                0.0
+                if job.get("fixed_design_record") and job["phase"] == "fixed"
+                else job.get("minimum_li_extraction")
+            )
             failures = (
                 []
                 if extraction_failed
                 or "exception_traceback" in result
                 or "rule" not in result
-                else opt.target_failures(
-                    result, job["solvent"], job.get("minimum_li_extraction")
-                )
+                else opt.target_failures(result, job["solvent"], minimum)
             )
             selected = job["phase"] == "selected" and "rule" in result
             if selected and worse(

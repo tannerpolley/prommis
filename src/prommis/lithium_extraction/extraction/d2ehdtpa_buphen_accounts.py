@@ -209,6 +209,7 @@ def accounts(
     feed_li_mol_l=None,
     site_basis_li_mol_l=None,
     value_basis_li_mol_l=None,
+    strip_volume=None,
 ):
     """kg/m3 losses and the priced strip intermediate (NaOH, 31 % HCl, octanols); BuPhen and D2EHDTPA are the
     unpriced active set (#339 decision 1). Independent of the connected model: amounts come from solved outlets.
@@ -247,13 +248,16 @@ def accounts(
     available = S * site_basis
     loaded = {e: v * n for e, n in extraction["loaded_organic"].items()}
     loaded["Na"] = v * extraction["loaded_Na_mol_L"]
+    if strip_volume is not None and len(extraction["stages"]) == 1:
+        loaded = {e: n * strip_volume / v for e, n in loaded.items()}
     acid = sum(
         rc.ION[e][2] * n for e, n in loaded.items()
     )  # includes residual NaA; excludes unavailable HA.
     strip = {e: n * BASIS["strip_fractions"][case][e] for e, n in loaded.items()}
     retained = {e: loaded[e] - strip[e] for e in loaded}
     strip_closure = max(abs(loaded[e] - strip[e] - retained[e]) for e in loaded)
-    if strip_closure > 1e-9 or abs(acid - available) > 1e-9:
+    strip_sites = available if strip_volume is None else available * strip_volume / v
+    if strip_closure > 1e-9 or abs(acid - strip_sites) > 1e-9:
         raise RuntimeError("Strip/site mass balance exceeds 1e-9 mol/L feed")
     rec = strip["Li"] / feed_li
     li_kg = strip["Li"] * MASSES["Li"] * 1000
@@ -262,6 +266,12 @@ def accounts(
         if old
         else entrained_l(case_assumptions, strip["Li"])
     )
+    naoh = available + h2s
+    if strip_volume is not None:
+        fraction_returned = (
+            1 - (entrained - case_assumptions["entrainment_l_per_l"]) / strip_volume
+        )
+        naoh -= fraction_returned * sum(rc.ION[e][2] * n for e, n in retained.items())
     lost = {
         k: 1000 * n
         for k, n in losses_kg_per_l(
@@ -271,12 +281,15 @@ def accounts(
             buphen,
             h2s,
             extraction["stages"][-1]["free_B_mol_L"],
-            extraction["stages"][0]["amounts_mol"][1]["diluent"] / v,
+            extraction["stages"][0 if strip_volume is None else -1]["amounts_mol"][1][
+                "diluent"
+            ]
+            / v,
             site_basis_li_mol_l=site_basis,
         ).items()
     }
     costs = {
-        "naoh": (available + h2s) * 0.039997 * 1000 * prices["naoh"],
+        "naoh": naoh * 0.039997 * 1000 * prices["naoh"],
         "hcl31": acid * 0.036461 / 0.31 * 1000 * prices["hcl"],
         "octanol_dissolution": lost["octanol_dissolution"] * octanol_price,
         "octanol_entrainment": lost["octanol_entrainment"] * octanol_price,
@@ -294,7 +307,7 @@ def accounts(
         "strip_Cl_mol_L_feed": acid,
         "strip_unconsumed_HCl_mol_L_feed": acid
         - sum(rc.ION[e][2] * n for e, n in strip.items()),
-        "NaOH_mol_L_feed": available + h2s,
+        "NaOH_mol_L_feed": naoh,
         "li_recovered_kg_m3": li_kg,
         "lce_recovered_kg_m3": strip["Li"] * 0.07389 / 2 * 1000,
         "entrained_organic_l_per_raw_l": entrained,
@@ -312,7 +325,8 @@ def accounts(
         "missing_accounts": BASIS["missing_accounts"],
         "cost_expression": "C_r + theta*(BuPhen_loss + D2EHDTPA_loss); prices USD/kg, losses kg/m3 (#339 decision 1)",
         "octanol_dissolution_label": BASIS["octanol_dissolution_label"],
-        "H2S_scope": "HA unavailable outside Engine; equal Na and HS leave raffinate; no sulfide activity or residual-loading reuse model",
+        "H2S_scope": "HA unavailable outside Engine; equal Na and HS leave raffinate; no sulfide activity"
+        + (" or residual-loading reuse model" if strip_volume is None else ""),
         "strip_assumptions": "Na=Li strip fraction and Sr=alkaline-earth strip fraction; no independent Na or Sr strip measurement",
         **LABELS,
     }

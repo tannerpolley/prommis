@@ -194,7 +194,15 @@ class ExtentReactionBlockData(ProcessBlockData):
         add_object_reference(self, "params", self.config.parameters)
 
 
-def build_stages(chemistry, aqueous_feed, organic_feed, stages, *, maximum_stages=5):
+def build_stages(
+    chemistry,
+    aqueous_feed,
+    organic_feed,
+    stages,
+    *,
+    maximum_stages=5,
+    raffinate_diluent_loss=0.0,
+):
     """Aqueous flows forward from stage 1, organic backward from stage N; Engine outlets close each stage."""
     if type(stages) is not int or stages not in range(1, maximum_stages + 1):
         raise ValueError(
@@ -310,10 +318,31 @@ def build_stages(chemistry, aqueous_feed, organic_feed, stages, *, maximum_stage
     model._chemistries = chemistries
     model._feeds = (dict(aqueous_feed), dict(organic_feed))
 
+    if raffinate_diluent_loss:
+        fs.raffinate_entrained_fraction = Expression(
+            expr=raffinate_diluent_loss / feeds["diluent"]
+        )
+        fs.raffinate_entrained_organic = Expression(
+            chemistry.supports[1],
+            rule=lambda _, s: fs.raffinate_entrained_fraction * flows[stages, s],
+        )
+        if stages > 1:
+            for s in chemistry.supports[1]:
+                balance = unit.organic_material_balance[0, stages - 1, s]
+                balance.set_value(
+                    balance.body
+                    - fs.raffinate_entrained_organic[s] * units.mol / units.hour
+                    == balance.lower
+                )
+
     def incoming(k, s):
         if s in parameters:
+            if raffinate_diluent_loss and k < stages:
+                return fs.parameters[s] * (1 - fs.raffinate_entrained_fraction)
             return fs.parameters[s]
         other = k - 1 if phases[s] == 0 else k + 1
+        if raffinate_diluent_loss and phases[s] == 1 and k == stages - 1:
+            return flows[other, s] - fs.raffinate_entrained_organic[s]
         return flows[other, s] if other in fs.stages else feeds[s]
 
     model._incoming = incoming
@@ -616,9 +645,7 @@ def report(model):
     for k in model.fs.stages:
         chemistry = model._chemistries[k - 1]
         inlet = {s: float(value(model._incoming(k, s))) for s in chemistry.species}
-        inlet.update(
-            {s: value(model.fs.parameters[s]) for s, _ in chemistry.parameters}
-        )
+        inlet.update({s: value(model._incoming(k, s)) for s, _ in chemistry.parameters})
         outlet = {
             s: float(value(model.fs.stage[k].outlet[s])) for s in chemistry.species
         }
@@ -680,10 +707,15 @@ def report(model):
     inlet = {
         s: sum(feed.get(s, 0.0) for feed in model._feeds) for s in chemistry.species
     }
+    entrained = (
+        {s: value(n) for s, n in model.fs.raffinate_entrained_organic.items()}
+        if len(rows) > 1 and hasattr(model.fs, "raffinate_entrained_organic")
+        else {}
+    )
     residuals.update(
         {
             f"global/{r}": sum(
-                c * (final[s] - inlet[s])
+                c * (final[s] + entrained.get(s, 0.0) - inlet[s])
                 for s, c in zip(chemistry.species, row, strict=True)
             )
             for r, row in enumerate(chemistry.conservation)
