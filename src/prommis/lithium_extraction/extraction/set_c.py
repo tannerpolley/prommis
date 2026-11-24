@@ -11,6 +11,7 @@ from pyomo.environ import Constraint
 
 from prommis.lithium_extraction.extraction import countercurrent as cc
 from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
+from prommis.lithium_extraction.thermodynamics.reaction_networks import AQUEOUS_PACKET
 from prommis.lithium_extraction.thermodynamics.saponified_stage_chemistry import (
     CONTINUATION,
 )
@@ -286,7 +287,14 @@ def build_flowsheet(
     direct_cascade,
     chemistry_by_support=None,
     physical_feed=None,
+    packet_id=None,
 ):
+    if packet_id is not None and (
+        packet_id != AQUEOUS_PACKET or chemistry_by_support is not None
+    ):
+        raise ValueError(
+            f"Explicit HBTA calibration requires packet {AQUEOUS_PACKET!r} and fresh Engine declarations"
+        )
     ratio, c, r = (
         scenario[k]
         for k in (
@@ -320,7 +328,15 @@ def build_flowsheet(
         )
         support = row["water_autoprotolysis_active"]
         if support not in cache:
-            direct = mc.solve(state, "C", scenario["ln_k"], guess=amounts)
+            if packet_id is None:
+                direct = mc.solve(state, "C", scenario["ln_k"], guess=amounts)
+            else:
+                # Retained phase amounts initialize the ASL record only. Each solved inlet is
+                # independently checked at the sampled coordinates, including the OH support.
+                direct = {
+                    "phase_amounts_mol": amounts,
+                    "active_reactions": ("RW",) if support else (),
+                }
             cache[support] = _chemistry(state, direct, scenario["ln_k"], ratio, c)
         declarations.append(cache[support])
     boundary = cc.stage_state(

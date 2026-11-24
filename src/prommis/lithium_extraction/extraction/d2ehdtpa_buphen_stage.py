@@ -59,6 +59,7 @@ def build_flowsheet(
     scenario=None,
     design_range=None,
     raffinate_entrainment_l=0.0,
+    packet_id=None,
 ):
     """One basis per process; chemistry assembly and direct certificates remain source-owned."""
     if (
@@ -109,7 +110,12 @@ def build_flowsheet(
         feed["raw_brine"] = brine
     if "unavailable" in feed:
         raise ValueError(feed["unavailable"])
-    ion_basis.use(records.SOLVENTS[solvent]["ion_basis"])
+    basis = records.SOLVENTS[solvent]["ion_basis"]
+    if packet_id is not None:
+        if basis != "packet" or packet_id not in ion_basis.PACKETS:
+            raise ValueError(f"Unsupported explicit packet {packet_id!r} for {solvent}")
+        ion_basis.select(packet_id)
+    ion_basis.use(basis)
     cations = {e: feed["model_feed"].get(e, 0) for e in rc.ION if e != "Cl"}
     constants = scenario["ln_K_Li_Mg_Ca"]
     mixture, problem, aqueous, organic, species, _, _, _ = rc.build_problem(

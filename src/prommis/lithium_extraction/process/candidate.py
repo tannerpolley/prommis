@@ -316,6 +316,18 @@ def build(job, fixed=None, *, pinned_reference=None, fit_constants=None):
         }
         design |= job.get("design", {})
         c = design["extractant_mol_l"]
+        sample = job.get("calibration_sample")
+        if sample is not None:
+            if (
+                fit_constants is not None
+                or not fixed
+                or "stages" not in fixed
+                or job.get("cold_start")
+            ):
+                raise ValueError(
+                    "Explicit HBTA calibration replay requires an attained stage profile and sampled coordinates"
+                )
+            fit_constants = sample["ln_k"]
         constants = (
             fit_constants
             if fit_constants is not None
@@ -352,12 +364,14 @@ def build(job, fixed=None, *, pinned_reference=None, fit_constants=None):
                 feed_acidity=cc.acidity_at_ph(washed["pH"]),
                 start=start,
             )
+        kwargs = {} if sample is None else {"packet_id": sample["packet"]}
         model = adapter.build_flowsheet(
             washed,
             stages=job["stages"],
             scenario=design,
             direct_cascade=direct,
             physical_feed=feed,
+            **kwargs,
         )
         if scope == "extraction_only":
             model._physical_feed = feed
@@ -518,10 +532,11 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
     from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_stage as d2, stage
 
     raw = brines.raw_feed(job["site"])
+    sample = job.get("calibration_sample")
     old = (
-        d2.reference_record(job["solvent"])[1]
-        if pinned_reference is None
-        else pinned_reference
+        pinned_reference
+        if sample is not None or pinned_reference is not None
+        else d2.reference_record(job["solvent"])[1]
     )
     reference = job.get("fixed_design_record")
     full = job["scope"] == "full_process"
@@ -543,9 +558,10 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
     else:
         fixed = d2_start(job, raw["mol"]["Li"])
     ratio = fixed["O_A"]
-    design = dict(
-        fixed, site_basis_li_mol_l=raw["mol"]["Li"], ln_K_Li_Mg_Ca=old["ln_K_Li_Mg_Ca"]
-    )
+    if sample is not None and retained is None:
+        raise ValueError("Calibration replay requires an attained fixed design")
+    constants = sample["ln_k"] if sample is not None else old["ln_K_Li_Mg_Ca"]
+    design = dict(fixed, site_basis_li_mol_l=raw["mol"]["Li"], ln_K_Li_Mg_Ca=constants)
     model = d2.build_flowsheet(
         raw if brine is None else brine,
         solvent=job["solvent"],
@@ -554,6 +570,7 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
         scenario=design,
         design_range=job.get("design_range"),
         raffinate_entrainment_l=a["entrainment_l_per_l"] if recycle else 0.0,
+        packet_id=sample["packet"] if sample is not None else None,
     )
     model._case = job["case"]
     if start is not None:
