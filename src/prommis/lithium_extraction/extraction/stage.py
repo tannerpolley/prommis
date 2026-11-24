@@ -310,10 +310,11 @@ def build_stages(
     )
     for s, n in parameters.items():
         fs.parameters[s].fix(n)
-    fs.response = ExternalFunction(
-        library=str(chemistry.library),
-        function="epcsaft_equilibrium_phase_component_amount",
-    )
+    if chemistry.library is not None:
+        fs.response = ExternalFunction(
+            library=str(chemistry.library),
+            function="epcsaft_equilibrium_phase_component_amount",
+        )
     model._chemistry = chemistry
     model._chemistries = chemistries
     model._feeds = (dict(aqueous_feed), dict(organic_feed))
@@ -355,7 +356,11 @@ def build_stages(
         for s in set(species) - set(record_species):
             block.outlet[s].fix(0.0)
         block.equilibrium = Constraint(
-            [j for j in independent if species[j] in record_species],
+            [
+                j
+                for j in independent
+                if species[j] in record_species and chemistry.library
+            ],
             rule=lambda b, j, k=k, c=chemistry, names=record_species: b.outlet[
                 species[j]
             ]

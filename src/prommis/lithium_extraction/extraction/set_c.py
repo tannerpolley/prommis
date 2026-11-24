@@ -103,7 +103,9 @@ def washed_feed(washed):
     }
 
 
-def _chemistry(anchor, direct, constants, ratio, extractant):
+def _chemistry(
+    anchor, direct, constants, ratio, extractant, *, conditional_mass_action=False
+):
     """Affine owner inventory on the #216 domain restricted by free-ligand capacity.
 
     The NaOH-first rule re-expresses net acidity through NaA.T while preserving every owner moiety.
@@ -116,12 +118,6 @@ def _chemistry(anchor, direct, constants, ratio, extractant):
         anchor, "C", dict(aqueous, **organic, diluent=1.0), with_water=with_water
     )
     mixture = mc.model(names)
-    offset = mc.offsets(names, cc.TEMPERATURE_K)
-    ln_engine = {
-        n: mc.ln_k_at(n, constants.get(n, 0.0), cc.TEMPERATURE_K)
-        + math.fsum(c * offset[s] for s, c in nu.items())
-        for n, nu in active
-    }
     diluent = (
         mixture.state(
             cc.TEMPERATURE_K,
@@ -161,6 +157,31 @@ def _chemistry(anchor, direct, constants, ratio, extractant):
         offsets.append(constant)
         matrix.append(tuple(row[c] for c in controls))
     aq, org = direct["phase_amounts_mol"]
+    if conditional_mass_action:
+        return stage.Chemistry(
+            SPECIES,
+            SUPPORTS,
+            tuple(
+                tuple(mc.MOIETIES[n].get(s, 0.0) for s in SPECIES) for n in CONSERVED
+            ),
+            tuple(mc.CHARGE.get(s, 0.0) for s in SPECIES),
+            controls,
+            tuple(offsets),
+            tuple(matrix),
+            "",
+            None,
+            None,
+            names,
+            (("extractant_mol_l", extractant), ("topo_total_mol", ratio * extractant)),
+            temperature_k=cc.TEMPERATURE_K,
+            pressure_pa=mc.PRESSURE_PA,
+        )
+    offset = mc.offsets(names, cc.TEMPERATURE_K)
+    ln_engine = {
+        n: mc.ln_k_at(n, constants.get(n, 0.0), cc.TEMPERATURE_K)
+        + math.fsum(c * offset[s] for s, c in nu.items())
+        for n, nu in active
+    }
     inlet = dict(
         aqueous,
         **organic,

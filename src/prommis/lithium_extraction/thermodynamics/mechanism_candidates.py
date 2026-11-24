@@ -573,6 +573,8 @@ def _solve_once(
     ln_k: dict[str, float],
     guess=None,
     with_water: bool = False,
+    *,
+    seeds=SEEDS,
 ) -> dict:
     """Strict Engine state or a RuntimeError; the first strict start is kept.
 
@@ -611,6 +613,7 @@ def _solve_once(
         ln_k_engine,
         (aqueous, organic),
         guess,
+        seeds=seeds,
     )
     outside = [
         mixture.outside_domains(
@@ -671,6 +674,8 @@ def solve_declared(
     moieties=None,
     charge=None,
     row_tolerance=1e-10,
+    *,
+    seeds=SEEDS,
 ):
     """The common strict configured-equilibrium procedure; chemistry stays with the caller."""
     moieties, charge = MOIETIES if moieties is None else moieties, (
@@ -678,7 +683,7 @@ def solve_declared(
     )
     failures = []
     feed = {s: unseeded[0].get(s, 0.0) + unseeded[1].get(s, 0.0) for s in components}
-    for fraction in (("guess",) if guess else ()) + SEEDS:
+    for fraction in (("guess",) if guess else ()) + seeds:
         started = time.perf_counter()
         aq, org = (
             guess

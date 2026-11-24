@@ -260,11 +260,19 @@ def build_problem(
 
 
 def solve(
-    feed, sites, buphen, ln_k, *, organic_to_aqueous=1.0, loading=None, sr_decade=0.0
+    feed,
+    sites,
+    buphen,
+    ln_k,
+    *,
+    organic_to_aqueous=1.0,
+    loading=None,
+    sr_decade=0.0,
+    seeds=SEEDS,
 ):
     v = organic_to_aqueous
     failures = []
-    for fraction in SEEDS:
+    for fraction in seeds:
         mixture, problem, aq, org, names, inventory, active, constants = build_problem(
             feed,
             sites,
