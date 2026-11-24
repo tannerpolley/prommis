@@ -378,6 +378,8 @@ def solve(
     connect_units=None,
     hessian="exact",
     charge_limit_eq_per_raw_l=None,
+    solve_nlp=None,
+    certify=None,
 ):
     """Recheck the owner's selection outside IPOPT; rebuild the entire candidate at most three times."""
     attempts = []
@@ -387,15 +389,14 @@ def solve(
             raise TimeoutError("set C candidate exhausted its total wall budget")
         if connect_units is not None:
             connect_units(model)
-        stage.solve(
-            model,
-            Path(directory) / str(rebuild),
-            wall_seconds=remaining,
-            hessian=hessian,
-        )
+        location = Path(directory) / str(rebuild)
+        if solve_nlp is None:
+            stage.solve(model, location, wall_seconds=remaining, hessian=hessian)
+        else:
+            solve_nlp(model, location, rebuild)
         result = report(
             model,
-            stage.report(model),
+            (certify or stage.report)(model),
             charge_limit_eq_per_raw_l=charge_limit_eq_per_raw_l,
         )
         selected = [r["certificate"] for r in result["stages"]]

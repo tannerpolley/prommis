@@ -227,8 +227,10 @@ def accounts(strip, assumptions, feed_li):
             "prices_usd_kg": prices,
             "price_source": "Lithium #214 price table; source-period nominal USD; EIA diluent analogue unrounded",
             "cost_usd_m3": costs,
-            "cost_usd_kg_li": {k: n / li_kg_m3 for k, n in costs.items()},
-            "operating_usd_kg_li": total / li_kg_m3,
+            "cost_usd_kg_li": {
+                k: n / li_kg_m3 if li_kg_m3 else None for k, n in costs.items()
+            },
+            "operating_usd_kg_li": total / li_kg_m3 if li_kg_m3 else None,
             "li_product_kg_m3": li_kg_m3,
             "raw_li_recovery": 2 * carbon["product_li2co3_mol"] / feed_li,
             **flowsheet.rule_accounts(case, active, total / 1000, li_kg_m3 / 1000),

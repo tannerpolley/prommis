@@ -255,7 +255,7 @@ def interpolated(rows, n):
     return [rows[round(k * (len(rows) - 1) / max(n - 1, 1))] for k in range(n)]
 
 
-def build(job, fixed=None):
+def build(job, fixed=None, *, pinned_reference=None, fit_constants=None):
     from prommis.lithium_extraction.extraction import set_c, stage
     from prommis.lithium_extraction.extraction import countercurrent as cc
 
@@ -263,12 +263,16 @@ def build(job, fixed=None):
     record = SOLVENTS[solvent]
     adapter = records.stage_adapter(record["stage_adapter"])
     bounds = records.bounds(solvent, job["end"], job.get("rule", False))
-    reference = assumptions(
-        site,
-        job["case"],
-        job.get("front_end"),
-        job.get("composition"),
-        job.get("rule", False),
+    reference = (
+        pinned_reference
+        if pinned_reference is not None
+        else assumptions(
+            site,
+            job["case"],
+            job.get("front_end"),
+            job.get("composition"),
+            job.get("rule", False),
+        )
     )
     soft = reference["softening"]
     washed = soft[job["case"]]
@@ -312,9 +316,13 @@ def build(job, fixed=None):
         }
         design |= job.get("design", {})
         c = design["extractant_mol_l"]
-        constants = load_constants(
-            REPO_ROOT / job.get("constants", record["constants"])
-        )["ends"][job["end"]]["ln_k"]
+        constants = (
+            fit_constants
+            if fit_constants is not None
+            else load_constants(REPO_ROOT / job.get("constants", record["constants"]))[
+                "ends"
+            ][job["end"]]["ln_k"]
+        )
         design["ln_k"] = constants
         if (
             fixed and "stages" in fixed and not job.get("cold_start")
@@ -323,7 +331,11 @@ def build(job, fixed=None):
                 fixed, job["stages"], front_end=job.get("front_end")
             )
         else:
-            start = reference.get("starting_profile")
+            start = (
+                None
+                if job.get("cold_start") and pinned_reference is not None
+                else reference.get("starting_profile")
+            )
             if start is not None:
                 start = {
                     k: interpolated(rows, job["stages"]) for k, rows in start.items()
@@ -498,39 +510,36 @@ def d2_process_assumptions(job):
     return assumptions
 
 
-def d2_simulation(job, directory, remaining, records, brine=None, start=None):
-    """One D2EHDTPA/BuPhen cell at its stage count. The extraction is solved at the retained #188/#214 design (or
-    `job['design']`); a full-process job then connects strip, cleanup and carbonation with every account live (#342)
-    in the measured Ge interval of that start. A 'selected' job releases the #188 design range under `job['objective']`
-    and moves between adjacent measured intervals outside the solver while its objective improves.
-
-    `records` is kept for callers; `brine` replaces the site's raw feed (the site still sets the site basis);
-    `start` replaces the starting stage profiles (#245)."""
-    from pyomo.environ import Var, value
+def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=None):
+    """Build the fixed extraction and strip start, before any process NLP."""
     from prommis.lithium_extraction.process import (
         d2ehdtpa_buphen_whole_process as d2_full_process,
-        optimization,
     )
     from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_stage as d2, stage
 
     raw = brines.raw_feed(job["site"])
-    source, old = d2.reference_record(job["solvent"])
+    old = (
+        d2.reference_record(job["solvent"])[1]
+        if pinned_reference is None
+        else pinned_reference
+    )
     reference = job.get("fixed_design_record")
     full = job["scope"] == "full_process"
     recycle = full and job.get("organic_recycle", False)
-    fixed_replay = job.get("fixed_replay", False)
     a = d2_process_assumptions(job) if full else None
-    if reference:
-        retained = json.loads((REPO_ROOT / reference).read_text())
+    if reference or retained is not None:
+        if retained is None:
+            retained = json.loads((REPO_ROOT / reference).read_text())
         if any(retained["candidate"][k] != job[k] for k in ("site", "solvent", "case")):
             raise ValueError(
                 f"Fixed design and candidate conditions differ: {reference}"
             )
         fixed = {k: retained["fixed_design"][k] for k in ("B", "S", "O_A", "Sr_decade")}
-        start = [
-            r["outlet_mol_per_raw_l"]
-            for r in interpolated(retained["stages"], job["stages"])
-        ]
+        if not job.get("cold_start"):
+            start = [
+                r["outlet_mol_per_raw_l"]
+                for r in interpolated(retained["stages"], job["stages"])
+            ]
     else:
         fixed = d2_start(job, raw["mol"]["Li"])
     ratio = fixed["O_A"]
@@ -549,6 +558,8 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
     model._case = job["case"]
     if start is not None:
         profiles = start
+    elif pinned_reference is not None:
+        profiles = [model._feeds[0] | model._feeds[1] for _ in range(job["stages"])]
     else:  # the retained cascade, scaled to this feed and design and taken at this stage count
         profiles = []
         reference_sites = d2.owner.BASIS["site_basis_li_mol_L"] * old["case"]["S"]
@@ -574,6 +585,23 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
         d2.decisions(model, organic_recycle=True)
         d2_full_process.connect_strip(model, job["case"], a)
         stage.initialize(model, profiles)
+    return model, raw, design, a
+
+
+def d2_simulation(job, directory, remaining, records, brine=None, start=None):
+    """Run the historical D2 fixed or released design on its declared scope."""
+    from pyomo.environ import Var, value
+    from prommis.lithium_extraction.process import (
+        d2ehdtpa_buphen_whole_process as d2_full_process,
+        optimization,
+    )
+    from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_stage as d2, stage
+
+    model, raw, design, a = build_d2(job, brine=brine, start=start)
+    ratio = design["O_A"]
+    full = job["scope"] == "full_process"
+    recycle = full and job.get("organic_recycle", False)
+    fixed_replay = job.get("fixed_replay", False)
     stage.solve(model, directory, wall_seconds=remaining(), fixed_replay=fixed_replay)
     result = d2.report(
         model,
@@ -797,11 +825,26 @@ def fixed_disposition(result, solvent):
 
 def objective_value(result, objective):
     """The value an objective maximizes (sign-adjusted), from a record's rule values."""
+    kind = objective["kind"]
+    if kind not in ("affordable", "headroom", "uniform", "priced_margin"):
+        raise ValueError(f"unknown objective {kind}")
     rule = result["rule"]
-    if objective["kind"] == "affordable":
+    if kind == "affordable":
         return rule["affordable_price_usd_kg"]
-    if objective["kind"] == "headroom":
+    if kind == "headroom":
         return rule["headroom_usd_m3"]
+    if kind == "priced_margin":
+        from prommis.lithium_extraction.process.costing import ligand_cost
+
+        q, cost = rule["carbonate_kg_m3"], rule["cost_outside_active_usd_m3"]
+        return (
+            objective["carbonate_price_usd_t_lce"] * q / 1000
+            - cost
+            - ligand_cost(
+                rule["active_loss_by_component_kg_m3"],
+                objective["ligand_prices_usd_kg"],
+            )
+        )
     return (
         -(
             rule["cost_outside_active_usd_m3"]

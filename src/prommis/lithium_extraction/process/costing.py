@@ -93,6 +93,12 @@ def register_price(component):
     return float(price) if price else None
 
 
+def ligand_cost(loss, prices):
+    if set(loss) != set(prices):
+        raise ValueError(f"Need prices for exactly the active components: {list(loss)}")
+    return sum(loss[k] * prices[k] for k in loss)
+
+
 def attach(fs, flows, li_kg_h, active=None):
     """`flows` maps flow type to (flow per hour at 1 m3/h raw brine, price); `li_kg_h` is the scope's Li basis;
     `active` maps each active-set component (#339 decision 1) to its unpriced loss per hour, kept outside the cost.
@@ -148,15 +154,18 @@ def reconcile(costing, owner_usd_m3, owner_usd_kg_li, owner_li_kg_m3, owner_kg_l
 
     li = value(costing.li_kg_h)
     if (
-        not all(
-            math.isfinite(n)
-            for n in (li, owner_li_kg_m3, owner_usd_kg_li, *owner_usd_m3.values())
-        )
-        or li <= 0
-        or owner_li_kg_m3 <= 0
+        not all(math.isfinite(n) for n in (li, owner_li_kg_m3, *owner_usd_m3.values()))
+        or min(li, owner_li_kg_m3) < 0
     ):
         raise RuntimeError(
-            "Cost reconciliation requires finite values and positive product Li mass"
+            "Cost reconciliation requires finite values and nonnegative product Li mass"
+        )
+    positive_product = owner_li_kg_m3 > 0
+    if positive_product and (
+        li == 0 or owner_usd_kg_li is None or not math.isfinite(owner_usd_kg_li)
+    ):
+        raise RuntimeError(
+            "Cost reconciliation requires a finite cost per kg of positive product Li"
         )
     limits = {
         name: dict.fromkeys(owner_usd_m3, 1e-9) for name in ("arithmetic", "solved")
@@ -186,19 +195,22 @@ def reconcile(costing, owner_usd_m3, owner_usd_kg_li, owner_li_kg_m3, owner_kg_l
         tau = 1e-12 / max(1.0, value(costing.parent_block().washed_feed_l_per_raw_l))
         limits["arithmetic"][k] = leading + rounding
         limits["solved"][k] = leading + rounding + abs(price) * tau + tau
-    quotient_limits = {
-        name: (sum(bounds.values()) + abs(owner_usd_kg_li) * 1e-9) / li
-        for name, bounds in limits.items()
-    }
+    quotient_limits = dict.fromkeys(limits)
     checks = {}
-    for name, numbers, usd_kg_li in (
-        ("solved", solved, value(costing.usd_kg_li)),
-        ("arithmetic", exact, sum(exact.values()) / li),
-    ):
+    for name, numbers in (("solved", solved), ("arithmetic", exact)):
         checks[name] = {
             "usd_m3/" + k: n - owner_usd_m3[k] for k, n in account(numbers).items()
         }
-        checks[name]["usd_kg_li"] = usd_kg_li - owner_usd_kg_li
+        if positive_product:
+            usd_kg_li = (
+                value(costing.usd_kg_li)
+                if name == "solved"
+                else sum(exact.values()) / li
+            )
+            checks[name]["usd_kg_li"] = usd_kg_li - owner_usd_kg_li
+            quotient_limits[name] = (
+                sum(limits[name].values()) + abs(owner_usd_kg_li) * 1e-9
+            ) / li
         if owner_kg_l is not None:
             kg_h = {
                 f: (
@@ -244,10 +256,13 @@ def reconcile(costing, owner_usd_m3, owner_usd_kg_li, owner_li_kg_m3, owner_kg_l
             for name, c in checks.items()
             for k in owner_usd_m3
         )
-        and all(
-            math.isfinite(c["usd_kg_li"])
-            and abs(c["usd_kg_li"]) <= quotient_limits[name]
-            for name, c in checks.items()
+        and (
+            not positive_product
+            or all(
+                math.isfinite(c["usd_kg_li"])
+                and abs(c["usd_kg_li"]) <= quotient_limits[name]
+                for name, c in checks.items()
+            )
         )
     )
     if not record["passed"]:

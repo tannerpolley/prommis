@@ -662,12 +662,14 @@ def costs_and_balances(
         "prices_usd_kg": prices,
         "price_source_rows": source_rows,
         "cost_usd_m3": {k: x * 1000 for k, x in breakdown.items()},
-        "cost_usd_kg_li": {k: x / kg_li for k, x in breakdown.items()},
-        "operating_usd_kg_li": total / kg_li,
+        "cost_usd_kg_li": {
+            k: x / kg_li if kg_li else None for k, x in breakdown.items()
+        },
+        "operating_usd_kg_li": total / kg_li if kg_li else None,
         "li_product_kg_m3": kg_li * 1000,
         "raw_li_recovery": 2 * product / original_li,
-        "break_even_lce_usd_kg": total / kg_li / lce_factor,
-        "break_even_li_usd_kg": total / kg_li,
+        "break_even_lce_usd_kg": total / kg_li / lce_factor if kg_li else None,
+        "break_even_li_usd_kg": total / kg_li if kg_li else None,
         "price_break_evens": breaks,
         **({} if retained else rule_accounts(case, active, total, kg_li)),
     }

@@ -85,7 +85,7 @@ def add_rule(model, objective):
     """
     fs, b = model.fs, model.fs.design
     usd_kg = costing.usd_per(pyunits.kg)
-    price = costing.CARBONATE_USD_KG[model._case] * usd_kg
+    price = carbonate_price(model, objective) * usd_kg
     q, cost, loss = (
         fs.costing.li_kg_h * costing.LI2CO3_PER_LI,
         fs.costing.operating_cost,
@@ -111,20 +111,31 @@ def add_rule(model, objective):
         model.rule = Objective(expr=(cost + objective["theta"] * usd_kg * loss) / q)
     elif kind == "headroom":
         model.rule = Objective(expr=cost - price * q)
+    elif kind == "priced_margin":
+        purchased = (
+            costing.ligand_cost(
+                fs.costing.active_loss, objective["ligand_prices_usd_kg"]
+            )
+            * usd_kg
+        )
+        model.rule = Objective(expr=cost + purchased - price * q)
     else:
         raise ValueError(f"unknown objective {kind}")
     model._objective = dict(objective)
 
 
-def rule_values(model):
+def carbonate_price(model, objective):
+    if objective and objective["kind"] == "priced_margin":
+        return objective["carbonate_price_usd_t_lce"] / 1000
+    return costing.CARBONATE_USD_KG[model._case]
+
+
+def rule_values(model, objective=None):
     """q, C_r, L, P and the affordable price at the solved state, per m3 raw water."""
     fs = model.fs
     q = value(fs.costing.li_kg_h) * costing.LI2CO3_PER_LI
-    cost, loss, price = (
-        value(fs.costing.operating_cost),
-        value(fs.costing.active_loss_kg_h),
-        costing.CARBONATE_USD_KG[model._case],
-    )
+    cost, loss = value(fs.costing.operating_cost), value(fs.costing.active_loss_kg_h)
+    price = carbonate_price(model, objective or getattr(model, "_objective", None))
     return {
         "carbonate_kg_m3": q,
         "cost_outside_active_usd_m3": cost,
@@ -228,11 +239,15 @@ def nominal_to_raw_litre(result, v):
     return result
 
 
-def report(model, scope, softening=None):
+def report(model, scope, softening=None, *, stages=None):
     synchronize(model)
     solvent = model._solvent
     record = records.SOLVENTS[solvent]
-    result = records.stage_adapter(record["stage_adapter"]).report(model)
+    result = (
+        records.stage_adapter(record["stage_adapter"]).report(model)
+        if stages is None
+        else stages
+    )
     if (
         scope == "full_process" and "outlet_mol_per_raw_l" in result
     ):  # an adapter reporting the nominal washed litre

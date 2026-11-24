@@ -176,9 +176,9 @@ def enumerate_units(
                 if (
                     stripped_li
                     - 2 * s * stripped_li / assumptions["concentrate_li_mol_kg"]
-                    <= 0
+                    < 0
                 ):
-                    reasons.append("concentration input leaves no Li2CO3 product")
+                    reasons.append("concentration input is below Li2CO3 saturation")
             candidates.append(
                 {
                     "scrub_regime": regime,
@@ -321,6 +321,11 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
         ]
         for k in quantities
     }
+    kg_li_per_mol_product = (
+        owner["li_product_kg_m3"] / 1000 / owner["product_li2co3_mol"]
+        if owner["product_li2co3_mol"]
+        else 2 * LI_MOLAR_MASS_G_MOL / 1000
+    )
     costing.attach(
         fs,
         {
@@ -332,10 +337,7 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
             )
             for k, mass in owner["mass_kg_per_l"].items()
         },
-        carbon.product_mol
-        * (owner["li_product_kg_m3"] / 1000 / owner["product_li2co3_mol"])
-        * costing.RAW_L_H
-        * pyunits.kg,
+        carbon.product_mol * kg_li_per_mol_product * costing.RAW_L_H * pyunits.kg,
         active={
             k: quantities[k] * coefficients[k] * costing.RAW_L_H * pyunits.kg
             for k in owner.get("active_mass_kg_per_l", {})
@@ -469,7 +471,6 @@ def report(model, result, softening):
         "mother_nacl_mol_kg": fs.carbonation.nacl_mol_kg,
         "reactor_water_kg": fs.carbonation.water_kg,
         "fresh_water_kg": fs.concentration.net_water_kg,
-        "operating_usd_kg_li": fs.costing.usd_kg_li,
         "raw_li_recovery": 2 * fs.carbonation.product_mol / feed_li,
         "li_product_kg_m3": fs.costing.li_kg_h,
     }
@@ -478,12 +479,17 @@ def report(model, result, softening):
     ):  # #342: the unpriced active-set loss against the independent owner
         quantities["active_loss_kg_m3"] = fs.costing.active_loss_kg_h
     actual = {k: value(n) for k, n in quantities.items()}
+    actual["operating_usd_kg_li"] = (
+        value(fs.costing.usd_kg_li)
+        if owner["li_product_kg_m3"] and actual["li_product_kg_m3"]
+        else None
+    )
     prepared = max(
         abs(value(n)) for n in fs.saponification.prepared_difference.values()
     )
     if prepared > 1e-9:
         raise RuntimeError("Prepared organic differs from the extraction inlet")
-    differences = {k: actual[k] - owner[k] for k in actual}
+    differences = {k: actual[k] - owner[k] for k in actual if actual[k] is not None}
     # Convert the #219 post-purge product Li mass allowance to mol/raw L and divide by raw-feed Li.
     recovery_limit = OWNER_COMPARISON_LIMIT / (LI_MOLAR_MASS_G_MOL * feed_li)
     if any(

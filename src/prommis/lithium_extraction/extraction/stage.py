@@ -549,7 +549,15 @@ def _optimal(result):
     )
 
 
-def solve(model, directory, *, wall_seconds=290, hessian="exact", fixed_replay=False):
+def solve(
+    model,
+    directory,
+    *,
+    wall_seconds=290,
+    hessian="exact",
+    fixed_replay=False,
+    debit=None,
+):
     """Exact Hessians by default; the caller's wall timer includes build, initialization and certificates.
 
     An unscaled solve that stops short of its optimum is repeated once from the same start with IPOPT's
@@ -581,6 +589,43 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact", fixed_replay=F
         if not hasattr(model, name):
             setattr(model, name, Suffix(direction=Suffix.IMPORT))
     model._solved_values = None
+    if debit is not None:
+        started = time.monotonic()
+        start = [(v, v.value) for v in model.component_data_objects(Var)]
+        for scaled in (False, True):
+            left = wall_seconds - (time.monotonic() - started)
+            if left <= 0:
+                raise TimeoutError("candidate wall budget exhausted")
+            debit(scaled)
+            try:
+                return _bounded_fixed_solve(
+                    model,
+                    directory / "scaled" if scaled else directory,
+                    options
+                    | {"max_cpu_time": left}
+                    | (
+                        {
+                            "nlp_scaling_method": "gradient-based",
+                            "nlp_scaling_max_gradient": 1.0,
+                        }
+                        if scaled
+                        else {}
+                    ),
+                )
+            except RuntimeError as error:
+                if scaled or any(
+                    m in str(error).lower()
+                    for m in (
+                        "local infeasibility",
+                        "infeasible",
+                        "diverging",
+                        "512",
+                        "time exceeded",
+                    )
+                ):
+                    raise
+                for variable, amount in start:
+                    variable.set_value(amount, skip_validation=True)
     if fixed_replay:
         return _bounded_fixed_solve(model, directory, options)
     start = [(v, v.value) for v in model.component_data_objects(Var)]
@@ -669,9 +714,7 @@ def _bounded_fixed_solve(model, directory, options):
 
                 def counted(*args, **kwargs):
                     if self.evaluations >= 512:
-                        raise RuntimeError(
-                            "IPOPT fixed replay exhausted 512 NLP evaluations"
-                        )
+                        raise RuntimeError("IPOPT exhausted 512 NLP evaluations")
                     self.evaluations += 1
                     return method(*args, **kwargs)
 
@@ -688,7 +731,29 @@ def _bounded_fixed_solve(model, directory, options):
     log = directory.resolve() / "ipopt.log"
     nlp = CountedNLP(model)
     problem = UnscaledCyIpoptNLP(nlp, halt_on_evaluation_error=True)
-    x, info = CyIpoptSolver(problem, options | {"output_file": str(log)}).solve()
+    name = "unscaled" if options["nlp_scaling_method"] == "none" else "scaled"
+    try:
+        x, info = CyIpoptSolver(problem, options | {"output_file": str(log)}).solve()
+    except RuntimeError as error:
+        progress = (
+            re.findall(
+                r"^\s*\d+r?\s+-?[0-9.e+-]+\s+[0-9.e+-]+\s+[0-9.e+-]+.*$",
+                log.read_text(),
+                re.MULTILINE,
+            )
+            if log.is_file()
+            else []
+        )
+        model._solve = {
+            "termination": "unresolved",
+            "attempt": name,
+            "full_nlp_evaluations": nlp.evaluations,
+            "full_nlp_evaluation_limit": 512,
+            "last_iteration": progress[-1].strip() if progress else None,
+            "reason": str(error),
+            "options": options,
+        }
+        raise
     variables, constraints = nlp.get_pyomo_variables(), nlp.get_pyomo_constraints()
     for variable, amount, zl, zu in zip(
         variables, x, info["mult_x_L"], info["mult_x_U"], strict=True
@@ -699,10 +764,10 @@ def _bounded_fixed_solve(model, directory, options):
         )
     for constraint, dual in zip(constraints, info["mult_g"], strict=True):
         model.dual[constraint] = -float(dual)
-    attempt = _attempt("unscaled", Exception(info["status_msg"].decode()), directory)
+    attempt = _attempt(name, Exception(info["status_msg"].decode()), directory)
     model._solve = {
         "termination": "optimal" if info["status"] == 0 else "unresolved",
-        "attempt": "unscaled",
+        "attempt": name,
         "solve_and_kkt_s": time.monotonic() - started,
         "options": options,
         "attempts": [attempt],

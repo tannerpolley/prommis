@@ -55,8 +55,8 @@ def accounts(liquor, assumptions, *, nacl_coordinate=None):
     purge = {e: n * (1 - recycle) for e, n in mother.items()}
     product = (liquor["Li"] - purge["Li"]) / 2
     carbonate = product + purge["C"] - liquor["C"]
-    if product <= 0:
-        raise ValueError("Concentration input leaves no Li2CO3 product")
+    if product < 0:
+        raise ValueError("Concentration input is below Li2CO3 saturation")
     if carbonate < 0:
         raise ValueError("Carbonation soda ash is negative")
     coordinates = (
