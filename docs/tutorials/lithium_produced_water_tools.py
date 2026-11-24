@@ -38,14 +38,22 @@ from prommis.lithium_extraction.process import (
 from prommis.lithium_extraction.extraction import set_c, stage
 from prommis.lithium_extraction.process.candidate import fixed_disposition
 
+from prommis.lithium_extraction.process.priced_designs import (
+    FITS as PRICED_FITS,
+    PRIMARY,
+    SECONDARY,
+    WATERS as PRICED_WATERS,
+    load_matrix,
+    selected_designs,
+)
+
 # IDAES warns that some cost flows are expressions without a zero lower bound; optimization.report checks every
 # cost flow is nonnegative after the solve.
 logging.getLogger("idaes.core.base.costing_base").setLevel(logging.ERROR)
 
 STUDY = ROOT / "analyses/prototypes/modular_process"
 BAND = json.loads((STUDY / "results/targets/exchange_band.json").read_text())
-TARGETS = json.loads((STUDY / "results/targets/economic_targets.json").read_text())
-SCREEN = STUDY / "results/site_solvent_matrix"  # The paper's water and solvent screen
+SCREEN = STUDY / "results/priced_margin"
 WORKED_EXAMPLE = (
     "Worked example: cheapest design, 1 % organic loss per pass, HBTA at 100 USD/kg"
 )
@@ -841,70 +849,60 @@ def check_against_paper(results, softened):
 
 # ---------------------------------------------------------------- The paper's screen, read from its result files
 
-ALL_WATERS = {
-    "MS2": "MS-2",
-    "BR2": "BR-2",
-    "MarsHill": "Mars Hill",
-    "Westmoreland": "Westmoreland",
-}
-
-SYSTEMS = {
-    "C": "saponified HBTA/TOPO, softened water",
-    "D2EHDTPA-Figiel": "D2EHDTPA/BuPhen, raw water",
-}
-
 
 def _screen():
-    """Margin (USD per m3 of raw water) in each price case and research-interest label of every screen cell, with the
-    waters richest in lithium first."""
-    cells = pd.read_csv(SCREEN / "screen_figure.csv", dtype={"site": str})
-    cells["Li (mg/L)"] = [
-        brines.raw_feed(site)["printed_mg_l"]["Li"] for site in cells.site
-    ]
-    cells["water"] = [
-        ALL_WATERS.get(site) or (f"USGS {site}" if site.isdigit() else site)
-        for site in cells.site
-    ]
-    return cells.sort_values("Li (mg/L)", ascending=False, kind="stable").set_index(
-        ["solvent", "site"]
-    )
-
-
-def _text(table):
-    """A table as text: numbers by `number`, a cell without a value left empty."""
-    return table.map(
-        lambda x: x if isinstance(x, str) else "" if pd.isna(x) else number(x)
-    )
+    """The attained selections at each price with their retained dispositions."""
+    return selected_designs(*load_matrix(SCREEN))
 
 
 def paper_headline():
-    """The paper's screen: each measured water, with the margin of both rated solvent systems in the base and optimistic
-    cases (USD per m3 of raw water) and their research-interest labels."""
-    cells, rows = _screen(), {}
-    for site, hbta in cells.loc["C"].iterrows():
-        row = {
-            ("water", "Li (mg/L)"): hbta["Li (mg/L)"],
-            ("water", "(Ca+Mg)/Li (kg/kg)"): brines.raw_feed(site)[
-                "ca_mg_li_mass_ratio"
-            ],
-        }
-        for solvent, system in SYSTEMS.items():
-            cell = cells.loc[solvent, site]
-            row |= {
-                (system, "base margin (USD/m3)"): cell.base_usd_m3,
-                (system, "optimistic margin (USD/m3)"): cell.optimistic_usd_m3,
-                (system, "label"): (
-                    cell.label if isinstance(cell.label, str) else "not rated"
+    """Display the nominal-process quantities on a raw-water basis."""
+    rows = []
+    for cell in _screen():
+        site = cell["water"]
+        row = cell["design"]
+        rows.append(
+            {
+                "Water": PRICED_WATERS.get(site, site),
+                "Calibration": PRICED_FITS[cell["fit"]],
+                "Price (USD/t LCE)": cell["price"],
+                "N": int(row["N"]) if row else pd.NA,
+                "Design ID": row["design_id"] if row else "",
+                "Li to carbonate (%)": (
+                    f"{100 * float(row['recovery']):.3f}" if row else ""
                 ),
+                "LCE (kg/m³)": f"{float(row['q_kg_lce_m3']):.6f}" if row else "",
+                "Margin (USD/m³)": f"{float(row['margin_usd_m3']):+.5f}" if row else "",
+                "Status": cell["status"],
+                "Reason": cell["reason"],
             }
-        rows[hbta.water] = row
-    prices = [
-        number(1000 * c["li2co3_usd_kg"])
-        for c in TARGETS["d2_buphen_ceilings"][0]["ceilings"]
-    ]
-    print(
-        "Assumed lithium carbonate price: {} (base) to {} (optimistic) USD/t LCE".format(
-            *prices
         )
+    return pd.DataFrame(rows)
+
+
+def paper_screen_summary():
+    """Summarize the attained selections using the unrounded operating margins."""
+    rows = list(_screen())
+    primary = [cell for cell in rows if cell["price"] == PRIMARY]
+    attained = [cell for cell in primary if cell["design"]]
+
+    def margin(cell):
+        return float(cell["design"]["margin_usd_m3"])
+
+    def water(cell):
+        site = cell["water"]
+        return f"USGS {site}" if site.isdecimal() else PRICED_WATERS.get(site, site)
+
+    best = max(attained, key=margin)
+    negative = sum(margin(cell) < 0 for cell in attained)
+    positive = [
+        f"{PRICED_FITS[cell['fit']]} at {water(cell)}"
+        for cell in rows
+        if cell["price"] == SECONDARY and cell["design"] and margin(cell) > 0
+    ]
+    return (
+        f"- At **{PRIMARY:,} USD/t LCE**, {negative} of {len(attained)} attained margins are negative. "
+        f"The highest is **{margin(best):.2f} USD/m³** for {PRICED_FITS[best['fit']]} at {water(best)}.\n"
+        f"- {len(primary) - len(attained)} water and calibration combinations have no verified target design.\n"
+        f"- At **{SECONDARY:,} USD/t LCE**, positive margins occur only for {' and '.join(sorted(positive))}."
     )
-    return _text(pd.DataFrame(rows).T)
