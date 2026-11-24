@@ -118,7 +118,13 @@ def add_rule(model, objective):
             )
             * usd_kg
         )
-        model.rule = Objective(expr=cost + purchased - price * q)
+        heat_price = objective.get("heat_price_usd_mj", 0.0)
+        heat = (
+            heat_price * costing.usd_per(pyunits.MJ) * evaporation_heat_rate(fs)
+            if heat_price
+            else 0.0
+        )
+        model.rule = Objective(expr=cost + purchased + heat - price * q)
     else:
         raise ValueError(f"unknown objective {kind}")
     model._objective = dict(objective)
@@ -128,6 +134,16 @@ def carbonate_price(model, objective):
     if objective and objective["kind"] == "priced_margin":
         return objective["carbonate_price_usd_t_lce"] / 1000
     return costing.CARBONATE_USD_KG[model._case]
+
+
+def evaporation_heat_rate(fs):
+    """MJ/h at 1 raw m³/h, on the net concentrator vapor basis."""
+    vapor = (
+        fs.cleanup.water["concentrator_vapor_kg"]
+        if hasattr(getattr(fs, "cleanup", None), "water")
+        else 0.0
+    )
+    return costing.WATER_LATENT_HEAT_MJ_KG * vapor * costing.RAW_L_H * pyunits.MJ
 
 
 def rule_values(model, objective=None):
@@ -140,6 +156,7 @@ def rule_values(model, objective=None):
         "carbonate_kg_m3": q,
         "cost_outside_active_usd_m3": cost,
         "active_loss_kg_m3": loss,
+        "evaporation_heat_mj_m3": value(evaporation_heat_rate(fs)),
         "active_loss_by_component_kg_m3": {
             k: value(n) for k, n in fs.costing.active_loss.items()
         },

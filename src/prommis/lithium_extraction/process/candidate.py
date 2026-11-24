@@ -600,7 +600,12 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
     stage.initialize(model, profiles)
     if recycle:
         d2.decisions(model, organic_recycle=True)
-        d2_full_process.connect_strip(model, job["case"], a)
+        d2_full_process.connect_strip(
+            model,
+            job["case"],
+            a,
+            ratio_bounds=job.get("strip_aqueous_to_organic_bounds"),
+        )
         stage.initialize(model, profiles)
     return model, raw, design, a
 
@@ -851,13 +856,22 @@ def objective_value(result, objective):
     if kind == "headroom":
         return rule["headroom_usd_m3"]
     if kind == "priced_margin":
-        from prommis.lithium_extraction.process.costing import ligand_cost
+        from prommis.lithium_extraction.process import costing
 
         q, cost = rule["carbonate_kg_m3"], rule["cost_outside_active_usd_m3"]
+        heat_price = objective.get("heat_price_usd_mj", 0.0)
+        if heat_price:
+            latent = rule.get("evaporation_heat_mj_m3")
+            if latent is None:
+                vapor = result.get("water_streams_kg_per_raw_l", {}).get(
+                    "concentrator_vapor_kg", 0.0
+                )
+                latent = 1000 * costing.WATER_LATENT_HEAT_MJ_KG * vapor
+            cost += heat_price * latent
         return (
             objective["carbonate_price_usd_t_lce"] * q / 1000
             - cost
-            - ligand_cost(
+            - costing.ligand_cost(
                 rule["active_loss_by_component_kg_m3"],
                 objective["ligand_prices_usd_kg"],
             )

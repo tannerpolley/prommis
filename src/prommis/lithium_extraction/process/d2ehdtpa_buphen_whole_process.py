@@ -270,7 +270,7 @@ def set_interval(model, interval):
     model._carbonation_interval = list(interval)
 
 
-def connect_strip(model, case, recycle_assumptions=None):
+def connect_strip(model, case, recycle_assumptions=None, *, ratio_bounds=None):
     """Strip the loaded organic and, when requested, return the residual complexes."""
     fs, rc = model.fs, d2_stage.rc
     n = len(fs.stages)
@@ -338,9 +338,17 @@ def connect_strip(model, case, recycle_assumptions=None):
     raffinate_l = recycle_assumptions["entrainment_l_per_l"]
     volume = model._decisions["O_A"] - raffinate_l
     recycle.loaded_volume_l = Expression(expr=volume)
-    nominal = "strip_aqueous_to_organic" in recycle_assumptions
+    ratio_name = "strip_aqueous_to_organic"
+    nominal = ratio_name in recycle_assumptions
+    ratio = recycle_assumptions.get(ratio_name)
+    if ratio_bounds is not None:
+        if ratio is None or not 0 < ratio_bounds[0] <= ratio <= ratio_bounds[1]:
+            raise ValueError("Initial strip A/O must lie within its positive bounds")
+        recycle.strip_aqueous_to_organic = Var(bounds=ratio_bounds, initialize=ratio)
+        recycle.strip_aqueous_to_organic.fix()
+        ratio = model._decisions[ratio_name] = recycle.strip_aqueous_to_organic
     outlet_l = (
-        volume * recycle_assumptions["strip_aqueous_to_organic"]
+        volume * ratio
         if nominal
         else d2_stage.owner.historical_strip_volume(
             recycle_assumptions, strip.metals["Li"]
@@ -623,9 +631,15 @@ def recycle_report(model, result, owner, actual):
 def report(model, result):
     """Recompute cleanup closure, strip ligand inventories and independent operating accounts after solve."""
     fs, rc = model.fs, d2_stage.rc
+    assumptions = model._d2_full_process
+    if "strip_aqueous_to_organic" in model._design:
+        assumptions = dict(
+            assumptions,
+            strip_aqueous_to_organic=model._design["strip_aqueous_to_organic"],
+        )
     owner = accounts(
         d2_stage.strip_accounts(result["accounts"], model._solvent),
-        model._d2_full_process,
+        assumptions,
         result["feed"]["model_feed"]["Li"],
     )
     strip = fs.strip

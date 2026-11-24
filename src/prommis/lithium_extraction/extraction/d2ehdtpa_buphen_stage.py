@@ -424,6 +424,11 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         if reference_accounting
         else (getattr(model, "_d2_full_process", None) or case_assumptions(case, True))
     )
+    if assumptions is not None and "strip_aqueous_to_organic" in model._design:
+        assumptions = dict(
+            assumptions,
+            strip_aqueous_to_organic=model._design["strip_aqueous_to_organic"],
+        )
     recycle = hasattr(model.fs, "organic_recycle")
     strip_volume = ratio - assumptions["entrainment_l_per_l"] if recycle else None
     accounts = owner.accounts(

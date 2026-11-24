@@ -32,6 +32,9 @@ if not hasattr(pyunits, "source_period_nominal_USD"):
 RAW_L_H = (
     1000 / pyunits.hr
 )  # 1 m3/h raw brine; model amounts are per raw (or nominal aqueous) litre
+WATER_LATENT_HEAT_MJ_KG = (
+    2.2565407482377573  # IAPWS-IF97, saturated water at 101.325 kPa
+)
 GRAVITY_M_S2 = 9.80665
 # R1 screening organic: 0.015 M formulation anchor; marginal HBTA and TOPO above it at 100 USD/kg each.
 FORMULATION_ANCHOR_MOL_L = 0.015
