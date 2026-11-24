@@ -40,7 +40,7 @@ FIXED_POINT_FAILURES = ("infeasible", "no_product", "target_not_met", "outside_d
 
 
 @functools.cache
-def case_assumptions(case, rule=False):
+def case_assumptions(case, rule=False, *, entrainment_case=None):
     """Prices, cake moisture, wash volumes, scrub and strip fractions, acid recovery, concentrate molality and recycle
     belong to the case, not the water. Read once per case from the MS-2 R4 replay: the four retained replays agree on
     them except the starting extractant (a design start, kept with each water) and the last digit of the diluent
@@ -55,9 +55,10 @@ def case_assumptions(case, rule=False):
     dropped = ("extractant_mol_l", "band_end") + (
         ("organic_loss", "organic_loss_provenance") if rule else ()
     )
+    loss_case = case if entrainment_case is None else entrainment_case
     return {k: n for k, n in a.items() if k not in dropped} | {
-        "entrainment_l_per_l": entrainment_l_per_l(case),
-        "entrainment_provenance": f"data/reference/tea/solvent_entrainment.csv:{case} (#342); no purge",
+        "entrainment_l_per_l": entrainment_l_per_l(loss_case),
+        "entrainment_provenance": f"data/reference/tea/solvent_entrainment.csv:{loss_case} (#342); no purge",
     }
 
 
@@ -485,6 +486,18 @@ def d2_start(job, li_mol_l):
     )
 
 
+def d2_process_assumptions(job):
+    if not job.get("organic_recycle") or "strip_aqueous_to_organic" not in job:
+        return case_assumptions(job["case"], True)
+    assumptions = case_assumptions(job["case"], True, entrainment_case="base") | {
+        "strip_aqueous_to_organic": job["strip_aqueous_to_organic"]
+    }
+    if job.get("zero_entrainment"):
+        assumptions["entrainment_l_per_l"] = 0.0
+        assumptions["entrainment_provenance"] += "; zero-entrainment control (#447)"
+    return assumptions
+
+
 def d2_simulation(job, directory, remaining, records, brine=None, start=None):
     """One D2EHDTPA/BuPhen cell at its stage count. The extraction is solved at the retained #188/#214 design (or
     `job['design']`); a full-process job then connects strip, cleanup and carbonation with every account live (#342)
@@ -505,18 +518,19 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
     reference = job.get("fixed_design_record")
     full = job["scope"] == "full_process"
     recycle = full and job.get("organic_recycle", False)
-    a = case_assumptions(job["case"], True) if full else None
+    fixed_replay = job.get("fixed_replay", False)
+    a = d2_process_assumptions(job) if full else None
     if reference:
         retained = json.loads((REPO_ROOT / reference).read_text())
-        if any(
-            retained["candidate"][k] != job[k]
-            for k in ("site", "solvent", "case", "stages")
-        ):
+        if any(retained["candidate"][k] != job[k] for k in ("site", "solvent", "case")):
             raise ValueError(
                 f"Fixed design and candidate conditions differ: {reference}"
             )
         fixed = {k: retained["fixed_design"][k] for k in ("B", "S", "O_A", "Sr_decade")}
-        start = [r["outlet_mol_per_raw_l"] for r in retained["stages"]]
+        start = [
+            r["outlet_mol_per_raw_l"]
+            for r in interpolated(retained["stages"], job["stages"])
+        ]
     else:
         fixed = d2_start(job, raw["mol"]["Li"])
     ratio = fixed["O_A"]
@@ -560,8 +574,12 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
         d2.decisions(model, organic_recycle=True)
         d2_full_process.connect_strip(model, job["case"], a)
         stage.initialize(model, profiles)
-    stage.solve(model, directory, wall_seconds=remaining())
-    result = d2.report(model, case=job["case"])
+    stage.solve(model, directory, wall_seconds=remaining(), fixed_replay=fixed_replay)
+    result = d2.report(
+        model,
+        stage.report(model, certify=False) if fixed_replay else None,
+        case=job["case"],
+    )
     result["sites_mol_l_organic"] = d2.owner.site_supply(
         design["B"],
         design["S"],
@@ -604,6 +622,7 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
     if not full:
         return result
     stopping_point = "construction"
+    certified = not fixed_replay
     try:
         try:
             initial = d2_full_process.accounts(
@@ -614,12 +633,16 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
         except ValueError as error:
             if "no Li2CO3 product" not in str(error):
                 raise
+            if not certified:
+                result.update(d2.report(model, case=job["case"]))
             return result | {
                 "downstream_admissible": False,
                 "reason": f"no carbonate product: {error}",
             }
         interval = d2_full_process.carbonation_interval(initial["mother_nacl_mol_kg"])
         if interval is None:
+            if not certified:
+                result.update(d2.report(model, case=job["case"]))
             return result | {
                 "downstream_admissible": False,
                 "reason": "no carbonate product: outside the measured solubility data",
@@ -629,7 +652,12 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
             d2.decisions(model)
         d2_full_process.connect_units(model, initial, a, interval)
         stopping_point = "solve"
-        stage.solve(model, directory / "full_process", wall_seconds=remaining())
+        stage.solve(
+            model,
+            directory / "full_process",
+            wall_seconds=remaining(),
+            fixed_replay=fixed_replay,
+        )
         starting = optimization.rule_values(model) | {
             "design": {k: value(v) for k, v in model._decisions.items()},
             "carbonation_interval_mol_kg": list(interval),
@@ -691,6 +719,8 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
             result["carbonation_interval_moves"] = moves
         stopping_point = "reconciliation"
         downstream_result = result | d2.report(model, case=job["case"])
+        result = downstream_result
+        certified = True
         reported = d2_full_process.report(model, downstream_result)
         solved = {k: value(v) for k, v in model._decisions.items()}
         return (
@@ -705,6 +735,8 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
             }
         )
     except Exception as error:
+        if not certified:
+            result.update(d2.report(model, case=job["case"]))
         return result | {
             "reason": f"{type(error).__name__}: {error}",
             "stopping_point": stopping_point,

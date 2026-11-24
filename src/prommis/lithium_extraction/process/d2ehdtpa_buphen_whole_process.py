@@ -1,8 +1,17 @@
 """Raiguel strip plus the declared ideal cleanup and Ge carbonation (Lithium #214)."""
 
 import csv
+import math
 
-from pyomo.environ import Block, Constraint, Expression, Var, units as pyunits, value
+from pyomo.environ import (
+    Block,
+    Constraint,
+    Expression,
+    Expr_if,
+    Var,
+    units as pyunits,
+    value,
+)
 from pyomo.common.collections import ComponentSet
 from pyomo.contrib.incidence_analysis import solve_strongly_connected_components
 from pyomo.util.subsystems import TemporarySubsystemManager, create_subsystem_block
@@ -19,13 +28,37 @@ from prommis.lithium_extraction.process import (
 from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_stage as d2_stage
 
 
-def cleanup(stripped, acid, assumptions):
+def strip_preparation(acid, volume_l):
+    """Prepared dilute HCl at the #447 nominal density of 1 kg/L."""
+    active = acid * flowsheet.HCL_MOLAR_MASS_KG
+    stock = active / flowsheet.hcl_stock_fraction()
+    dilution = volume_l - stock
+    if value(dilution) < 0:
+        raise ValueError("HCl stock mass exceeds prepared strip solution mass")
+    return {
+        "feed_volume_l": volume_l,
+        "outlet_volume_l": volume_l,
+        "acid_mol": acid,
+        "hcl_mol_l": acid / volume_l,
+        "active_hcl_kg": active,
+        "hcl_stock_kg": stock,
+        "stock_water_kg": stock - active,
+        "fresh_dilution_water_kg": dilution,
+        "strip_liquor_water_kg": dilution + stock - active,
+    }
+
+
+def cleanup(stripped, acid, assumptions, *, preparation=None):
     """Exact-stoichiometry complete Mg/Ca/Sr removal; Li carbonate co-precipitation is excluded by assumption."""
     mg, ca, sr = (stripped[e] for e in ("Mg", "Ca", "Sr"))
     free_h = acid - sum(d2_stage.rc.ION[e][2] * n for e, n in stripped.items())
     naoh, soda = free_h + 2 * mg, ca + sr
     before = {"Li": stripped["Li"], "Na": stripped["Na"] + naoh + 2 * soda, "Cl": acid}
-    water = stripped["Li"] / assumptions["concentrate_li_mol_kg"]
+    water = (
+        stripped["Li"] / assumptions["concentrate_li_mol_kg"]
+        if preparation is None
+        else preparation["strip_liquor_water_kg"] + free_h * brines.WATER_MOLAR_MASS_KG
+    )
     mass = water + sum(n * d2_stage.owner.MASSES[e] for e, n in before.items())
     atomic = brines.MOLAR_MASS
     dry = (
@@ -33,8 +66,9 @@ def cleanup(stripped, acid, assumptions):
         + ca * (atomic["Ca"] + atomic["C"] + 3 * atomic["O"])
         + sr * (atomic["Sr"] + atomic["C"] + 3 * atomic["O"])
     ) / 1000
-    held, _, loss = downstream.held_liquid_loss(
-        dry, mass, assumptions["moisture"], assumptions["wash_volumes"]
+    washes = assumptions["wash_volumes"]
+    held, fraction, loss = downstream.held_liquid_loss(
+        dry, mass, assumptions["moisture"], washes
     )
     cake = {e: loss * n for e, n in before.items()}
     clean = {e: (1 - loss) * n for e, n in before.items()}
@@ -50,13 +84,49 @@ def cleanup(stripped, acid, assumptions):
         raise RuntimeError(
             f"Ideal cleanup closure/charge exceeds 1e-12 mol/raw L: {closure}; {charge}"
         )
+    concentrated = (
+        water
+        if preparation is None
+        else clean["Li"] / assumptions["concentrate_li_mol_kg"]
+    )
+    water_streams = {}
+    if preparation is not None:
+        # Separate screening densities (cleanup liquor and pure wash water), both 1 kg/L.
+        held_l = held / 1.0
+        wash = washes * held_l * 1.0
+        cake_water = loss * water + (fraction - loss) * water
+        wash_return = fraction * water + wash - cake_water
+        filtrate = (1 - fraction) * water + wash_return
+        excess = filtrate - concentrated
+
+        def positive(x):
+            return (
+                Expr_if(IF=x > 0.0, THEN=x, ELSE=0.0)
+                if hasattr(x, "is_expression_type")
+                else max(x, 0.0)
+            )
+
+        water_streams = {
+            "post_precipitation_water_kg": water,
+            "neutralization_reaction_water_kg": free_h * brines.WATER_MOLAR_MASS_KG,
+            "post_precipitation_liquor_l": mass / 1.0,
+            "held_liquor_l": held_l,
+            "held_liquor_fraction": fraction,
+            "fresh_wash_water_kg": wash,
+            "final_cake_water_kg": cake_water,
+            "recovered_wash_water_kg": wash_return,
+            "recovered_wash_mol": {e: (fraction - loss) * n for e, n in before.items()},
+            "combined_filtrate_water_kg": filtrate,
+            "concentrator_vapor_kg": positive(excess),
+            "concentrator_trim_water_kg": positive(-excess),
+        }
     return {
         "naoh_mol": naoh,
         "na2co3_mol": soda,
         "unconsumed_hcl_mol": free_h,
         "dry_sludge_kg": dry,
         "wet_sludge_kg": dry / (1 - assumptions["moisture"]),
-        "concentrate_water_kg": water,
+        "concentrate_water_kg": concentrated,
         "liquor_kg": mass,
         "held_liquid_kg": held,
         "solute_loss_fraction": loss,
@@ -66,6 +136,7 @@ def cleanup(stripped, acid, assumptions):
         "closure_mol": closure,
         "charge_mol": charge,
         "li_coprecipitation_bound_fraction": 2 * soda / stripped["Li"],
+        **water_streams,
     }
 
 
@@ -83,7 +154,13 @@ def accounts(strip, assumptions, feed_li):
     stripped = {
         e: strip[f"strip_{e}_mol_L_feed"] for e in ("Li", "Na", "Mg", "Ca", "Sr")
     }
-    cleaned = cleanup(stripped, strip["strip_HCl_mol_L_feed"], assumptions)
+    acid = strip["strip_HCl_mol_L_feed"]
+    preparation = (
+        strip_preparation(acid, strip["strip_outlet_volume_l_per_raw_l"])
+        if "strip_aqueous_to_organic" in assumptions
+        else None
+    )
+    cleaned = cleanup(stripped, acid, assumptions, preparation=preparation)
     carbon = downstream.accounts(
         dict(cleaned["cleaned_mol"], H=0.0, C=0.0), assumptions
     )
@@ -98,8 +175,11 @@ def accounts(strip, assumptions, feed_li):
     masses = {
         "regeneration_NaOH": strip["NaOH_mol_L_feed"]
         * flowsheet.MASS_KG_PER_MOL["NaOH"],
-        "strip_HCl31": strip["strip_HCl_mol_L_feed"]
-        * flowsheet.MASS_KG_PER_MOL["HCl31"],
+        "strip_HCl31": (
+            preparation["hcl_stock_kg"]
+            if preparation
+            else acid * flowsheet.MASS_KG_PER_MOL["HCl31"]
+        ),
         "octanol_dissolution": strip["octanol_dissolved_kg_m3"] / 1000,
         "octanol_entrainment": strip["octanol_entrained_kg_m3"] / 1000,
         "diluent": strip["dodecane_loss_kg_m3"] / 1000,
@@ -135,23 +215,27 @@ def accounts(strip, assumptions, feed_li):
     li_kg_m3 = 2 * carbon["product_li2co3_mol"] * d2_stage.owner.MASSES["Li"] * 1000
     total = sum(costs.values())
     active = {k: strip[key] / 1000 for k, key in ACTIVE.items()}
-    return carbon | {
-        "case": case,
-        "assumptions": assumptions,
-        "cleanup": cleaned,
-        "stripped_mol": stripped,
-        "mass_kg_per_l": masses,
-        "prices_usd_kg": prices,
-        "price_source": "Lithium #214 price table; source-period nominal USD; EIA diluent analogue unrounded",
-        "cost_usd_m3": costs,
-        "cost_usd_kg_li": {k: n / li_kg_m3 for k, n in costs.items()},
-        "operating_usd_kg_li": total / li_kg_m3,
-        "li_product_kg_m3": li_kg_m3,
-        "raw_li_recovery": 2 * carbon["product_li2co3_mol"] / feed_li,
-        **flowsheet.rule_accounts(case, active, total / 1000, li_kg_m3 / 1000),
-        "claim": "conditional on ideal complete cleanup and no Li2CO3 co-precipitation; no purity claim; "
-        "BuPhen and D2EHDTPA unpriced; capital, labour and energy excluded",
-    }
+    return (
+        carbon
+        | ({"strip_preparation": preparation} if preparation else {})
+        | {
+            "case": case,
+            "assumptions": assumptions,
+            "cleanup": cleaned,
+            "stripped_mol": stripped,
+            "mass_kg_per_l": masses,
+            "prices_usd_kg": prices,
+            "price_source": "Lithium #214 price table; source-period nominal USD; EIA diluent analogue unrounded",
+            "cost_usd_m3": costs,
+            "cost_usd_kg_li": {k: n / li_kg_m3 for k, n in costs.items()},
+            "operating_usd_kg_li": total / li_kg_m3,
+            "li_product_kg_m3": li_kg_m3,
+            "raw_li_recovery": 2 * carbon["product_li2co3_mol"] / feed_li,
+            **flowsheet.rule_accounts(case, active, total / 1000, li_kg_m3 / 1000),
+            "claim": "conditional on ideal complete cleanup and no Li2CO3 co-precipitation; no purity claim; "
+            "BuPhen and D2EHDTPA unpriced; capital, labour and energy excluded",
+        }
+    )
 
 
 def carbonation_interval(nacl):
@@ -250,11 +334,26 @@ def connect_strip(model, case, recycle_assumptions=None):
         return
     fs.organic_recycle = recycle = Block()
     raffinate_l = recycle_assumptions["entrainment_l_per_l"]
-    strip_l = (
-        d2_stage.owner.entrained_l(recycle_assumptions, strip.metals["Li"])
-        - raffinate_l
-    )
     volume = model._decisions["O_A"] - raffinate_l
+    recycle.loaded_volume_l = Expression(expr=volume)
+    nominal = "strip_aqueous_to_organic" in recycle_assumptions
+    outlet_l = (
+        volume * recycle_assumptions["strip_aqueous_to_organic"]
+        if nominal
+        else d2_stage.owner.historical_strip_volume(
+            recycle_assumptions, strip.metals["Li"]
+        )
+    )
+    recycle.strip_entrained_volume_l = Expression(expr=raffinate_l * outlet_l)
+    strip_l = recycle.strip_entrained_volume_l
+    if nominal:
+        model._d2_full_process = recycle_assumptions
+        prepared = strip_preparation(strip.acid_mol, outlet_l)
+        strip.preparation = Expression(tuple(prepared), initialize=prepared)
+        strip.dilution_nonnegative = Constraint(
+            expr=strip.preparation["fresh_dilution_water_kg"] >= 0.0
+        )
+        recycle.entrainment_feasible = Constraint(expr=strip_l <= volume)
     recycle.strip_loss = Expression(
         strip.organic_out.index_set(),
         rule=lambda b, s: strip.organic_out[s] * strip_l / volume,
@@ -266,6 +365,18 @@ def connect_strip(model, case, recycle_assumptions=None):
     recycle.regeneration_naoh = Expression(
         expr=fs.boundary["naa"] - recycle.returned["naa"]
     )
+    if nominal:
+        recycle.fresh_acid_form_sites = Expression(
+            expr=sum(
+                rc.MOIETIES["A"].get(s, 0.0) * fs.boundary[s]
+                for s in model._chemistry.supports[1]
+            )
+            - recycle.returned["ha"]
+            - sum(charges[e] * recycle.returned[s] for e, s in complexes.items())
+        )
+        recycle.regeneration_water_kg = Expression(
+            expr=recycle.regeneration_naoh * brines.WATER_MOLAR_MASS_KG
+        )
     recirculated = [s for e, s in complexes.items() if e != "Na" and fractions[e] < 1]
     for s in recirculated:
         fs.boundary[s].unfix()
@@ -286,16 +397,25 @@ def connect_units(model, initial, assumptions, interval):
     amounts = d2_stage.strip_accounts(
         {f"strip_{e}_mol_L_feed": n for e, n in strip.metals.items()}, model._solvent
     )
+    preparation = getattr(strip, "preparation", None)
     cleaned = cleanup(
         {e: amounts[f"strip_{e}_mol_L_feed"] for e in ("Li", "Na", "Mg", "Ca", "Sr")},
         strip.acid_mol,
         assumptions,
+        preparation=preparation,
     )
     for key in ("naoh_mol", "na2co3_mol", "wet_sludge_kg", "solute_loss_fraction"):
         fs.cleanup.add_component(key, Expression(expr=cleaned[key]))
     fs.cleanup.liquor = Expression(
         ("Li", "Na", "Cl"), rule=lambda b, e: cleaned["cleaned_mol"][e]
     )
+    if preparation is not None:
+        water = {
+            k: n
+            for k, n in cleaned.items()
+            if k.endswith("_water_kg") or k == "concentrator_vapor_kg"
+        }
+        fs.cleanup.water = Expression(tuple(water), initialize=water)
     model._d2_full_process = assumptions
     downstream.connect(
         fs,
@@ -321,20 +441,36 @@ def connect_units(model, initial, assumptions, interval):
     recycle = getattr(fs, "organic_recycle", None)
     buphen = d["B"] if recycle is not None else fs.boundary["buphen"] / ratio
     naoh = recycle.regeneration_naoh if recycle is not None else fs.boundary["naa"]
-    lost = d2_stage.owner.losses_kg_per_l(
-        d2_stage.owner.entrained_l(assumptions, strip.metals["Li"]),
-        d["S"],
-        ratio,
-        buphen,
-        0.0,
-        fs.stage[n].outlet["buphen"] / ratio,
-        fs.boundary["diluent"] / ratio,
-        site_basis_li_mol_l=model._design["site_basis_li_mol_l"],
-    )
+    free_b = fs.stage[n].outlet["buphen"] / ratio
+    if preparation is not None:
+        lost = d2_stage.owner.separated_losses(
+            getattr(fs, "raffinate_entrained_organic", {}),
+            recycle.strip_loss,
+            free_b,
+            assumptions["entrainment_l_per_l"] + recycle.strip_entrained_volume_l,
+        )
+    else:
+        old_volume = d2_stage.owner.historical_strip_volume(
+            assumptions, strip.metals["Li"]
+        )
+        lost = d2_stage.owner.losses_kg_per_l(
+            d2_stage.owner.entrained_l(assumptions, old_volume),
+            d["S"],
+            ratio,
+            buphen,
+            0.0,
+            free_b,
+            fs.boundary["diluent"] / ratio,
+            site_basis_li_mol_l=model._design["site_basis_li_mol_l"],
+        )
     fs.losses = Expression(tuple(lost), rule=lambda b, k: lost[k])
     live = {
         "regeneration_NaOH": naoh * flowsheet.MASS_KG_PER_MOL["NaOH"],
-        "strip_HCl31": strip.acid_mol * flowsheet.MASS_KG_PER_MOL["HCl31"],
+        "strip_HCl31": (
+            preparation["hcl_stock_kg"]
+            if preparation is not None
+            else strip.acid_mol * flowsheet.MASS_KG_PER_MOL["HCl31"]
+        ),
         "octanol_dissolution": fs.losses["octanol_dissolution"],
         "octanol_entrainment": fs.losses["octanol_entrainment"],
         "diluent": fs.losses["diluent"],
@@ -422,6 +558,48 @@ def recycle_report(model, result, owner, actual):
         > references.load_reference("R7")["balance_mol_per_raw_l_limit"]
     ):
         raise RuntimeError(f"Organic makeup balance exceeds R7: {ligand_balance}")
+    nominal = {}
+    if hasattr(fs.strip, "preparation"):
+        row = rc.MOIETIES["A"] | {"ha": 1.0}
+        bought = value(recycle.fresh_acid_form_sites)
+        returned_ha = returned["ha"]
+        errors = {
+            "acid_form_sites": bought
+            - sum(
+                c * (raff_loss.get(s, 0.0) + strip_loss[s])
+                for s, c in row.items()
+                if s in strip_loss
+            ),
+            "newly_saponified_sites": naoh - returned_ha - bought,
+        }
+        if max(map(abs, errors.values())) > limit:
+            raise RuntimeError(
+                f"Regeneration balance exceeds {limit} mol/raw L: {errors}"
+            )
+        incoming = fs.strip.unit.mscontactor.organic_inlet_state[0].flow_mol_comp
+        nominal = {
+            "loaded_to_strip_mol_per_raw_l": {s: value(n) for s, n in incoming.items()},
+            "post_reaction_organic_mol_per_raw_l": {
+                s: value(n) for s, n in fs.strip.organic_out.items()
+            },
+            "loaded_organic_l_per_raw_l": value(recycle.loaded_volume_l),
+            "raffinate_entrained_l_per_raw_l": owner["assumptions"][
+                "entrainment_l_per_l"
+            ],
+            "strip_entrained_l_per_raw_l": value(recycle.strip_entrained_volume_l),
+            "fresh_acid_form_sites_mol_per_raw_l": bought,
+            "returned_HA_mol_per_raw_l": returned_ha,
+            "regeneration_water_kg_per_raw_l": value(recycle.regeneration_water_kg),
+            "regeneration_residuals_mol_per_raw_l": errors,
+            "buphen_exposed_mol_per_raw_l": sum(
+                c * value(incoming[s])
+                for s, c in rc.MOIETIES["B"].items()
+                if s in incoming
+            ),
+            "raffinate_dissolved_and_replaced_buphen_mol_per_raw_l": dissolved_b,
+            "strip_chemical_buphen_loss_mol_per_raw_l": 0.0,
+            "organic_purge_l_per_raw_l": 0.0,
+        }
     return {
         "strip_li_recovery_fraction": result["accounts"]["R_rec"],
         "organic_recycle": {
@@ -435,6 +613,7 @@ def recycle_report(model, result, owner, actual):
             "makeup_balance_mol_per_raw_l": ligand_balance,
             "external_metal_balance_mol_per_raw_l": external,
             "constraint_tolerance_mol_per_raw_l": limit,
+            **nominal,
         },
     }
 
@@ -543,7 +722,9 @@ def report(model, result):
             "Na": 2 * owner["carbonation_na2co3_mol"],
             "C": owner["carbonation_na2co3_mol"],
         },
-        "retained organic": {s: value(n) for s, n in strip.organic_out.items()},
+        "strip mixer organic outlet": {
+            s: value(n) for s, n in strip.organic_out.items()
+        },
         "cleaned liquor": owner["cleanup"]["cleaned_mol"],
         "cleanup cake liquid": owner["cleanup"]["cake_mol"],
         "cleanup precipitates": owner["cleanup"]["solid_mol"],
@@ -559,14 +740,42 @@ def report(model, result):
             owner["mother_purge_mol"], Cl=owner["cleanup"]["cleaned_mol"]["Cl"]
         ),
     }
+    recycle = {}
+    if hasattr(fs, "organic_recycle"):
+        recycle = recycle_report(model, result, owner, actual)
+        organic = recycle["organic_recycle"]
+        physical["separated organic return"] = organic["returned_species_mol_per_raw_l"]
+        physical["strip organic entrainment"] = organic[
+            "strip_entrainment_mol_per_raw_l"
+        ]
+    water = {}
+    if hasattr(strip, "preparation"):
+        cleaned = owner["cleanup"]
+        water = {k: value(n) for k, n in fs.cleanup.water.items()} | {
+            "strip HCl stock carrier": owner["strip_preparation"]["stock_water_kg"],
+            "strip fresh dilution": owner["strip_preparation"][
+                "fresh_dilution_water_kg"
+            ],
+            "strip discharge": owner["strip_preparation"]["strip_liquor_water_kg"],
+            "regeneration discharge": value(fs.organic_recycle.regeneration_water_kg),
+        }
+        water["external_closure_kg"] = math.fsum(
+            (
+                water["strip HCl stock carrier"],
+                water["strip fresh dilution"],
+                water["fresh_wash_water_kg"],
+                water["neutralization_reaction_water_kg"],
+                water["concentrator_trim_water_kg"],
+                -water["final_cake_water_kg"],
+                -water["concentrator_vapor_kg"],
+                -owner["fresh_water_kg"],
+            )
+        )
+        physical["cleanup recovered wash filtrate"] = cleaned["recovered_wash_mol"]
     return result | {
         "full_process": owner,
         "product_recovery_fraction": owner["raw_li_recovery"],
-        **(
-            recycle_report(model, result, owner, actual)
-            if hasattr(fs, "organic_recycle")
-            else {}
-        ),
+        **recycle,
         "cost_usd_kg_li": owner["operating_usd_kg_li"],
         "cost_usd_m3_raw_brine": sum(owner["cost_usd_m3"].values()),
         "cost_basis": records.SCOPES["full_process"]["li_denominator"],
@@ -588,6 +797,7 @@ def report(model, result):
             "mother liquor purge": owner["fresh_water_kg"],
             "mother liquor recycle": owner["reactor_water_kg"]
             - owner["fresh_water_kg"],
+            **water,
         },
         "labels": [
             s for s in result["labels"] if "no optimizer or full process" not in s

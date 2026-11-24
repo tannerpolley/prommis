@@ -20,10 +20,23 @@ ENGINE_COMMITS = {
 }
 
 
+HCL_MOLAR_MASS_KG = 0.036461
+
+
+def hcl_stock_fraction():
+    return float(
+        _row(
+            "analyses/prototypes/modular_process/ligand_prices/revision_prices.csv",
+            "component",
+            "HCl",
+        )["active_mass_fraction"]
+    )
+
+
 MASS_KG_PER_MOL = {
     "NaOH": 0.039997,
     "Na2CO3": 0.105988,
-    "HCl31": 0.036461 / 0.31,
+    "HCl31": HCL_MOLAR_MASS_KG / 0.31,
     "HBTA": 0.216157,
     "TOPO": 0.38663,
     "diluent": 0.17033484,

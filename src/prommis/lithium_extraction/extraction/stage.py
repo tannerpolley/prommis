@@ -549,7 +549,7 @@ def _optimal(result):
     )
 
 
-def solve(model, directory, *, wall_seconds=290, hessian="exact"):
+def solve(model, directory, *, wall_seconds=290, hessian="exact", fixed_replay=False):
     """Exact Hessians by default; the caller's wall timer includes build, initialization and certificates.
 
     An unscaled solve that stops short of its optimum is repeated once from the same start with IPOPT's
@@ -562,7 +562,7 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
     options = {
         "print_user_options": "yes",
         "hessian_approximation": hessian,
-        "bound_relax_factor": 0,
+        "bound_relax_factor": 0.0,
         "nlp_scaling_method": "none",
         "tol": 1e-11,
         "constr_viol_tol": 1e-12 / max(1.0, value(model.fs.washed_feed_l_per_raw_l)),
@@ -573,7 +573,7 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
         "bound_push": 1e-8,
         "bound_frac": 1e-8,
         "mu_init": 1e-6,
-        "max_cpu_time": wall_seconds,
+        "max_cpu_time": float(wall_seconds),
     }
     if len(model.fs.stages) == 1:
         options["expect_infeasible_problem"] = "yes"
@@ -581,6 +581,8 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
         if not hasattr(model, name):
             setattr(model, name, Suffix(direction=Suffix.IMPORT))
     model._solved_values = None
+    if fixed_replay:
+        return _bounded_fixed_solve(model, directory, options)
     start = [(v, v.value) for v in model.component_data_objects(Var)]
     started = time.monotonic()
     attempt, result = "unscaled", _ipopt(model, directory, options)
@@ -634,7 +636,135 @@ def solve(model, directory, *, wall_seconds=290, hessian="exact"):
     return model._solve
 
 
-def report(model):
+def configure_asl():
+    from pyomo.contrib.pynumero.asl import AmplInterface
+
+    # IDAES installs its ASL beside IPOPT, which need not be on the process search path.
+    if not AmplInterface.available():
+        library = Path(idaes.bin_directory) / "libpynumero_ASL.so"
+        if library.is_file():
+            AmplInterface.libname = str(library)
+
+
+def _bounded_fixed_solve(model, directory, options):
+    """Count full NLP evaluations, including trial points, under #447's single start."""
+    import cyipopt
+    from pyomo.contrib.pynumero.algorithms.solvers.cyipopt_solver import CyIpoptSolver
+    from pyomo.contrib.pynumero.interfaces.cyipopt_interface import CyIpoptNLP
+
+    configure_asl()
+
+    class CountedNLP(PyomoNLP):
+        evaluations = 0
+
+        def __getattribute__(self, name):
+            method = super().__getattribute__(name)
+            if name in (
+                "evaluate_objective",
+                "evaluate_grad_objective",
+                "evaluate_constraints",
+                "evaluate_jacobian",
+                "evaluate_hessian_lag",
+            ):
+
+                def counted(*args, **kwargs):
+                    if self.evaluations >= 512:
+                        raise RuntimeError(
+                            "IPOPT fixed replay exhausted 512 NLP evaluations"
+                        )
+                    self.evaluations += 1
+                    return method(*args, **kwargs)
+
+                return counted
+            return method
+
+    class UnscaledCyIpoptNLP(CyIpoptNLP):
+        def scaling_factors(self):
+            # Fixed replays use nlp_scaling_method=none even if IDAES supplies scaling suffixes.
+            return None, None, None
+
+    started = time.monotonic()
+    directory.mkdir(parents=True, exist_ok=True)
+    log = directory.resolve() / "ipopt.log"
+    nlp = CountedNLP(model)
+    problem = UnscaledCyIpoptNLP(nlp, halt_on_evaluation_error=True)
+    x, info = CyIpoptSolver(problem, options | {"output_file": str(log)}).solve()
+    variables, constraints = nlp.get_pyomo_variables(), nlp.get_pyomo_constraints()
+    for variable, amount, zl, zu in zip(
+        variables, x, info["mult_x_L"], info["mult_x_U"], strict=True
+    ):
+        variable.set_value(float(amount), skip_validation=True)
+        model.ipopt_zL_out[variable], model.ipopt_zU_out[variable] = float(zl), -float(
+            zu
+        )
+    for constraint, dual in zip(constraints, info["mult_g"], strict=True):
+        model.dual[constraint] = -float(dual)
+    attempt = _attempt("unscaled", Exception(info["status_msg"].decode()), directory)
+    model._solve = {
+        "termination": "optimal" if info["status"] == 0 else "unresolved",
+        "attempt": "unscaled",
+        "solve_and_kkt_s": time.monotonic() - started,
+        "options": options,
+        "attempts": [attempt],
+        "full_nlp_evaluations": nlp.evaluations,
+        "full_nlp_evaluation_limit": 512,
+        "ipopt_version": ".".join(map(str, cyipopt.IPOPT_VERSION)),
+        "washed_feed_l_per_raw_l": value(model.fs.washed_feed_l_per_raw_l),
+    }
+    if info["status"] != 0:
+        raise RuntimeError(
+            f"IPOPT unresolved: {attempt}; {nlp.evaluations} NLP evaluations"
+        )
+    diagnostics = _kkt(model, log)
+    model._solve["kkt"] = diagnostics
+    limits = {
+        "stationarity": 1e-7,
+        "complementarity": 1e-7,
+        "feasibility": 1e-8,
+        "multiplier_sign": 1e-8,
+    }
+    if any(
+        not np.isfinite(diagnostics[k]) or diagnostics[k] > v for k, v in limits.items()
+    ):
+        raise RuntimeError(f"KKT limits failed: {diagnostics}")
+    nlp.set_primals(x)
+    model._solve.update(outlet_jacobian(model, nlp, options["constr_viol_tol"]))
+    model._solve["full_nlp_evaluations"] = nlp.evaluations
+    model._solved_values = solved_values(model)
+    return model._solve
+
+
+def outlet_jacobian(model, nlp, constraint_tolerance):
+    """Propagate local equality residuals to the raw-litre extraction outlets."""
+    from scipy.sparse.linalg import splu
+
+    equality = nlp.constraints_lb() == nlp.constraints_ub()
+    jacobian = nlp.evaluate_jacobian().tocsc()[equality, :].tocsc()
+    columns = {id(v): j for j, v in enumerate(nlp.get_pyomo_variables())}
+    factor = value(model.fs.washed_feed_l_per_raw_l)
+    propagation = {}
+    if jacobian.shape[0] == jacobian.shape[1]:
+        try:
+            lu = splu(jacobian)
+        except RuntimeError:
+            pass  # Leave the conditioning unresolved in the record.
+        else:
+            for k in model.fs.stages:
+                for name, stream in model.fs.stage[k].outlet.items():
+                    if id(stream) in columns:
+                        delta = np.zeros(jacobian.shape[1])
+                        delta[columns[id(stream)]] = 1.0
+                        gain = float(np.linalg.norm(lu.solve(delta, trans="T"), ord=1))
+                        propagation[f"{k}/{name}"] = (
+                            gain * constraint_tolerance * factor
+                        )
+    return {
+        "outlet_jacobian_bound_mol_per_raw_l": propagation,
+        "residual_jacobian_shape": list(jacobian.shape),
+    }
+
+
+def report(model, *, certify=True):
     """Recompute conservation and owner strict certificates from the solved connected streams."""
     if not hasattr(model, "_solve"):
         raise ValueError("report requires a solved model")
@@ -657,7 +787,9 @@ def report(model):
             for r, row in enumerate(chemistry.conservation)
         }
         residuals.update({f"stage{k}/{r}": n for r, n in balances.items()})
-        certificate = chemistry.certify(inlet, outlet)
+        certificate = (
+            chemistry.certify(inlet, outlet) if certify else {"status": "deferred"}
+        )
         terminal = {}
         if k == len(model.fs.stages):
             unit = model.fs.extraction.mscontactor

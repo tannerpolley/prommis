@@ -148,13 +148,44 @@ def extract(
     return result
 
 
-def entrained_l(case_assumptions, strip_li_mol):
-    """Organic litres per raw litre leaving with the raffinate (one raw litre) and the strip liquor, whose water is the
-    stripped Li at the concentrate molality (1 kg/L, #176 basis); the shared entrainment applies to both (#342).
-    """
-    return case_assumptions["entrainment_l_per_l"] * (
-        1 + strip_li_mol / case_assumptions["concentrate_li_mol_kg"]
-    )
+def entrained_l(case_assumptions, strip_outlet_l):
+    """Organic litres per raw litre lost at both aqueous separators."""
+    return case_assumptions["entrainment_l_per_l"] * (1 + strip_outlet_l)
+
+
+def historical_strip_volume(case_assumptions, strip_li_mol):
+    """Concentration proxy for the archived open-loop and #433 replay."""
+    return strip_li_mol / case_assumptions["concentrate_li_mol_kg"]
+
+
+def separated_losses(raffinate, strip, free_b_concentration, entrained):
+    """Losses in kg/raw L from the actual separated species and nominal diluent formulation."""
+    masses = MOLAR_MASS_KG_MOL
+    lost = {s: (raffinate[s] if s in raffinate else 0.0) + n for s, n in strip.items()}
+    losses = {
+        "BuPhen_dissolution": free_b_concentration
+        / BUPHEN_ORGANIC_AQUEOUS_PARTITION
+        * masses["BuPhen"],
+        "BuPhen_entrainment": sum(
+            rc.MOIETIES["B"].get(s, 0) * n for s, n in lost.items()
+        )
+        * masses["BuPhen"],
+        "D2EHDTPA_entrainment": sum(
+            rc.MOIETIES["A"].get(s, int(s == "ha")) * n for s, n in lost.items()
+        )
+        * masses["D2EHDTPA"],
+        "diluent": 0.75 * lost["diluent"] * masses["dodecane"],
+    }
+    for k in ("octanol_1", "octanol_2"):
+        row = BASIS[k]
+        losses[k + "_dissolution"] = row["pure_water_solubility_kg_m3"] / 1000
+        losses[k + "_entrainment"] = (
+            entrained * row["vol_fraction"] * row["density_kg_L"]
+        )
+    return losses | {
+        f"octanol_{key}": sum(losses[k + "_" + key] for k in ("octanol_1", "octanol_2"))
+        for key in ("dissolution", "entrainment")
+    }
 
 
 def losses_kg_per_l(
@@ -261,10 +292,22 @@ def accounts(
         raise RuntimeError("Strip/site mass balance exceeds 1e-9 mol/L feed")
     rec = strip["Li"] / feed_li
     li_kg = strip["Li"] * MASSES["Li"] * 1000
+    prepared_l = (
+        strip_volume * case_assumptions["strip_aqueous_to_organic"]
+        if strip_volume is not None and "strip_aqueous_to_organic" in case_assumptions
+        else None
+    )
+    outlet_l = (
+        prepared_l
+        if prepared_l is not None
+        else (
+            historical_strip_volume(case_assumptions, strip["Li"]) if not old else None
+        )
+    )
     entrained = (
         BASIS["entrainment_fraction"][case] * v
         if old
-        else entrained_l(case_assumptions, strip["Li"])
+        else entrained_l(case_assumptions, outlet_l)
     )
     naoh = available + h2s
     if strip_volume is not None:
@@ -288,6 +331,28 @@ def accounts(
             site_basis_li_mol_l=site_basis,
         ).items()
     }
+    if prepared_l is not None:
+        raffinate_l = case_assumptions["entrainment_l_per_l"]
+        raffinate = extraction["stages"][-1]["amounts_mol"][1]
+        stripped = dict(extraction["stages"][0]["amounts_mol"][1])
+        if len(extraction["stages"]) == 1:
+            stripped = {s: n * strip_volume / v for s, n in stripped.items()}
+        stripped["ha"] = sum(rc.ION[e][2] * n for e, n in strip.items())
+        stripped["buphen"] += 2 * strip["Li"]
+        for e, n in retained.items():
+            stripped[rc.COMPLEX[e] if e != "Na" else "naa"] = n
+        lost = {
+            k: 1000 * n
+            for k, n in separated_losses(
+                {s: n * raffinate_l / v for s, n in raffinate.items()},
+                {
+                    s: n * (entrained - raffinate_l) / strip_volume
+                    for s, n in stripped.items()
+                },
+                raffinate["buphen"] / v,
+                entrained,
+            ).items()
+        }
     costs = {
         "naoh": naoh * 0.039997 * 1000 * prices["naoh"],
         "hcl31": acid * 0.036461 / 0.31 * 1000 * prices["hcl"],
@@ -343,7 +408,9 @@ def accounts(
     for k, cost in costs.items():
         result[f"{k}_usd_m3"] = cost
     if not old:
-        return result | {"entrainment_l_per_l": case_assumptions["entrainment_l_per_l"]}
+        result["entrainment_l_per_l"] = case_assumptions["entrainment_l_per_l"]
+        result["strip_outlet_volume_l_per_raw_l"] = outlet_l
+        return result
     lce_kg = result["lce_recovered_kg_m3"]
     result.update(
         {

@@ -9,6 +9,7 @@ raw brine (mol per raw litre); water is kg/raw L.
 import csv
 import math
 
+from idaes.core.util.scaling import constraint_scaling_transform
 from pyomo.common.collections import ComponentSet
 from pyomo.contrib.incidence_analysis import solve_strongly_connected_components
 from pyomo.environ import (
@@ -22,6 +23,10 @@ from pyomo.environ import (
 from pyomo.network import Arc
 from pyomo.util.check_units import assert_units_consistent
 from pyomo.util.subsystems import TemporarySubsystemManager, create_subsystem_block
+
+from prommis.lithium_extraction.thermodynamics.hbta_topo_constants import (
+    LI_MOLAR_MASS_G_MOL,
+)
 
 from prommis.lithium_extraction.process import (
     waters as brines,
@@ -338,6 +343,19 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
     )
     assert_units_consistent(model)
 
+    # #457: five serial Li equalities in mol/s would each allow 3600 times the IPOPT
+    # constraint tolerance in mol/raw L at 1 raw L/h. Use the mol/h basis on all five.
+    for constraint in (
+        fs.strip_liquid.mapping["Li"],
+        fs.neutralization.feed_expanded.flow_mol_phase_comp_equality[0, "Liq", "Li"],
+        fs.neutralization.material_mixing_equations[0, "Li"],
+        fs.neutralization.inherent_reaction_constraint[0, "Liq", "Li"],
+        fs.neutral_projection.feed_expanded.flow_mol_phase_comp_equality[
+            0, "Liq", "Li"
+        ],
+    ):
+        constraint_scaling_transform(constraint, 3600)
+
 
 def _initialize_units(fs, owner, recycle):
     """Scrub, strip and concentrate follow the live extraction; the recycle loop starts at the owner's closed form."""
@@ -435,6 +453,11 @@ def report(model, result, softening):
     )
     if model._design["organic_to_aqueous_ratio"] != 1.0:
         owner["evaporation_alternative_mj_m3_latent_only"] = None
+    feed_li = (
+        washed["front_end"]["original_raw_elements_mol"]["Li"]
+        if washed.get("front_end")
+        else washed["raw_mol"]["Li"]
+    )
     quantities = {
         "scrub_acid_mol": fs.scrub.acid_mol,
         "gross_strip_acid_mol": fs.strip.gross_acid_mol,
@@ -447,13 +470,7 @@ def report(model, result, softening):
         "reactor_water_kg": fs.carbonation.water_kg,
         "fresh_water_kg": fs.concentration.net_water_kg,
         "operating_usd_kg_li": fs.costing.usd_kg_li,
-        "raw_li_recovery": 2
-        * fs.carbonation.product_mol
-        / (
-            washed["front_end"]["original_raw_elements_mol"]["Li"]
-            if washed.get("front_end")
-            else washed["raw_mol"]["Li"]
-        ),
+        "raw_li_recovery": 2 * fs.carbonation.product_mol / feed_li,
         "li_product_kg_m3": fs.costing.li_kg_h,
     }
     if (
@@ -467,8 +484,12 @@ def report(model, result, softening):
     if prepared > 1e-9:
         raise RuntimeError("Prepared organic differs from the extraction inlet")
     differences = {k: actual[k] - owner[k] for k in actual}
+    # Convert the #219 post-purge product Li mass allowance to mol/raw L and divide by raw-feed Li.
+    recovery_limit = OWNER_COMPARISON_LIMIT / (LI_MOLAR_MASS_G_MOL * feed_li)
     if any(
-        not math.isfinite(n) or abs(n) > OWNER_COMPARISON_LIMIT
+        not math.isfinite(n)
+        or abs(n)
+        > (recovery_limit if k == "raw_li_recovery" else OWNER_COMPARISON_LIMIT)
         for k, n in differences.items()
         if k != "operating_usd_kg_li"
     ):
@@ -628,6 +649,72 @@ def report(model, result, softening):
     )
 
 
+def nominal_water(fs, washed, gross_strip_water, concentrate_water):
+    """Named #447 water accounts on the existing HBTA strip and Ge basis."""
+    mw = brines.WATER_MOLAR_MASS_KG
+    carrier = flowsheet.HCL_MOLAR_MASS_KG * (1 / flowsheet.hcl_stock_fraction() - 1)
+    g, c = gross_strip_water, concentrate_water
+    s = carrier * value(fs.strip.fresh_acid_mol)
+    r, bleed, trim = g - c, max(0.0, s - c), max(0.0, c - s)
+    if not 0 <= c <= g or not 0 <= bleed <= r or not 0 <= s < g:
+        raise ValueError("Incompatible nominal HBTA strip water preparation")
+    neutral = value(fs.neutralization.excluded_reaction_water_kg)
+    regeneration = value(fs.saponification.naoh_mol) * mw
+    softening_stock = carrier * washed["reagent_mol"]["HCl"]
+    scrub_stock = carrier * value(fs.scrub.acid_mol)
+    numeric = {
+        "softening HCl stock carrier": softening_stock,
+        "washed-liquor to raffinate water projection": softening_stock,
+        "scrub HCl stock carrier": scrub_stock,
+        "fresh strip HCl stock carrier": s,
+        "fresh strip trim": trim,
+        "concentrator feed water": g,
+        "concentrator separated water": r,
+        "concentrator clean-water bleed": bleed,
+        "concentrator water returned to strip": r - bleed,
+        "concentrate water to Ge": c,
+        "neutralization mixer outlet water": g + neutral,
+        "neutralization reaction-water projection": neutral,
+        "saponification reaction-water discharge": regeneration,
+        "strip mixer water closure": math.fsum((s, trim, r, -bleed, -g)),
+        "external downstream water closure": math.fsum(
+            (
+                softening_stock,
+                scrub_stock,
+                s,
+                trim,
+                neutral,
+                regeneration,
+                -softening_stock,
+                -scrub_stock,
+                -neutral,
+                -regeneration,
+                -bleed,
+                -c,
+            )
+        ),
+    }
+    symbolic = {
+        "fresh scrub dilution": (0.0, "U_s"),
+        "scrub wastewater": (scrub_stock, "U_s"),
+        "recovered strip acid carrier to mixer": (0.0, "U_r"),
+        "recovered strip acid carrier from separator": (0.0, "U_r"),
+        "gross strip aqueous water to recovery": (g, "U_r"),
+    }
+    return {
+        k: {"kg_per_raw_l": n, "basis": "#447 nominal water accounting"}
+        for k, n in numeric.items()
+    } | {
+        k: {
+            "kg_per_raw_l": None,
+            "known_kg_per_raw_l": n,
+            "unquantified_kg_per_raw_l": symbol,
+            "basis": "#447 unmeasured, nonnegative water amount",
+        }
+        for k, (n, symbol) in symbolic.items()
+    }
+
+
 def complete_reporting(result, fs):
     """Expose known #176 inventories and washed-feed coverage without rerunning chemistry."""
     washed = result["softening"][result["case"]]
@@ -709,6 +796,15 @@ def complete_reporting(result, fs):
             )
         },
     }
+    if result["water_streams"]["gross strip liquor"]["kg_per_raw_l"] > 0.0:
+        result["water_streams"].update(
+            nominal_water(
+                fs,
+                washed,
+                result["water_streams"]["gross strip liquor"]["kg_per_raw_l"],
+                net,
+            )
+        )
     feed = result["feed"]
     if washed.get("front_end"):
         result["water_streams"]["front-end fresh water"] = dict(
