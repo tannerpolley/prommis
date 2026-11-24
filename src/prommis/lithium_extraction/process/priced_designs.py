@@ -1,11 +1,11 @@
-"""Read the retained component-priced nominal process designs by design ID and price."""
+"""Read the retained heat-priced nominal process designs by design ID and price."""
 
 import csv
 import json
 
 from prommis.lithium_extraction.paths import REPO_ROOT
 
-RESULTS = REPO_ROOT / "analyses/prototypes/modular_process/results/priced_margin"
+RESULTS = REPO_ROOT / "analyses/prototypes/modular_process/results/heat_priced_designs"
 PRIMARY, SECONDARY, REPRICE = 9000, 17500, 20900
 FITS = {
     "fitted": "D2EHDTPA/BuPhen (Figiel)",

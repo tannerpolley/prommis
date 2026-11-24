@@ -53,7 +53,6 @@ logging.getLogger("idaes.core.base.costing_base").setLevel(logging.ERROR)
 
 STUDY = ROOT / "analyses/prototypes/modular_process"
 BAND = json.loads((STUDY / "results/targets/exchange_band.json").read_text())
-SCREEN = STUDY / "results/priced_margin"
 WORKED_EXAMPLE = (
     "Worked example: cheapest design, 1 % organic loss per pass, HBTA at 100 USD/kg"
 )
@@ -852,7 +851,7 @@ def check_against_paper(results, softened):
 
 def _screen():
     """The attained selections at each price with their retained dispositions."""
-    return selected_designs(*load_matrix(SCREEN))
+    return selected_designs(*load_matrix())
 
 
 def paper_headline():
@@ -900,9 +899,14 @@ def paper_screen_summary():
         for cell in rows
         if cell["price"] == SECONDARY and cell["design"] and margin(cell) > 0
     ]
+    secondary = (
+        f"positive margins occur for {' and '.join(sorted(positive))}."
+        if positive
+        else "no attained margin is positive."
+    )
     return (
         f"- At **{PRIMARY:,} USD/t LCE**, {negative} of {len(attained)} attained margins are negative. "
         f"The highest is **{margin(best):.2f} USD/m³** for {PRICED_FITS[best['fit']]} at {water(best)}.\n"
         f"- {len(primary) - len(attained)} water and calibration combinations have no verified target design.\n"
-        f"- At **{SECONDARY:,} USD/t LCE**, positive margins occur only for {' and '.join(sorted(positive))}."
+        f"- At **{SECONDARY:,} USD/t LCE**, {secondary}"
     )

@@ -141,4 +141,7 @@ Ba = "Ba"
 extend-ignore-re = [
     # Jupyter notebooks: ignore hexadecimal values in "id" cell metadata field
     '"id": "[0-9a-f]+",',
+    # Retained lithium process design IDs in executed notebook outputs.
+    '\b[0-9a-f]{20}\b',
+    'IPY_MODEL_[0-9a-f]{32}',
 ]
