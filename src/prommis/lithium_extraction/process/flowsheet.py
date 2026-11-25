@@ -447,7 +447,15 @@ def costs_and_balances(
         "Li": (li - scrub_waste["Li"]) * strip_eff,
         "Na": na - scrub_waste["Na"],
     }
-    regen_waste = {"Li": (li - scrub_waste["Li"]) * (1 - strip_eff), "Na": 0.0}
+    organic_li_loss = extraction.get("organic_entrained_lithium")
+    regen_waste = {
+        "Li": (
+            (li - scrub_waste["Li"]) * (1 - strip_eff)
+            if organic_li_loss is None
+            else 0.0
+        ),
+        "Na": 0.0,
+    }
     gross_strip_acid = (
         2.5 * organic_volume / 10
         if strip_ratio is None
@@ -592,6 +600,7 @@ def costs_and_balances(
         + v * x["li"]
         + scrub_waste["Li"]
         + regen_waste["Li"]
+        + (organic_li_loss or 0.0)
         + 2 * product
         + purge["Li"],
         "Na": feed["cake_mol"]["Na"]

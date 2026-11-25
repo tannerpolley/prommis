@@ -22,6 +22,7 @@ from pyomo.environ import (
 )
 from pyomo.network import Arc
 from pyomo.util.check_units import assert_units_consistent
+from pyomo.util.calc_var_value import calculate_variable_from_constraint
 from pyomo.util.subsystems import TemporarySubsystemManager, create_subsystem_block
 
 from prommis.lithium_extraction.thermodynamics.hbta_topo_constants import (
@@ -64,6 +65,8 @@ def connected_nacl(raw, model, washed, loaded, assumptions, ratio):
         for k, n in model._full_process["assumptions"].items()
         if k != "extractant_mol_l"
     }
+    if hasattr(getattr(model.fs, "strip", None), "aqueous_to_organic"):
+        stored["strip_aqueous_to_organic"] = value(model.fs.strip.aqueous_to_organic)
     supplied = {
         k: n for k, n in assumptions.items() if k != "extractant_mol_l"
     }  # enumerate_units never reads it
@@ -107,7 +110,15 @@ def extraction(model):
         "saponification_mol_per_raw_l": model._feeds[1].get("sodium-carrier", 0.0) * v,
         "organic_volume_l_per_raw_l": model._design["organic_to_aqueous_ratio"] * v,
         "mixed_feed_l_per_raw_l": v,
-    }
+    } | (
+        {
+            "organic_entrained_lithium": value(
+                model.fs.organic_loss.loss_state[0].flow_mol_comp["Li"]
+            )
+        }
+        if hasattr(getattr(model.fs, "design", None), "returned_lithium")
+        else {}
+    )
 
 
 def enumerate_units(
@@ -332,6 +343,15 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
         mother_liquor_return.split(fs)
     carbon = fs.carbonation
     _initialize_units(fs, owner, assumptions["mother_recycle"])
+    if hasattr(getattr(fs, "design", None), "returned_lithium"):
+        # The unit initialization has evaluated the strip outlet at the prepared stage profile.
+        # Seed the coupled organic inlet with that returned inventory before the NLP closes it.
+        for species, equation in (
+            ("lithium-carrier", fs.design.returned_lithium),
+            ("hbta", fs.design.free_extractant),
+            ("topo", fs.design.free_topo),
+        ):
+            calculate_variable_from_constraint(fs.boundary[species], equation)
     # The original owner supplies all prices and kg/mol conversions, including 31% HCl.
     quantities = {
         "saponification_NaOH": fs.saponification.naoh_mol,
@@ -556,9 +576,20 @@ def report(model, result, softening):
     balances = dict(result["balance_residuals_mol_per_raw_l"])
     balances.update({"softening/" + k: n for k, n in washed["closure_mol"].items()})
     balances.update({"chain/" + k: n for k, n in owner["closure_mol"].items()})
-    balances["regeneration lithium discharge"] = value(
-        fs.strip.regeneration_li - fs.strip.organic_out["lithium-carrier"]
+    retained_li = (
+        {
+            "lithium returned in organic": value(fs.boundary["lithium-carrier"]) * v,
+            "lithium lost with organic": extracted["organic_entrained_lithium"],
+        }
+        if "organic_entrained_lithium" in extracted
+        else {}
     )
+    residual_balance = (
+        "residual organic lithium" if retained_li else "regeneration lithium discharge"
+    )
+    balances[residual_balance] = value(
+        fs.strip.regeneration_li - fs.strip.organic_out["lithium-carrier"]
+    ) + math.fsum(retained_li.values())
     balances["regeneration lithium separator"] = value(
         fs.regenerated.lithium_discharge_state[0].flow_mol_comp["Li"]
         - fs.strip.regeneration_li
@@ -656,6 +687,11 @@ def report(model, result, softening):
             j: value(state.flow_mol_comp[j])
             for j in ("BTA_total", "TOPO_total", "diluent")
         }
+    if retained_li:
+        physical["organic loss"]["Li"] = retained_li["lithium lost with organic"]
+        physical["regenerated organic"]["Li"] = retained_li[
+            "lithium returned in organic"
+        ]
     physical["organic make-up input"] = {
         label: value(fs.organic_makeup.fresh_state[0].flow_mol_comp[j])
         for label, j in (

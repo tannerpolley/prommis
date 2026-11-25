@@ -189,7 +189,10 @@ def aqueous(fs, assumptions, gross_water_kg, concentrate_li):
 
 
 def organic(fs, model, assumptions, v, free, strip_ratio, strip_li_fraction):
-    """The preparation outlet is checked against extraction, with no organic recycle arc."""
+    """Account for the returned solvent. Off-anchor cases can retain loaded lithium."""
+    retain_li = (
+        assumptions.get("return_lithium_in_organic", False) and strip_li_fraction < 1.0
+    )
     org = fs.strip.organic_out
     fs.organic_total_properties = stage.MolarFlowParameters(
         phase="organic", species=("BTA_total", "TOPO_total", "diluent", "Li")
@@ -221,11 +224,13 @@ def organic(fs, model, assumptions, v, free, strip_ratio, strip_li_fraction):
     )
     regenerated.feed = Arc(source=t.outlet, destination=regenerated.inlet)
     for j in fs.organic_total_properties.component_list:
-        regenerated.split_fraction[0, "lithium_discharge", j].fix(float(j == "Li"))
+        regenerated.split_fraction[0, "lithium_discharge", j].fix(
+            float(j == "Li" and not retain_li)
+        )
     fs.strip.regeneration_li = Expression(
         expr=(
             0.0
-            if strip_li_fraction == 1.0
+            if strip_li_fraction == 1.0 or retain_li
             else regenerated.lithium_discharge_state[0].flow_mol_comp["Li"]
         )
     )
@@ -256,8 +261,12 @@ def organic(fs, model, assumptions, v, free, strip_ratio, strip_li_fraction):
     makeup.replacement = Constraint(
         fs.organic_total_properties.component_list,
         rule=lambda b, j: b.fresh_state[0].flow_mol_comp[j]
-        == loss.loss_state[0].flow_mol_comp[j]
-        + (dissolved if j == "BTA_total" else 0.0),
+        == (
+            0.0
+            if retain_li and j == "Li"
+            else loss.loss_state[0].flow_mol_comp[j]
+            + (dissolved if j == "BTA_total" else 0.0)
+        ),
     )
     for label, j in (
         ("hbta", "BTA_total"),
@@ -274,10 +283,18 @@ def organic(fs, model, assumptions, v, free, strip_ratio, strip_li_fraction):
     t = fs.unloaded_organic
     t.feed = Arc(source=makeup.outlet, destination=t.inlet)
     labels = {free: "BTA_total", "topo": "TOPO_total", "diluent": "diluent"}
+    totals = t.properties_in[0].flow_mol_comp
+    prepared = {s: totals[j] for s, j in labels.items()}
+    if retain_li:
+        if free != "hbta" or not hasattr(model, "_decisions"):
+            raise ValueError(
+                "Lithium-bearing organic return requires the connected HBTA/TOPO decisions"
+            )
+        prepared.update({s: prepared[s] - totals["Li"] for s in (free, "topo")})
+        prepared["lithium-carrier"] = totals["Li"]
     t.mapping = Constraint(
         fs.loaded_properties.component_list,
-        rule=lambda b, j: b.properties_out[0].flow_mol_comp[j]
-        == (b.properties_in[0].flow_mol_comp[labels[j]] if j in labels else 0.0),
+        rule=lambda b, j: b.properties_out[0].flow_mol_comp[j] == prepared.get(j, 0.0),
     )
     fs.saponification = Block()
     sap = fs.saponification
@@ -328,3 +345,12 @@ def organic(fs, model, assumptions, v, free, strip_ratio, strip_li_fraction):
         fs.loaded_properties.component_list,
         rule=lambda b, j: unit.organic[0, 1].flow_mol_comp[j] - v * fs.boundary[j],
     )
+    if retain_li:
+        inlet = fs.boundary["lithium-carrier"]
+        inlet.unfix()
+        fs.design.free_extractant.set_value(
+            fs.design.free_extractant.body + inlet == 0.0
+        )
+        fs.design.returned_lithium = Constraint(
+            expr=sap.prepared_difference["lithium-carrier"] == 0.0
+        )
