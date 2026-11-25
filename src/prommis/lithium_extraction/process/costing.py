@@ -35,6 +35,33 @@ RAW_L_H = (
 WATER_LATENT_HEAT_MJ_KG = (
     2.2565407482377573  # IAPWS-IF97, saturated water at 101.325 kPa
 )
+
+# Issue #474 equipment screens. Steam uses the #472 saturated enthalpy drop.
+USEFUL_HEAT_USD_MJ = 5.23 / (1.037 * 1055.05585262 * 0.80)
+INDUSTRIAL_ELECTRICITY_USD_KWH = 0.0851
+
+
+def evaporation_purchases(vapor_kg, equipment):
+    """Live steam (kg), purchased heat (MJ), and electricity (kWh) on the vapor flow basis."""
+    kind = equipment["kind"]
+    if kind in ("single_effect", "three_effect"):
+        steam = vapor_kg / equipment.get(
+            "steam_economy", 1.0 if kind == "single_effect" else 2.6
+        )
+        return steam, steam * WATER_LATENT_HEAT_MJ_KG, 0.0
+    if kind in ("mvr", "ro_mvr"):
+        return 0.0, 0.0, vapor_kg * equipment.get("mvr_kwh_m3_condensate", 26.42) / 1000
+    raise ValueError(f"Unknown concentration equipment {kind}")
+
+
+def utility_price(equipment):
+    """USD per MJ useful heat and USD per kWh purchased electricity."""
+    return (
+        equipment.get("heat_price_usd_mj", USEFUL_HEAT_USD_MJ),
+        equipment.get("electricity_price_usd_kwh", INDUSTRIAL_ELECTRICITY_USD_KWH),
+    )
+
+
 GRAVITY_M_S2 = 9.80665
 # R1 screening organic: 0.015 M formulation anchor; marginal HBTA and TOPO above it at 100 USD/kg each.
 FORMULATION_ANCHOR_MOL_L = 0.015

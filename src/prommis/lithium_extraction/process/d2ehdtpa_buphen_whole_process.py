@@ -22,6 +22,7 @@ from prommis.lithium_extraction.process import (
     costing,
     strip_and_carbonation as downstream,
     flowsheet,
+    mother_liquor_return,
     feeds as records,
     retained_references as references,
 )
@@ -149,7 +150,7 @@ ACCOUNT_RELATIVE_LIMIT = (
 )
 
 
-def accounts(strip, assumptions, feed_li):
+def accounts(strip, assumptions, feed_li, *, aqueous_return=None, nacl_coordinate=None):
     """Operating cost outside the active set (C_r) on product Li, and the unpriced BuPhen and D2EHDTPA losses."""
     stripped = {
         e: strip[f"strip_{e}_mol_L_feed"] for e in ("Li", "Na", "Mg", "Ca", "Sr")
@@ -162,7 +163,9 @@ def accounts(strip, assumptions, feed_li):
     )
     cleaned = cleanup(stripped, acid, assumptions, preparation=preparation)
     carbon = downstream.accounts(
-        dict(cleaned["cleaned_mol"], H=0.0, C=0.0), assumptions
+        dict(cleaned["cleaned_mol"], H=0.0, C=0.0),
+        assumptions,
+        nacl_coordinate=nacl_coordinate,
     )
     case = strip["case"]
     octanol = float(
@@ -189,6 +192,8 @@ def accounts(strip, assumptions, feed_li):
         "carbonation_Na2CO3": carbon["carbonation_na2co3_mol"]
         * flowsheet.MASS_KG_PER_MOL["Na2CO3"],
     }
+    if aqueous_return is not None:
+        masses["mother_conditioning_HCl31"] = aqueous_return["conditioned"]["HCl31_kg"]
     prices = {
         k: (
             0.285
@@ -285,7 +290,11 @@ def connect_strip(model, case, recycle_assumptions=None, *, ratio_bounds=None):
         }
         for e, s in complexes.items()
     }
-    fractions = d2_stage.owner.BASIS["strip_fractions"][case]
+    fractions = d2_stage.owner.BASIS["strip_fractions"][case] | (
+        recycle_assumptions or {}
+    ).get("strip_fractions", {})
+    if any(not 0 <= f <= 1 for f in fractions.values()):
+        raise ValueError("Strip transfer fractions must be between zero and one")
     spectators = ("diluent",) if recycle_assumptions is not None else ()
     strip = downstream.fixed_fraction_strip(
         fs,
@@ -335,8 +344,9 @@ def connect_strip(model, case, recycle_assumptions=None, *, ratio_bounds=None):
     if recycle_assumptions is None:
         return
     fs.organic_recycle = recycle = Block()
-    raffinate_l = recycle_assumptions["entrainment_l_per_l"]
-    volume = model._decisions["O_A"] - raffinate_l
+    entrainment = recycle_assumptions["entrainment_l_per_l"]
+    raffinate_l = entrainment * fs.aqueous_volume
+    volume = fs.design.organic_volume - raffinate_l
     recycle.loaded_volume_l = Expression(expr=volume)
     ratio_name = "strip_aqueous_to_organic"
     nominal = ratio_name in recycle_assumptions
@@ -354,7 +364,7 @@ def connect_strip(model, case, recycle_assumptions=None, *, ratio_bounds=None):
             recycle_assumptions, strip.metals["Li"]
         )
     )
-    recycle.strip_entrained_volume_l = Expression(expr=raffinate_l * outlet_l)
+    recycle.strip_entrained_volume_l = Expression(expr=entrainment * outlet_l)
     strip_l = recycle.strip_entrained_volume_l
     if nominal:
         model._d2_full_process = recycle_assumptions
@@ -403,6 +413,18 @@ def connect_units(model, initial, assumptions, interval):
     if not hasattr(model.fs, "strip"):
         connect_strip(model, initial["case"])
     fs, strip = model.fs, model.fs.strip
+    if model._aqueous_return:
+        mother_liquor_return.mix(
+            model,
+            assumptions["mother_liquor_return"],
+            initial,
+            stages_per_nominal_litre=False,
+        )
+        if model._raiguel_recipe:
+            ratio = model._decisions["O_A"]
+            ratio.unfix()  # S is the independent control. O/A also follows the mixed Li in fixed replays.
+            fs.design.site_concentration.activate()
+            calculate_variable_from_constraint(ratio, fs.design.site_concentration)
     fs.cleanup = Block()
     amounts = d2_stage.strip_accounts(
         {f"strip_{e}_mol_L_feed": n for e, n in strip.metals.items()}, model._solvent
@@ -434,6 +456,8 @@ def connect_units(model, initial, assumptions, interval):
         {"carbonation_interval_mol_kg": interval},
         initial,
     )
+    if model._aqueous_return:
+        mother_liquor_return.split(fs)
     model._carbonation_interval = list(interval)
     for e, n in cleaned["cleaned_mol"].items():
         fs.carbonation.mixer.concentrate_state[0].flow_mol_comp[e].set_value(value(n))
@@ -447,7 +471,8 @@ def connect_units(model, initial, assumptions, interval):
     # Design-dependent accounts (#342): the shared entrainment on raffinate and strip liquor, octanol, BuPhen,
     # D2EHDTPA and dodecane losses and the saponification NaOH follow the solved design and stage outlets.
     d = model._decisions if hasattr(model, "_decisions") else model._design
-    ratio, n = d["O_A"], len(fs.stages)
+    ratio = fs.design.organic_volume if hasattr(fs, "design") else d["O_A"]
+    n = len(fs.stages)
     recycle = getattr(fs, "organic_recycle", None)
     buphen = d["B"] if recycle is not None else fs.boundary["buphen"] / ratio
     naoh = recycle.regeneration_naoh if recycle is not None else fs.boundary["naa"]
@@ -457,7 +482,12 @@ def connect_units(model, initial, assumptions, interval):
             getattr(fs, "raffinate_entrained_organic", {}),
             recycle.strip_loss,
             free_b,
-            assumptions["entrainment_l_per_l"] + recycle.strip_entrained_volume_l,
+            assumptions["entrainment_l_per_l"] * fs.aqueous_volume
+            + recycle.strip_entrained_volume_l,
+            aqueous_volume=fs.aqueous_volume,
+            modifier_fractions=assumptions.get(
+                "modifier_volume_fractions", d2_stage.owner.HISTORICAL_OCTANOL_FRACTIONS
+            ),
         )
     else:
         old_volume = d2_stage.owner.historical_strip_volume(
@@ -490,6 +520,16 @@ def connect_units(model, initial, assumptions, interval):
         "carbonation_Na2CO3": fs.carbonation.carbonate_mol
         * flowsheet.MASS_KG_PER_MOL["Na2CO3"],
     }
+    if model._aqueous_return:
+        live["mother_conditioning_HCl31"] = fs.mother_liquor_return.conditioned[
+            "HCl31_kg"
+        ]
+        initial = initial | {
+            "mass_kg_per_l": initial["mass_kg_per_l"]
+            | {"mother_conditioning_HCl31": 0.0},
+            "prices_usd_kg": initial["prices_usd_kg"]
+            | {"mother_conditioning_HCl31": initial["prices_usd_kg"]["strip_HCl31"]},
+        }
     active = {
         "BuPhen": fs.losses["BuPhen_dissolution"] + fs.losses["BuPhen_entrainment"],
         "D2EHDTPA": fs.losses["D2EHDTPA_entrainment"],
@@ -546,10 +586,14 @@ def recycle_report(model, result, owner, actual):
     ):
         raise RuntimeError(f"External metal balance exceeds R7: {external}")
     mm = d2_stage.owner.MOLAR_MASS_KG_MOL
+    modifiers = owner["assumptions"].get(
+        "modifier_volume_fractions", d2_stage.owner.HISTORICAL_OCTANOL_FRACTIONS
+    )
     makeup = {
         "A": owner["active_mass_kg_per_l"]["D2EHDTPA"] / mm["D2EHDTPA"],
         "B": owner["active_mass_kg_per_l"]["BuPhen"] / mm["BuPhen"],
-        "diluent": owner["mass_kg_per_l"]["diluent"] / (0.75 * mm["dodecane"]),
+        "diluent": owner["mass_kg_per_l"]["diluent"]
+        / ((1 - sum(modifiers.values())) * mm["dodecane"]),
     }
     dissolved_b = result["accounts"]["BuPhen_dissolved_kg_m3"] / (1000 * mm["BuPhen"])
     ligand_balance = {}
@@ -595,7 +639,8 @@ def recycle_report(model, result, owner, actual):
             "loaded_organic_l_per_raw_l": value(recycle.loaded_volume_l),
             "raffinate_entrained_l_per_raw_l": owner["assumptions"][
                 "entrainment_l_per_l"
-            ],
+            ]
+            * value(fs.aqueous_volume),
             "strip_entrained_l_per_raw_l": value(recycle.strip_entrained_volume_l),
             "fresh_acid_form_sites_mol_per_raw_l": bought,
             "returned_HA_mol_per_raw_l": returned_ha,
@@ -637,10 +682,12 @@ def report(model, result):
             assumptions,
             strip_aqueous_to_organic=model._design["strip_aqueous_to_organic"],
         )
+    aqueous_return = mother_liquor_return.report(fs) if model._aqueous_return else None
     owner = accounts(
         d2_stage.strip_accounts(result["accounts"], model._solvent),
         assumptions,
-        result["feed"]["model_feed"]["Li"],
+        model._physical_feed["model_feed"]["Li"],
+        aqueous_return=aqueous_return,
     )
     strip = fs.strip
     actual = {e: value(n) for e, n in strip.metals.items()}
@@ -702,6 +749,23 @@ def report(model, result):
         },
         "li_product_kg_m3": (value(fs.costing.li_kg_h), owner["li_product_kg_m3"]),
     }
+    conditioning = None
+    if aqueous_return is not None:
+        a, b = pairs.pop("mother_conditioning_HCl31")
+        tau = result["solve"]["options"]["constr_viol_tol"]
+        # Conditioning stock is proportional to returned C. Propagate the splitter's
+        # mol/raw L tolerance and the costing equality's kg/h tolerance at 1,000 raw L/h.
+        bound = (
+            2 * flowsheet.MASS_KG_PER_MOL["HCl31"] * tau
+            + tau / 1000
+            + math.ulp(a)
+            + math.ulp(b)
+        )
+        conditioning = {"difference_kg_per_raw_l": a - b, "bound_kg_per_raw_l": bound}
+        if not math.isfinite(a - b) or abs(a - b) > bound:
+            raise RuntimeError(
+                f"Conditioning stock reconciliation failed: {conditioning}"
+            )
     account_differences = {
         k: abs(a / b - 1) if b else abs(a) for k, (a, b) in pairs.items()
     }
@@ -756,6 +820,15 @@ def report(model, result):
             owner["mother_purge_mol"], Cl=owner["cleanup"]["cleaned_mol"]["Cl"]
         ),
     }
+    if aqueous_return is not None:
+        aqueous_return["conditioning_stock_reconciliation"] = conditioning
+        result["mother_liquor_return"] = aqueous_return
+        physical["external mother liquor bleed"] = aqueous_return["bleed_mol_per_raw_l"]
+        physical["mother liquor returned"] = aqueous_return["returned_mol_per_raw_l"]
+        physical["mother liquor conditioning CO2"] = {
+            "C": aqueous_return["conditioned"]["CO2"]
+        }
+        balances.update(aqueous_return["residuals_mol_per_raw_l"])
     recycle = {}
     if hasattr(fs, "organic_recycle"):
         recycle = recycle_report(model, result, owner, actual)

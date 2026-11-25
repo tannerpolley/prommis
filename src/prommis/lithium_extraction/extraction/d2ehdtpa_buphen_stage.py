@@ -12,6 +12,7 @@ from pyomo.environ import Block, Constraint, Expression, Var, value
 from prommis.lithium_extraction.thermodynamics import d2ehdtpa_buphen_reactions as rc
 from prommis.lithium_extraction.process import (
     waters as brines,
+    mother_liquor_return,
     feeds as records,
     retained_references as references,
 )
@@ -60,6 +61,8 @@ def build_flowsheet(
     design_range=None,
     raffinate_entrainment_l=0.0,
     packet_id=None,
+    raiguel_recipe=False,
+    aqueous_return=False,
 ):
     """One basis per process; chemistry assembly and direct certificates remain source-owned."""
     if (
@@ -89,6 +92,13 @@ def build_flowsheet(
         site_basis_li_mol_l=site_basis,
         design_range=design_range,
     )
+    if raiguel_recipe and (
+        b != owner.RAIGUEL_BUPHEN_MOL_L
+        or abs(sites - owner.RAIGUEL_SITES_MOL_L) > math.ulp(owner.RAIGUEL_SITES_MOL_L)
+    ):
+        raise owner.OutsideDomain(
+            f"Raiguel formulation requires B=0.250 M and 0.050 M sites, got {b}, {sites}"
+        )
     if not all(
         math.isfinite(n)
         for n in (
@@ -127,9 +137,10 @@ def build_flowsheet(
         sr_decade=scenario["Sr_decade"],
     )
     totals = {"sites_total_mol": sites * ratio, "buphen_total_mol": b * ratio}
-    controls = tuple(
-        s for s in species if s not in (rc.ION["Cl"][0], "water", "naa", "buphen")
-    ) + tuple(totals)
+    fixed_species = (rc.ION["Cl"][0], "naa", "buphen") + (
+        () if aqueous_return else ("water",)
+    )
+    controls = tuple(s for s in species if s not in fixed_species) + tuple(totals)
     charges = tuple(
         next((z for name, _, z in rc.ION.values() if name == s), 0) for s in species
     )
@@ -138,7 +149,7 @@ def build_flowsheet(
     for s in species:
         row = {q: float(s == q) for q in controls}
         constant = 0.0
-        if s == "water":
+        if s == "water" and not aqueous_return:
             constant, row = inventory[s], dict.fromkeys(controls, 0.0)
         elif s in ("naa", "buphen"):
             moiety = rc.MOIETIES["A" if s == "naa" else "B"]
@@ -183,27 +194,35 @@ def build_flowsheet(
 
     def certify(inlet, outlet):
         v = inlet["diluent"] / (organic["diluent"] / ratio)
+        aqueous_volume = inlet["water"] / aqueous["water"] if aqueous_return else 1.0
         total_sites = sum(rc.MOIETIES["A"].get(s, 0) * n for s, n in inlet.items()) / v
         total_b = sum(rc.MOIETIES["B"].get(s, 0) * n for s, n in inlet.items()) / v
         loaded = {e: inlet[c] / v for e, c in rc.COMPLEX.items() if c in inlet}
-        carried = {e: inlet[rc.ION[e][0]] for e in cations if rc.ION[e][0] in inlet}
+        carried = {
+            e: inlet[rc.ION[e][0]] / aqueous_volume
+            for e in cations
+            if rc.ION[e][0] in inlet
+        }
         direct = rc.solve(
             carried,
             total_sites,
             total_b,
             constants,
-            organic_to_aqueous=v,
+            organic_to_aqueous=v / aqueous_volume,
             loading=loaded,
             sr_decade=scenario["Sr_decade"],
         )
+        direct_amounts = [
+            {s: amount * aqueous_volume for s, amount in phase.items()}
+            for phase in direct["amounts_mol"]
+        ]
         difference = max(
-            abs(outlet[s] - sum(p.get(s, 0) for p in direct["amounts_mol"]))
-            for s in species
+            abs(outlet[s] - sum(p.get(s, 0) for p in direct_amounts)) for s in species
         )
         return {
             "status": "evaluated",
             **direct["certificate"],
-            "direct_amounts_mol": direct["amounts_mol"],
+            "direct_amounts_mol": direct_amounts,
             "D": direct["D"],
             "outlet_max_difference_mol_per_raw_l": difference,
         }
@@ -230,8 +249,14 @@ def build_flowsheet(
         stages,
         maximum_stages=max(design_range["stages"]) if design_range else 5,
         raffinate_diluent_loss=raffinate_entrainment_l * organic["diluent"] / ratio,
+        raffinate_water_basis=aqueous["water"] if aqueous_return else None,
     )
+    model.fs.aqueous_volume = Expression(
+        expr=model.fs.boundary["water"] / aqueous["water"] if aqueous_return else 1.0
+    )
+    model._aqueous_return = aqueous_return
     model._design_range = design_range
+    model._raiguel_recipe = raiguel_recipe
     model._physical_feed, model._design, model._solvent = feed, dict(scenario), solvent
     model._conserved_names, model._omitted_moieties = conserved, omitted
     return model
@@ -275,23 +300,33 @@ def decisions(model, *, organic_recycle=False):
     fs.design = Block()
     b, model._decisions = fs.design, {}
     for name, bounds in record["bounds"].items():
+        if name == "B" and model._raiguel_recipe:
+            bounds = (owner.RAIGUEL_BUPHEN_MOL_L,) * 2
         variable = Var(bounds=bounds, initialize=d[name])
         b.add_component(name, variable)
         variable.fix(d[name])
         model._decisions[name] = variable
     B, S, ratio = (model._decisions[k] for k in ("B", "S", "O_A"))
-    sites, diluent = S * d["site_basis_li_mol_l"], model._feeds[1]["diluent"] / d["O_A"]
-    links = {"buphen": B * ratio, "naa": sites, "diluent": diluent * ratio}
+    b.organic_volume = Expression(expr=ratio * fs.aqueous_volume)
+    organic_volume = b.organic_volume
+    li = rc.ION["Li"][0]
+    sites = S * (fs.boundary[li] if model._aqueous_return else d["site_basis_li_mol_l"])
+    diluent = model._feeds[1]["diluent"] / d["O_A"]
+    links = {
+        "buphen": B * organic_volume,
+        "naa": sites,
+        "diluent": diluent * organic_volume,
+    }
     if organic_recycle:
-        links = {"diluent": diluent * ratio}
-        for s, total in (("naa", sites), ("buphen", B * ratio)):
+        links = {"diluent": diluent * organic_volume}
+        for s, total in (("naa", sites), ("buphen", B * organic_volume)):
             moiety = rc.MOIETIES["A" if s == "naa" else "B"]
             links[s] = total - sum(
                 moiety.get(c, 0.0) * fs.boundary[c]
                 for c in rc.COMPLEX.values()
                 if c in fs.boundary
             )
-    totals = {"sites_total_mol": sites, "buphen_total_mol": B * ratio}
+    totals = {"sites_total_mol": sites, "buphen_total_mol": B * organic_volume}
     for s in links:
         fs.boundary[s].unfix()
     for s in totals:
@@ -302,12 +337,17 @@ def decisions(model, *, organic_recycle=False):
     b.ligand_totals = Constraint(
         tuple(totals), rule=lambda _, s: fs.parameters[s] == totals[s]
     )
-    low, high = record["sites_mol_l"]
-    b.sites_low = Constraint(expr=sites >= low * ratio)
-    b.sites_high = Constraint(expr=sites <= high * ratio)
-    li = rc.ION["Li"][0]
+    if model._raiguel_recipe:
+        b.site_concentration = Constraint(
+            expr=sites == owner.RAIGUEL_SITES_MOL_L * organic_volume
+        )
+        b.site_concentration.deactivate()  # exactly constructed when S and O/A are both fixed
+    else:
+        low, high = record["sites_mol_l"]
+        b.sites_low = Constraint(expr=sites >= low * organic_volume)
+        b.sites_high = Constraint(expr=sites <= high * organic_volume)
     b.li_extraction = Expression(
-        expr=1 - fs.stage[len(fs.stages)].outlet[li] / model._feeds[0][li]
+        expr=1 - fs.stage[len(fs.stages)].outlet[li] / fs.boundary[li]
     )
 
 
@@ -321,7 +361,12 @@ def release(model, objective, *, minimum_li_extraction=None):
         else minimum_li_extraction
     )
     for variable in model._decisions.values():
-        variable.unfix()
+        if variable.lb != variable.ub:
+            variable.unfix()
+    if model._raiguel_recipe:
+        model.fs.design.site_concentration.activate()
+    if getattr(model, "_d2_full_process", {}).get("optimize_mother_liquor_return"):
+        model.fs.mother_liquor_return.fraction.unfix()
     if hasattr(model.fs.design, "li_target"):
         model.fs.design.del_component("li_target")
     model.fs.design.li_target = Constraint(expr=model.fs.design.li_extraction >= target)
@@ -389,13 +434,15 @@ def report(model, result=None, *, case="base", reference_accounting=False):
             )
             for s in species
         )
-    ratio = model._design["O_A"]
+    volume = value(model.fs.aqueous_volume)
+    ratio = model._design["O_A"] * volume
     li_feed = model._feeds[0][rc.ION["Li"][0]]
     raffinate = {
         records.SPECIES_LABELS[s]: final[s] for s in model._chemistry.supports[0]
     }
+    feed = mother_liquor_return.mixed_feed(model, stages_per_nominal_litre=False)
     r7 = references.check_r7(
-        model._physical_feed,
+        feed,
         raffinate,
         balance_residuals_mol_per_raw_l=residuals,
         strict_certificate=result["strict_certificate"],
@@ -430,7 +477,12 @@ def report(model, result=None, *, case="base", reference_accounting=False):
             strip_aqueous_to_organic=model._design["strip_aqueous_to_organic"],
         )
     recycle = hasattr(model.fs, "organic_recycle")
-    strip_volume = ratio - assumptions["entrainment_l_per_l"] if recycle else None
+    strip_volume = (
+        ratio - volume * assumptions["entrainment_l_per_l"] if recycle else None
+    )
+    sites_li_basis = (
+        li_feed if model._aqueous_return else model._design["site_basis_li_mol_l"]
+    )
     accounts = owner.accounts(
         extraction,
         model._design["S"],
@@ -440,8 +492,9 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         0.0,
         case_assumptions=assumptions,
         feed_li_mol_l=li_feed,
-        site_basis_li_mol_l=model._design["site_basis_li_mol_l"],
+        site_basis_li_mol_l=sites_li_basis,
         strip_volume=strip_volume,
+        aqueous_volume=volume,
     )
     accounts.update(
         accounting_basis="historical #188 extraction-plus-strip intermediate; neither user scope",
@@ -456,11 +509,30 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         entrained.get("naa", 0.0) if recycle else None,
         stage_count,
     )
+    organic = model._feeds[1]
+    sites_mol_l = (
+        math.fsum(rc.MOIETIES["A"].get(s, 0.0) * n for s, n in organic.items()) / ratio
+        if model._aqueous_return or model._raiguel_recipe
+        else model._design["S"] * sites_li_basis / ratio
+    )
+    recipe = {}
+    if model._raiguel_recipe:
+        recipe = {
+            "organic_volume_l_per_raw_l": ratio,
+            "mixed_feed_l_per_raw_l": volume,
+            "mixed_li_mol_l": li_feed / volume,
+            "sites_mol_l_organic": sites_mol_l,
+            "buphen_mol_l_organic": sum(
+                rc.MOIETIES["B"].get(s, 0.0) * n for s, n in organic.items()
+            )
+            / ratio,
+            "modifier_volume_fractions": owner.RAIGUEL_OCTANOL_FRACTIONS,
+        }
     return {
         **result,
         "balance_residuals_mol_per_raw_l": residuals,
         "R7": r7,
-        "feed": model._physical_feed,
+        "feed": feed,
         "fixed_design": model._design,
         "solvent": model._solvent,
         "conserved_quantity_names": model._conserved_names,
@@ -469,6 +541,8 @@ def report(model, result=None, *, case="base", reference_accounting=False):
         "organic_inlet_mol_per_raw_l": model._feeds[1],
         "li_extraction_fraction": extraction["li_extraction_fraction"],
         "accounts": accounts,
+        "sites_mol_l_organic": sites_mol_l,
+        **({"raiguel_recipe": recipe} if recipe else {}),
         **sodium,
         "labels": model._physical_feed["labels"]
         + [label for label in owner.LABELS.values() if isinstance(label, str)]

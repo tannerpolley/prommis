@@ -35,6 +35,7 @@ from prommis.lithium_extraction.process import (
     costing,
     strip_and_carbonation as downstream,
     flowsheet,
+    mother_liquor_return,
     feeds as records,
     retained_references as references,
 )
@@ -81,7 +82,11 @@ def connected_nacl(raw, model, washed, loaded, assumptions, ratio):
 
 def extraction(model):
     """Transport the generic boundary amounts to the historical cost owner's named inputs."""
-    v = model._washed["feed_l"]
+    v = (
+        value(model.fs.washed_feed_l_per_raw_l)
+        if hasattr(model.fs, "mother_liquor_return")
+        else model._washed["feed_l"]
+    )
     aq = model.fs.stage[len(model.fs.stages)].outlet
     org = model.fs.stage[1].outlet
     free = "free-carrier" if "free-carrier" in org else "hbta"
@@ -101,6 +106,7 @@ def extraction(model):
         "diluent_mol": value(org["diluent"]) * v,
         "saponification_mol_per_raw_l": model._feeds[1].get("sodium-carrier", 0.0) * v,
         "organic_volume_l_per_raw_l": model._design["organic_to_aqueous_ratio"] * v,
+        "mixed_feed_l_per_raw_l": v,
     }
 
 
@@ -116,19 +122,15 @@ def enumerate_units(
     li, na = (v * loaded[k] for k in ("li", "na"))
     source = assumptions["scrub_hcl_mol_l"] * organic_to_aqueous_ratio * v / 10
     demand = assumptions["scrub_li_loss"] * li + assumptions["scrub_na_efficiency"] * na
-    strip_eff = (
-        float(
-            flowsheet._row(
-                "data/reference/extraction_models/hbta_topo_li_na/observations.csv",
-                "observation_id",
-                "zhang2017_fig6_li_strip_2p5m_hcl",
-            )["value"]
-        )
-        / 100
-    )
+    strip_eff = assumptions.get("strip_li_fraction", flowsheet.strip_li_fraction())
     stripped_li = (1 - assumptions["scrub_li_loss"]) * li * strip_eff
     stripped_na = (1 - assumptions["scrub_na_efficiency"]) * na
-    gross = 2.5 * organic_to_aqueous_ratio * v / 10
+    gross = (
+        2.5
+        * organic_to_aqueous_ratio
+        * v
+        * assumptions.get("strip_aqueous_to_organic", 0.10)
+    )
     fresh = (
         stripped_li
         + stripped_na
@@ -229,6 +231,16 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
     }
     fs = model.fs
     fs.washed_feed_l_per_raw_l.set_value(v)
+    if "mother_liquor_return" in assumptions:
+        mother_liquor_return.mix(model, assumptions["mother_liquor_return"], owner)
+        loop = fs.mother_liquor_return
+        v = fs.washed_feed_l_per_raw_l
+        owner["mass_kg_per_l"]["mother_conditioning_HCl31"] = value(
+            loop.conditioned["HCl31_kg"]
+        )
+        owner["prices_usd_kg"] = owner["prices_usd_kg"] | {
+            "mother_conditioning_HCl31": owner["prices_usd_kg"]["strip_HCl31"]
+        }
     org = fs.stage[1].outlet
     free = "free-carrier" if "free-carrier" in org else "hbta"
     ratio = (
@@ -243,7 +255,10 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
             "Li": assumptions["scrub_li_loss"],
             "Na": assumptions["scrub_na_efficiency"],
         },
-        "strip": {"Li": owner["strip_li_fraction"], "Na": 1.0},
+        "strip": {
+            "Li": assumptions.get("strip_li_fraction", flowsheet.strip_li_fraction()),
+            "Na": 1.0,
+        },
     }
     for name, fraction in fractions.items():
         downstream.fixed_fraction_strip(
@@ -284,7 +299,18 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
     strip.scrubbed_organic = Arc(
         source=scrub.unit.organic_outlet, destination=strip.unit.organic_inlet
     )
-    strip.gross_acid_mol = Expression(expr=2.5 * ratio * v / 10)
+    strip_ratio = assumptions.get("strip_aqueous_to_organic", 0.10)
+    bounds = assumptions.get("strip_aqueous_to_organic_bounds")
+    if bounds is not None:
+        if not 0.08 <= bounds[0] <= strip_ratio <= bounds[1] <= 0.10:
+            raise ValueError("HBTA strip A/O target must be within [0.08, 0.10]")
+        strip.aqueous_to_organic = Var(bounds=bounds, initialize=strip_ratio)
+        strip.aqueous_to_organic.fix()
+        strip_ratio = model._decisions["strip_aqueous_to_organic"] = (
+            strip.aqueous_to_organic
+        )
+    strip.gross_water_kg = Expression(expr=ratio * v * strip_ratio)
+    strip.gross_acid_mol = Expression(expr=2.5 * strip.gross_water_kg)
     strip.acid = Constraint(
         ("hydrogen-cation", "chloride-anion"),
         rule=lambda b, s: strip.unit.mscontactor.aqueous_inlet_state[0].flow_mol_comp[s]
@@ -295,9 +321,15 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
     )
     strip.acid_sufficiency = Constraint(expr=strip.aqueous_out["hydrogen-cation"] >= 0)
     downstream.liquor_properties(fs)
-    concentrate = chain.aqueous(fs, assumptions, ratio * v, strip.metals["Li"])
-    chain.organic(fs, model, assumptions, v, free)
+    concentrate = chain.aqueous(
+        fs, assumptions, strip.gross_water_kg, strip.metals["Li"]
+    )
+    chain.organic(
+        fs, model, assumptions, v, free, strip_ratio, fractions["strip"]["Li"]
+    )
     downstream.connect(fs, concentrate, assumptions, candidate, owner)
+    if hasattr(fs, "mother_liquor_return"):
+        mother_liquor_return.split(fs)
     carbon = fs.carbonation
     _initialize_units(fs, owner, assumptions["mother_recycle"])
     # The original owner supplies all prices and kg/mol conversions, including 31% HCl.
@@ -321,6 +353,11 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
         ]
         for k in quantities
     }
+    if hasattr(fs, "mother_liquor_return"):
+        quantities["mother_conditioning_HCl31"] = fs.mother_liquor_return.conditioned[
+            "HCl31_kg"
+        ]
+        coefficients["mother_conditioning_HCl31"] = 1.0
     kg_li_per_mol_product = (
         owner["li_product_kg_m3"] / 1000 / owner["product_li2co3_mol"]
         if owner["product_li2co3_mol"]
@@ -404,7 +441,7 @@ def select_units(model, candidate):
     source = (
         a["scrub_hcl_mol_l"]
         * model._decisions["organic_to_aqueous_ratio"]
-        * model._washed["feed_l"]
+        * fs.washed_feed_l_per_raw_l
         / 10
     )
     demand = sum(fs.scrub.waste.values())
@@ -430,11 +467,18 @@ def select_units(model, candidate):
 def report(model, result, softening):
     """Retain solved unit inventories, historical comparisons, complete physical R7 and costs."""
     data, fs = model._full_process, model.fs
-    washed, v = model._washed, model._washed["feed_l"]
+    washed, v = model._washed, value(fs.washed_feed_l_per_raw_l)
     assumptions = dict(
         data["assumptions"], extractant_mol_l=model._design["extractant_mol_l"]
     )
+    if "strip_aqueous_to_organic" in model._design:
+        assumptions["strip_aqueous_to_organic"] = model._design[
+            "strip_aqueous_to_organic"
+        ]
     extracted = extraction(model)
+    aqueous_return = (
+        mother_liquor_return.report(fs) if hasattr(fs, "mother_liquor_return") else None
+    )
     owner = flowsheet.costs_and_balances(
         washed,
         extracted,
@@ -448,10 +492,11 @@ def report(model, result, softening):
             assumptions,
             model._design["organic_to_aqueous_ratio"],
         ),
+        mother_return=aqueous_return,
     )
     owner["organic_volume_l_per_raw_l"] = extracted["organic_volume_l_per_raw_l"]
-    owner["strip_water_recycle_fraction"] = 1 - owner["fresh_water_kg"] / (
-        owner["organic_volume_l_per_raw_l"] / 10
+    owner["strip_water_recycle_fraction"] = 1 - owner["fresh_water_kg"] / value(
+        fs.strip.gross_water_kg
     )
     if model._design["organic_to_aqueous_ratio"] != 1.0:
         owner["evaporation_alternative_mj_m3_latent_only"] = None
@@ -511,6 +556,15 @@ def report(model, result, softening):
     balances = dict(result["balance_residuals_mol_per_raw_l"])
     balances.update({"softening/" + k: n for k, n in washed["closure_mol"].items()})
     balances.update({"chain/" + k: n for k, n in owner["closure_mol"].items()})
+    balances["regeneration lithium discharge"] = value(
+        fs.strip.regeneration_li - fs.strip.organic_out["lithium-carrier"]
+    )
+    balances["regeneration lithium separator"] = value(
+        fs.regenerated.lithium_discharge_state[0].flow_mol_comp["Li"]
+        - fs.strip.regeneration_li
+    )
+    if aqueous_return is not None:
+        balances.update(aqueous_return["residuals_mol_per_raw_l"])
     for b in (fs.scrub, fs.strip, fs.carbonation):
         for c in b.component_data_objects(Constraint, active=True):
             if c.equality:
@@ -622,6 +676,46 @@ def report(model, result, softening):
         n < -1e-9 for row in margins.values() for n in row.values() if n is not None
     ):
         raise RuntimeError(f"Full-process inequality violated: {margins}")
+    if aqueous_return is not None:
+        result["mother_liquor_return"] = aqueous_return
+        physical["external mother liquor bleed"] = aqueous_return["bleed_mol_per_raw_l"]
+        physical["mother liquor returned"] = aqueous_return["returned_mol_per_raw_l"]
+        physical["mother liquor conditioning CO2"] = {
+            "C": aqueous_return["conditioned"]["CO2"]
+        }
+        returned = aqueous_return["returned_mol_per_raw_l"]
+        conditioned = aqueous_return["conditioned"]
+        bleed = aqueous_return["bleed_mol_per_raw_l"]
+        balances["external chloride after softening"] = math.fsum(
+            (
+                model._physical_feed["physical_feed"]["Cl"],
+                actual["scrub_acid_mol"],
+                actual["fresh_strip_acid_mol"],
+                2 * returned["C"],
+                -r7["physical_raffinate"]["Cl"],
+                -physical["scrub waste"]["Cl"],
+                -bleed["Cl"],
+            )
+        )
+        balances["recycle water after conditioning"] = (
+            v - washed["feed_l"]
+        ) / brines.WATER_MOLAR_MASS_KG - conditioned["H2O"]
+        r7 = references.check_r7(
+            result["feed"],
+            raffinate,
+            balance_residuals_mol_per_raw_l=balances,
+            strict_certificate=result["strict_certificate"],
+        )
+        result["uncharacterized_recycle"] = {
+            "scrub waste": {
+                "li_upper_bound_mol_per_raw_l": physical["scrub waste"]["Li"],
+                "missing": "scrub dilution water and the resulting conditioning volume",
+            },
+            "regeneration discharge": {
+                "li_upper_bound_mol_per_raw_l": value(fs.strip.regeneration_li),
+                "missing": "counterions, carrier water and conditioning reagent inventory",
+            },
+        }
     return complete_reporting(
         result
         | {
@@ -818,12 +912,26 @@ def complete_reporting(result, fs):
             basis="H-D0 V1/V7; wash return is internal",
         )
     record = records.SOLVENTS[result.get("solvent", "C")]
+    mixed_feed = "mother_liquor_return" in result
+    volume = feed["washed_feed_l_per_raw_l"] if mixed_feed else washed["feed_l"]
+    inlet_basis = (
+        "mixed extraction feed after mother-purge return"
+        if mixed_feed
+        else "softened, washed aqueous inlet"
+    )
+    molarity_basis = "mol/L mixed aqueous" if mixed_feed else "mol/L washed aqueous"
     result["calibration_coverage"] = [
         {
             "quantity": quantity,
             "value": number,
             "unit": unit_name,
-            "basis": "softened, washed aqueous inlet; " + basis,
+            "basis": (
+                inlet_basis
+                if quantity != "process pH"
+                else "softened, washed aqueous inlet"
+            )
+            + "; "
+            + basis,
             "source_owner": (
                 record["feed_owner"]
                 if quantity != "process pH"
@@ -838,15 +946,15 @@ def complete_reporting(result, fs):
         for quantity, number, unit_name, basis in (
             (
                 "projected Li",
-                feed["model_feed"]["Li"] / washed["feed_l"],
-                "mol/L washed aqueous",
-                "owner model projection divided by retained washed volume",
+                feed["model_feed"]["Li"] / volume,
+                molarity_basis,
+                "owner model projection divided by the inlet volume",
             ),
             (
                 "projected Na",
-                feed["model_feed"]["Na"] / washed["feed_l"],
-                "mol/L washed aqueous",
-                "owner model projection divided by retained washed volume",
+                feed["model_feed"]["Na"] / volume,
+                molarity_basis,
+                "owner model projection divided by the inlet volume",
             ),
             (
                 "process pH",

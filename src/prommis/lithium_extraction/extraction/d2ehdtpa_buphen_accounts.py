@@ -14,6 +14,12 @@ MASSES = json.loads((ANALYSIS / "inputs/reaction_basis.json").read_text())[
     "molar_masses_kg_mol"
 ]
 BUPHEN_ORGANIC_AQUEOUS_PARTITION = 1.4e4
+RAIGUEL_BUPHEN_MOL_L = 0.250
+RAIGUEL_SITES_MOL_L = 0.050
+RAIGUEL_OCTANOL_FRACTIONS = {"octanol_1": 0.025, "octanol_2": 0.20}
+HISTORICAL_OCTANOL_FRACTIONS = {
+    k: BASIS[k]["vol_fraction"] for k in ("octanol_1", "octanol_2")
+}
 MOLAR_MASS_KG_MOL = {"BuPhen": 0.29242, "D2EHDTPA": 0.35456, "dodecane": 0.17033484}
 LABELS = {
     "evidence_type": "prediction",
@@ -41,6 +47,21 @@ def ms2_feed():
 
 class OutsideDomain(ValueError):
     """A design or feed outside the #188 fixed design domain."""
+
+
+def recipe_supply_bounds(li_mol_l, supply_bounds=(0.9, 1.5), ratio_bounds=(0.5, 2.0)):
+    """Bounds on S with O/A = S*c/0.050 for the Raiguel formulation."""
+    if li_mol_l <= 0:
+        raise OutsideDomain(
+            f"Raiguel recipe requires a positive feed Li concentration, got {li_mol_l}"
+        )
+    lo = max(supply_bounds[0], RAIGUEL_SITES_MOL_L * ratio_bounds[0] / li_mol_l)
+    hi = min(supply_bounds[1], RAIGUEL_SITES_MOL_L * ratio_bounds[1] / li_mol_l)
+    if lo > hi:
+        raise OutsideDomain(
+            f"Raiguel recipe has empty S intersection [{lo}, {hi}] at {li_mol_l} M Li"
+        )
+    return lo, hi
 
 
 def site_supply(
@@ -158,12 +179,21 @@ def historical_strip_volume(case_assumptions, strip_li_mol):
     return strip_li_mol / case_assumptions["concentrate_li_mol_kg"]
 
 
-def separated_losses(raffinate, strip, free_b_concentration, entrained):
+def separated_losses(
+    raffinate,
+    strip,
+    free_b_concentration,
+    entrained,
+    *,
+    modifier_fractions=HISTORICAL_OCTANOL_FRACTIONS,
+    aqueous_volume=1.0,
+):
     """Losses in kg/raw L from the actual separated species and nominal diluent formulation."""
     masses = MOLAR_MASS_KG_MOL
     lost = {s: (raffinate[s] if s in raffinate else 0.0) + n for s, n in strip.items()}
     losses = {
-        "BuPhen_dissolution": free_b_concentration
+        "BuPhen_dissolution": aqueous_volume
+        * free_b_concentration
         / BUPHEN_ORGANIC_AQUEOUS_PARTITION
         * masses["BuPhen"],
         "BuPhen_entrainment": sum(
@@ -174,13 +204,17 @@ def separated_losses(raffinate, strip, free_b_concentration, entrained):
             rc.MOIETIES["A"].get(s, int(s == "ha")) * n for s, n in lost.items()
         )
         * masses["D2EHDTPA"],
-        "diluent": 0.75 * lost["diluent"] * masses["dodecane"],
+        "diluent": (1 - sum(modifier_fractions.values()))
+        * lost["diluent"]
+        * masses["dodecane"],
     }
     for k in ("octanol_1", "octanol_2"):
         row = BASIS[k]
-        losses[k + "_dissolution"] = row["pure_water_solubility_kg_m3"] / 1000
+        losses[k + "_dissolution"] = (
+            aqueous_volume * row["pure_water_solubility_kg_m3"] / 1000
+        )
         losses[k + "_entrainment"] = (
-            entrained * row["vol_fraction"] * row["density_kg_L"]
+            entrained * modifier_fractions[k] * row["density_kg_L"]
         )
     return losses | {
         f"octanol_{key}": sum(losses[k + "_" + key] for k in ("octanol_1", "octanol_2"))
@@ -198,15 +232,13 @@ def losses_kg_per_l(
     diluent_per_l_organic,
     *,
     site_basis_li_mol_l,
+    modifier_fractions=HISTORICAL_OCTANOL_FRACTIONS,
 ):
     """kg per raw litre lost: octanol dissolution (pure-water solubility, per raw litre) and entrainment; BuPhen
     dissolution (free BuPhen at the raffinate end over its partition value) and entrainment; D2EHDTPA and dodecane
     entrainment. Arguments may be numbers or Pyomo expressions of the solved design; one owner for both.
     """
-    octanol = sum(
-        BASIS[k]["vol_fraction"] * BASIS[k]["density_kg_L"]
-        for k in ("octanol_1", "octanol_2")
-    )
+    octanol = sum(f * BASIS[k]["density_kg_L"] for k, f in modifier_fractions.items())
     return {
         "octanol_dissolution": sum(
             BASIS[k]["pure_water_solubility_kg_m3"] for k in ("octanol_1", "octanol_2")
@@ -222,10 +254,10 @@ def losses_kg_per_l(
         / v
         * MOLAR_MASS_KG_MOL["D2EHDTPA"],
         "diluent": entrained
-        * 0.75
+        * (1 - sum(modifier_fractions.values()))
         * diluent_per_l_organic
         * MOLAR_MASS_KG_MOL["dodecane"],
-    }  # 25 vol% octanols
+    }
 
 
 def accounts(
@@ -241,6 +273,7 @@ def accounts(
     site_basis_li_mol_l=None,
     value_basis_li_mol_l=None,
     strip_volume=None,
+    aqueous_volume=1.0,
 ):
     """kg/m3 losses and the priced strip intermediate (NaOH, 31 % HCl, octanols); BuPhen and D2EHDTPA are the
     unpriced active set (#339 decision 1). Independent of the connected model: amounts come from solved outlets.
@@ -284,7 +317,13 @@ def accounts(
     acid = sum(
         rc.ION[e][2] * n for e, n in loaded.items()
     )  # includes residual NaA; excludes unavailable HA.
-    strip = {e: n * BASIS["strip_fractions"][case][e] for e, n in loaded.items()}
+    fractions = BASIS["strip_fractions"][case] | (case_assumptions or {}).get(
+        "strip_fractions", {}
+    )
+    modifiers = (case_assumptions or {}).get(
+        "modifier_volume_fractions", HISTORICAL_OCTANOL_FRACTIONS
+    )
+    strip = {e: n * fractions[e] for e, n in loaded.items()}
     retained = {e: loaded[e] - strip[e] for e in loaded}
     strip_closure = max(abs(loaded[e] - strip[e] - retained[e]) for e in loaded)
     strip_sites = available if strip_volume is None else available * strip_volume / v
@@ -309,11 +348,14 @@ def accounts(
         if old
         else entrained_l(case_assumptions, outlet_l)
     )
+    raffinate_l = (case_assumptions or {}).get(
+        "entrainment_l_per_l", 0.0
+    ) * aqueous_volume
+    if prepared_l is not None:
+        entrained = raffinate_l + case_assumptions["entrainment_l_per_l"] * prepared_l
     naoh = available + h2s
     if strip_volume is not None:
-        fraction_returned = (
-            1 - (entrained - case_assumptions["entrainment_l_per_l"]) / strip_volume
-        )
+        fraction_returned = 1 - (entrained - raffinate_l) / strip_volume
         naoh -= fraction_returned * sum(rc.ION[e][2] * n for e, n in retained.items())
     lost = {
         k: 1000 * n
@@ -329,10 +371,10 @@ def accounts(
             ]
             / v,
             site_basis_li_mol_l=site_basis,
+            modifier_fractions=modifiers,
         ).items()
     }
     if prepared_l is not None:
-        raffinate_l = case_assumptions["entrainment_l_per_l"]
         raffinate = extraction["stages"][-1]["amounts_mol"][1]
         stripped = dict(extraction["stages"][0]["amounts_mol"][1])
         if len(extraction["stages"]) == 1:
@@ -351,6 +393,8 @@ def accounts(
                 },
                 raffinate["buphen"] / v,
                 entrained,
+                modifier_fractions=modifiers,
+                aqueous_volume=aqueous_volume,
             ).items()
         }
     costs = {
@@ -364,7 +408,7 @@ def accounts(
         "case": case,
         "h2s_protonated_mol_L_feed": h2s,
         "R_ext": extraction["li_extraction_fraction"],
-        "strip_Li_fraction": BASIS["strip_fractions"][case]["Li"],
+        "strip_Li_fraction": fractions["Li"],
         "R_rec": rec,
         "circulated_sites_mol_L_feed": available + h2s,
         "H2S_fraction_of_available_sites": h2s / available,
@@ -410,6 +454,13 @@ def accounts(
     if not old:
         result["entrainment_l_per_l"] = case_assumptions["entrainment_l_per_l"]
         result["strip_outlet_volume_l_per_raw_l"] = outlet_l
+        if "modifier_volume_fractions" in case_assumptions and prepared_l is not None:
+            result["modifier_losses_kg_m3"] = {
+                k: {
+                    kind: lost[f"{k}_{kind}"] for kind in ("dissolution", "entrainment")
+                }
+                for k in modifiers
+            }
         return result
     lce_kg = result["lce_recovered_kg_m3"]
     result.update(

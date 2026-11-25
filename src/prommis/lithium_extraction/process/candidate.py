@@ -498,6 +498,16 @@ def d2_start(job, li_mol_l):
     )
     domain = job.get("design_range") or record
     (lo, hi), bounds = domain["sites_mol_l"], domain["bounds"]
+    if job.get("raiguel_recipe"):
+        from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_accounts as d2
+
+        lo, hi = d2.recipe_supply_bounds(li_mol_l, bounds["S"], bounds["O_A"])
+        supply = min(max(design["S"], lo), hi)
+        ratio = min(
+            max(supply * li_mol_l / d2.RAIGUEL_SITES_MOL_L, bounds["O_A"][0]),
+            bounds["O_A"][1],
+        )
+        return dict(design, B=d2.RAIGUEL_BUPHEN_MOL_L, S=supply, O_A=ratio)
     sites = design["S"] * li_mol_l / design["O_A"]
     if lo <= sites <= hi:
         return design
@@ -518,6 +528,13 @@ def d2_process_assumptions(job):
     assumptions = case_assumptions(job["case"], True, entrainment_case="base") | {
         "strip_aqueous_to_organic": job["strip_aqueous_to_organic"]
     }
+    if job.get("raiguel_recipe"):
+        from prommis.lithium_extraction.extraction import d2ehdtpa_buphen_accounts as d2
+
+        assumptions["modifier_volume_fractions"] = d2.RAIGUEL_OCTANOL_FRACTIONS
+    if "strip_fractions" in job:
+        assumptions["strip_fractions"] = job["strip_fractions"]
+    assumptions.update(job.get("process_assumptions", {}))
     if job.get("zero_entrainment"):
         assumptions["entrainment_l_per_l"] = 0.0
         assumptions["entrainment_provenance"] += "; zero-entrainment control (#447)"
@@ -533,6 +550,7 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
 
     raw = brines.raw_feed(job["site"])
     sample = job.get("calibration_sample")
+    aqueous = sample or job.get("d2_aqueous")
     old = (
         pinned_reference
         if sample is not None or pinned_reference is not None
@@ -550,6 +568,8 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
                 f"Fixed design and candidate conditions differ: {reference}"
             )
         fixed = {k: retained["fixed_design"][k] for k in ("B", "S", "O_A", "Sr_decade")}
+        if job.get("raiguel_recipe"):
+            fixed = d2_start(job | {"design": fixed}, raw["mol"]["Li"])
         if not job.get("cold_start"):
             start = [
                 r["outlet_mol_per_raw_l"]
@@ -560,7 +580,7 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
     ratio = fixed["O_A"]
     if sample is not None and retained is None:
         raise ValueError("Calibration replay requires an attained fixed design")
-    constants = sample["ln_k"] if sample is not None else old["ln_K_Li_Mg_Ca"]
+    constants = aqueous["ln_k"] if aqueous is not None else old["ln_K_Li_Mg_Ca"]
     design = dict(fixed, site_basis_li_mol_l=raw["mol"]["Li"], ln_K_Li_Mg_Ca=constants)
     model = d2.build_flowsheet(
         raw if brine is None else brine,
@@ -570,7 +590,9 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
         scenario=design,
         design_range=job.get("design_range"),
         raffinate_entrainment_l=a["entrainment_l_per_l"] if recycle else 0.0,
-        packet_id=sample["packet"] if sample is not None else None,
+        packet_id=aqueous["packet"] if aqueous is not None else None,
+        raiguel_recipe=job.get("raiguel_recipe", False),
+        aqueous_return=a is not None and "mother_liquor_return" in a,
     )
     model._case = job["case"]
     if start is not None:
@@ -772,7 +794,6 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
         result = downstream_result
         certified = True
         reported = d2_full_process.report(model, downstream_result)
-        solved = {k: value(v) for k, v in model._decisions.items()}
         return (
             reported
             | ({"extraction_strip_solve": extraction_strip_solve} if recycle else {})
@@ -780,8 +801,6 @@ def d2_simulation(job, directory, remaining, records, brine=None, start=None):
                 "starting_design_rule": starting,
                 "rule": optimization.rule_values(model)
                 | {"objective": getattr(model, "_objective", None)},
-                # organic site concentration S x feed Li / (O/A) at the solved design (the #188 0.020-0.060 M range)
-                "sites_mol_l_organic": solved["S"] * raw["mol"]["Li"] / solved["O_A"],
             }
         )
     except Exception as error:
@@ -859,8 +878,17 @@ def objective_value(result, objective):
         from prommis.lithium_extraction.process import costing
 
         q, cost = rule["carbonate_kg_m3"], rule["cost_outside_active_usd_m3"]
+        equipment = objective.get("concentration_equipment")
         heat_price = objective.get("heat_price_usd_mj", 0.0)
-        if heat_price:
+        if equipment is not None:
+            _, heat, power = costing.evaporation_purchases(
+                rule["gross_evaporated_water_kg_m3"], equipment
+            )
+            if equipment["kind"] == "ro_mvr":
+                power += rule["ro_electricity_kwh_m3"]
+            heat_price, power_price = costing.utility_price(equipment)
+            cost += heat_price * heat + power_price * power
+        elif heat_price:
             latent = rule.get("evaporation_heat_mj_m3")
             if latent is None:
                 vapor = result.get("water_streams_kg_per_raw_l", {}).get(

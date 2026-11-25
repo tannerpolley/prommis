@@ -413,21 +413,32 @@ def strip_li_fraction():
 
 
 def costs_and_balances(
-    feed, extraction, case, assumptions, scrub_na=None, *, nacl_coordinate=None
+    feed,
+    extraction,
+    case,
+    assumptions,
+    scrub_na=None,
+    *,
+    nacl_coordinate=None,
+    mother_return=None,
 ):
     """Labelled mass balances. Carbonation uses Ge measurements after the failed Pitzer falsifier.
 
     Basis: one L raw brine. Strip water recycle and unused-acid recovery are separate declared operations.
     Mother liquor recycles at fixed composition; its external purge closes steady-state salt/carbonate flows.
     """
-    v, aq = feed["feed_l"], feed["aqueous_mol"]
+    v, aq = (
+        extraction.get("mixed_feed_l_per_raw_l", feed["feed_l"]),
+        feed["aqueous_mol"],
+    )
     organic_volume = extraction.get("organic_volume_l_per_raw_l", v)
     x, loaded = extraction["raffinate"], extraction["loaded_organic"]
     c = assumptions["extractant_mol_l"]
     li, na, bta = (v * loaded[k] for k in ("li", "na", "hbta"))
     scrub_eff = assumptions["scrub_na_efficiency"] if scrub_na is None else scrub_na
     scrub_li = assumptions["scrub_li_loss"]
-    strip_eff = strip_li_fraction()
+    strip_eff = assumptions.get("strip_li_fraction", strip_li_fraction())
+    strip_ratio = assumptions.get("strip_aqueous_to_organic")
     scrub_waste = {"Li": scrub_li * li, "Na": scrub_eff * na}
     scrub_acid = max(
         assumptions["scrub_hcl_mol_l"] * organic_volume / 10, sum(scrub_waste.values())
@@ -437,7 +448,11 @@ def costs_and_balances(
         "Na": na - scrub_waste["Na"],
     }
     regen_waste = {"Li": (li - scrub_waste["Li"]) * (1 - strip_eff), "Na": 0.0}
-    gross_strip_acid = 2.5 * organic_volume / 10
+    gross_strip_acid = (
+        2.5 * organic_volume / 10
+        if strip_ratio is None
+        else 2.5 * organic_volume * strip_ratio
+    )
     bound = sum(stripped.values())
     if gross_strip_acid < bound:
         raise ValueError("Source strip acid inventory below metal proton demand")
@@ -476,7 +491,8 @@ def costs_and_balances(
     solvent_loss = (
         assumptions["organic_loss"]
         if retained
-        else assumptions["entrainment_l_per_l"] * (v / organic_volume + 2 / 10)
+        else assumptions["entrainment_l_per_l"]
+        * (v / organic_volume + (0.20 if strip_ratio is None else 0.10 + strip_ratio))
     )
     hbta_loss_mol = v * x["bta"] + solvent_loss * bta
     masses = softening_masses(feed) | {
@@ -491,6 +507,8 @@ def costs_and_balances(
         * extraction["diluent_mol"]
         * MASS_KG_PER_MOL["diluent"],
     }
+    if mother_return is not None:
+        masses["mother_conditioning_HCl31"] = mother_return["conditioned"]["HCl31_kg"]
     front = feed.get("front_end")
     if front and front["kind"] == "sorbent":
         from prommis.lithium_extraction.process.front_end import prices as front_prices
@@ -609,6 +627,10 @@ def costs_and_balances(
         + 2 * carbonate
     )
     inputs["C"] += feed["reagent_mol"]["Na2CO3"] + carbonate
+    if mother_return is not None:
+        for e in ("Li", "Na", "C"):
+            outputs[e] -= mother_return["returned_mol_per_raw_l"][e]
+        outputs["C"] += mother_return["conditioned"]["CO2"]
     closure = {e: inputs[e] - outputs[e] for e in inputs}
     if max(map(abs, closure.values())) > 1e-9:
         raise RuntimeError(f"Chain balances exceed 1e-9 mol/L raw brine: {closure}")
@@ -654,7 +676,8 @@ def costs_and_balances(
         "mother_nacl_mol_kg": nacl,
         "reactor_water_kg": water,
         "fresh_water_kg": net_water,
-        "strip_water_recycle_fraction": 1 - net_water / (v / 10),
+        "strip_water_recycle_fraction": 1
+        - net_water / (v / 10 if strip_ratio is None else organic_volume * strip_ratio),
         "evaporation_alternative_mj_m3_latent_only": max(0, v / 10 - net_water)
         * 1000
         * 2.257,

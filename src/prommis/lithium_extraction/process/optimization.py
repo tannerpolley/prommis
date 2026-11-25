@@ -18,6 +18,7 @@ from prommis.lithium_extraction.process.screening_costs import (
 )
 
 from prommis.lithium_extraction.process import (
+    waters as brines,
     costing,
     whole_process as full_process,
     feeds as records,
@@ -69,7 +70,7 @@ def decisions(model, solvent):
     b.li_extraction = Expression(
         expr=1
         - fs.stage[len(fs.stages)].outlet["lithium-cation"]
-        / model._feeds[0]["lithium-cation"]
+        / fs.boundary["lithium-cation"]
     )
     model._solvent = solvent
     costing.add_extraction(
@@ -118,13 +119,26 @@ def add_rule(model, objective):
             )
             * usd_kg
         )
-        heat_price = objective.get("heat_price_usd_mj", 0.0)
-        heat = (
-            heat_price * costing.usd_per(pyunits.MJ) * evaporation_heat_rate(fs)
-            if heat_price
-            else 0.0
+        equipment = objective.get("concentration_equipment")
+        if equipment is None:
+            utility = objective.get("heat_price_usd_mj", 0.0) * evaporation_heat_rate(
+                fs
+            )
+        else:
+            if equipment["kind"] == "ro_mvr" and not hasattr(fs, "reverse_osmosis"):
+                raise ValueError(
+                    "RO followed by MVR requires a connected membrane stage"
+                )
+            _, heat, power = costing.evaporation_purchases(
+                1000 * evaporated_water(fs), equipment
+            )
+            if equipment["kind"] == "ro_mvr":
+                power += 1000 * fs.reverse_osmosis.electricity_kwh_per_raw_l
+            heat_price, power_price = costing.utility_price(equipment)
+            utility = heat_price * heat + power_price * power
+        model.rule = Objective(
+            expr=cost + purchased + utility * costing.usd_per(pyunits.hr) - price * q
         )
-        model.rule = Objective(expr=cost + purchased + heat - price * q)
     else:
         raise ValueError(f"unknown objective {kind}")
     model._objective = dict(objective)
@@ -136,14 +150,21 @@ def carbonate_price(model, objective):
     return costing.CARBONATE_USD_KG[model._case]
 
 
+def evaporated_water(fs):
+    """Gross kg evaporated per raw litre, including any returned condensate."""
+    if hasattr(fs, "concentration"):
+        return (
+            fs.concentration.recycle_state[0].flow_mol_comp["H2O"]
+            * brines.WATER_MOLAR_MASS_KG
+        )
+    if hasattr(getattr(fs, "cleanup", None), "water"):
+        return fs.cleanup.water["concentrator_vapor_kg"]
+    return 0.0
+
+
 def evaporation_heat_rate(fs):
-    """MJ/h at 1 raw m³/h, on the net concentrator vapor basis."""
-    vapor = (
-        fs.cleanup.water["concentrator_vapor_kg"]
-        if hasattr(getattr(fs, "cleanup", None), "water")
-        else 0.0
-    )
-    return costing.WATER_LATENT_HEAT_MJ_KG * vapor * costing.RAW_L_H * pyunits.MJ
+    """Single-effect MJ per raw m³, on the gross evaporated water basis."""
+    return costing.WATER_LATENT_HEAT_MJ_KG * evaporated_water(fs) * 1000
 
 
 def rule_values(model, objective=None):
@@ -156,6 +177,7 @@ def rule_values(model, objective=None):
         "carbonate_kg_m3": q,
         "cost_outside_active_usd_m3": cost,
         "active_loss_kg_m3": loss,
+        "gross_evaporated_water_kg_m3": 1000 * value(evaporated_water(fs)),
         "evaporation_heat_mj_m3": value(evaporation_heat_rate(fs)),
         "active_loss_by_component_kg_m3": {
             k: value(n) for k, n in fs.costing.active_loss.items()
@@ -183,6 +205,12 @@ def add_optimization(
     for name, variable in model._decisions.items():
         if variable.lb != variable.ub and name not in hold:
             variable.unfix()
+    if (
+        getattr(model, "_full_process", {})
+        .get("assumptions", {})
+        .get("optimize_mother_liquor_return")
+    ):
+        fs.mother_liquor_return.fraction.unfix()
     target = (
         design["li_target"] if minimum_li_extraction is None else minimum_li_extraction
     )
@@ -207,7 +235,7 @@ def add_optimization(
             li, na = (fs.strip.metals[s] for s in ("Li", "Na"))
         b.sodium = Constraint(expr=na <= sodium_limit * (li + na))
     feed = model._physical_feed
-    volume = model._washed["feed_l"] if scope == "full_process" else 1.0
+    volume = fs.washed_feed_l_per_raw_l if scope == "full_process" else 1.0
     deficits = {
         s: feed["model_feed"][records.SPECIES_LABELS[s]]
         - feed["physical_feed"].get(records.SPECIES_LABELS[s], 0.0)

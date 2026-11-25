@@ -48,7 +48,7 @@ def mixer(fs, name, properties, inlets):
     return getattr(fs, name)
 
 
-def aqueous(fs, assumptions, volume, concentrate_li):
+def aqueous(fs, assumptions, gross_water_kg, concentrate_li):
     """Neutralization water is balanced locally, then explicitly projected out of the retained account."""
     recovery = separator(
         fs, "acid_recovery", fs.acid_properties, ["recovered", "liquor"]
@@ -104,7 +104,7 @@ def aqueous(fs, assumptions, volume, concentrate_li):
             (
                 b.properties_in[0].flow_mol_comp[labels[j]]
                 if j in labels
-                else volume / 10 / masses["H2O"] if j == "H2O" else 0.0
+                else gross_water_kg / masses["H2O"] if j == "H2O" else 0.0
             )
             * u.mol
             / u.hour,
@@ -158,10 +158,10 @@ def aqueous(fs, assumptions, volume, concentrate_li):
         rule=lambda b, j: b.split_fraction[0, "concentrate", j]
         == (
             Expr_if(
-                IF=volume > 0,
+                IF=gross_water_kg > 0,
                 THEN=concentrate_li
                 / assumptions["concentrate_li_mol_kg"]
-                / Expr_if(IF=volume > 0, THEN=volume / 10, ELSE=1.0),
+                / Expr_if(IF=gross_water_kg > 0, THEN=gross_water_kg, ELSE=1.0),
                 ELSE=0.0,
             )
             if j == "H2O"
@@ -169,7 +169,7 @@ def aqueous(fs, assumptions, volume, concentrate_li):
         ),
     )
     concentration.available_strip_water = Constraint(
-        expr=concentrate_li / assumptions["concentrate_li_mol_kg"] <= volume / 10
+        expr=concentrate_li / assumptions["concentrate_li_mol_kg"] <= gross_water_kg
     )
     concentration.net_water_kg = Expression(
         expr=concentration.concentrate_state[0].flow_mol_comp["H2O"] * masses["H2O"]
@@ -188,7 +188,7 @@ def aqueous(fs, assumptions, volume, concentrate_li):
     return concentration.concentrate_state[0].flow_mol_comp
 
 
-def organic(fs, model, assumptions, v, free):
+def organic(fs, model, assumptions, v, free, strip_ratio, strip_li_fraction):
     """The preparation outlet is checked against extraction, with no organic recycle arc."""
     org = fs.strip.organic_out
     fs.organic_total_properties = stage.MolarFlowParameters(
@@ -210,7 +210,7 @@ def organic(fs, model, assumptions, v, free):
         "BTA_total": total_b,
         "TOPO_total": total_t,
         "diluent": org["diluent"],
-        "Li": org["lithium-carrier"],
+        "Li": 0.0 if strip_li_fraction == 1.0 else org["lithium-carrier"],
     }
     t.mapping = Constraint(
         fs.organic_total_properties.component_list,
@@ -223,7 +223,11 @@ def organic(fs, model, assumptions, v, free):
     for j in fs.organic_total_properties.component_list:
         regenerated.split_fraction[0, "lithium_discharge", j].fix(float(j == "Li"))
     fs.strip.regeneration_li = Expression(
-        expr=regenerated.lithium_discharge_state[0].flow_mol_comp["Li"]
+        expr=(
+            0.0
+            if strip_li_fraction == 1.0
+            else regenerated.lithium_discharge_state[0].flow_mol_comp["Li"]
+        )
     )
     loss = separator(
         fs, "organic_loss", fs.organic_total_properties, ["retained", "loss"]
@@ -241,7 +245,7 @@ def organic(fs, model, assumptions, v, free):
         loss.entrainment = Constraint(
             fs.organic_total_properties.component_list,
             rule=lambda b, j: b.split_fraction[0, "loss", j]
-            == assumptions["entrainment_l_per_l"] * (1 / ratio + 2 / 10),
+            == assumptions["entrainment_l_per_l"] * (1 / ratio + (0.10 + strip_ratio)),
         )
     makeup = mixer(
         fs, "organic_makeup", fs.organic_total_properties, ["retained", "fresh"]

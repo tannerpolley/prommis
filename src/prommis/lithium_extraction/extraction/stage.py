@@ -202,6 +202,7 @@ def build_stages(
     *,
     maximum_stages=5,
     raffinate_diluent_loss=0.0,
+    raffinate_water_basis=None,
 ):
     """Aqueous flows forward from stage 1, organic backward from stage N; Engine outlets close each stage."""
     if type(stages) is not int or stages not in range(1, maximum_stages + 1):
@@ -320,8 +321,13 @@ def build_stages(
     model._feeds = (dict(aqueous_feed), dict(organic_feed))
 
     if raffinate_diluent_loss:
+        scale = (
+            feeds["water"] / raffinate_water_basis
+            if raffinate_water_basis is not None
+            else 1.0
+        )
         fs.raffinate_entrained_fraction = Expression(
-            expr=raffinate_diluent_loss / feeds["diluent"]
+            expr=scale * raffinate_diluent_loss / feeds["diluent"]
         )
         fs.raffinate_entrained_organic = Expression(
             chemistry.supports[1],
@@ -813,6 +819,7 @@ def outlet_jacobian(model, nlp, constraint_tolerance):
     columns = {id(v): j for j, v in enumerate(nlp.get_pyomo_variables())}
     factor = value(model.fs.washed_feed_l_per_raw_l)
     propagation = {}
+    extraction_bound = None
     if jacobian.shape[0] == jacobian.shape[1]:
         try:
             lu = splu(jacobian)
@@ -828,8 +835,27 @@ def outlet_jacobian(model, nlp, constraint_tolerance):
                         propagation[f"{k}/{name}"] = (
                             gain * constraint_tolerance * factor
                         )
+            final = model.fs.stage[len(model.fs.stages)].outlet
+            if "lithium-cation" in final and "lithium-cation" in model.fs.boundary:
+                last = final["lithium-cation"]
+                inlet = model.fs.boundary["lithium-cation"]
+                li = value(inlet)
+            else:
+                li = 0.0
+            if li > 0 and id(last) in columns:
+                # The mixed volume cancels in the extraction fraction. Propagate
+                # both Li quantities through the same fixed-control equations.
+                delta = np.zeros(jacobian.shape[1])
+                delta[columns[id(last)]] = -1 / li
+                if id(inlet) in columns:
+                    delta[columns[id(inlet)]] += value(last) / li**2
+                extraction_bound = (
+                    float(np.linalg.norm(lu.solve(delta, trans="T"), ord=1))
+                    * constraint_tolerance
+                )
     return {
         "outlet_jacobian_bound_mol_per_raw_l": propagation,
+        "extraction_jacobian_bound": extraction_bound,
         "residual_jacobian_shape": list(jacobian.shape),
     }
 

@@ -7,7 +7,7 @@ import time
 import epcsaft
 import numpy as np
 from epcsaft import equilibrium as eq
-from pyomo.environ import Constraint
+from pyomo.environ import Constraint, value
 
 from prommis.lithium_extraction.extraction import countercurrent as cc
 from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
@@ -508,14 +508,16 @@ def solve(
 
 
 def report(model, result=None, *, charge_limit_eq_per_raw_l=None):
+    from prommis.lithium_extraction.process import mother_liquor_return
+
     if hasattr(model, "_decisions"):
         model._design.update({k: float(v.value) for k, v in model._decisions.items()})
     model._design["extractant_mol_l"] = float(
         model.fs.parameters["extractant_mol_l"].value
     )
     result = stage.report(model) if result is None else result
-    v = model._washed["feed_l"]
-    final, feed = result["outlet_mol_per_raw_l"], model._physical_feed
+    v = value(model.fs.washed_feed_l_per_raw_l)
+    final, feed = result["outlet_mol_per_raw_l"], mother_liquor_return.mixed_feed(model)
     raffinate = {records.SPECIES_LABELS[s]: final[s] * v for s in SUPPORTS[0]}
     residuals = {k: n * v for k, n in result["balance_residuals_mol_per_raw_l"].items()}
     rows = []
