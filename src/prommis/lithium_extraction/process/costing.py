@@ -462,7 +462,7 @@ LI2CO3_PER_LI = 0.07389 / (
 LI2CO3_SALE_USD_KG = 20.9  # upper retained base revenue (flowsheet.costs_and_balances); enters only the 0.5% sales cost
 
 
-def add_plant_costing(model, capacity_m3_h):
+def add_plant_costing(model, capacity_m3_h, *, levelized=None):
     """Full-process REECosting at `capacity_m3_h` raw brine; requires the A1 block from `full_process.connect_units`."""
     from idaes.core import UnitModelBlock
     from prommis.costing.ree_costing import (
@@ -477,31 +477,62 @@ def add_plant_costing(model, capacity_m3_h):
     )
     plant = fs.plant_costing
     model._plant_capacity_m3_h = q
-    plant.capacity_factor.set_value(
-        a.annual_operating_hours / value(pyunits.convert(1 * pyunits.year, pyunits.hr))
-    )
-    flows = contacts(
-        fs.washed_feed_l_per_raw_l,
-        model._decisions["organic_to_aqueous_ratio"],
-        len(fs.stages),
-        "full_process",
-    )
-    sizes = {name: hydraulics(*f) for name, f in flows.items()}
-    counts = {
-        "extraction_stage_1": len(fs.stages),
-        "scrub": 2,
-    }  # serial stages; scrub and strip are equal contacts
-    for name, account, contact, key, units in EQUIPMENT:
+    year_h = value(pyunits.convert(1 * pyunits.year, pyunits.hr))
+    a1 = fs.costing
+    kg_h = pyunits.kg / pyunits.hr
+    if levelized is None:
+        hours = a.annual_operating_hours
+        flows = contacts(
+            fs.washed_feed_l_per_raw_l,
+            model._decisions["organic_to_aqueous_ratio"],
+            len(fs.stages),
+            "full_process",
+        )
+        sizes = {name: hydraulics(*f) for name, f in flows.items()}
+        counts = {"extraction_stage_1": len(fs.stages), "scrub": 2}
+        equipment = {
+            name: (account, sizes[contact][key] * q * units, counts[contact])
+            for name, account, contact, key, units in EQUIPMENT
+        }
+        purchases = {
+            f: (getattr(a1, "aggregate_flow_" + f) * q, getattr(a1, f + "_cost"))
+            for f in a1.used_flows
+        }
+        kw = sum(s["mixer_power_kw"] + s["pump_power_kw"] for s in sizes.values())
+        purchases["electricity"] = (
+            kw * q * pyunits.kW,
+            a.electricity_price * usd_per(pyunits.kWh),
+        )
+        chemicals = [f for f in a1.used_flows if f != "sludge"]
+        waste = ["sludge"]
+        extra = {}
+    else:
+        hours = levelized["operating_hours"]
+        plant.fixed_charge_factor.set_value(levelized["crf"])
+        plant.tasc_toc_factor.set_value(1)
+        staff = levelized["staff_per_shift"]
+        for role in plant.operators_per_shift:
+            plant.operators_per_shift[role].set_value(staff.get(role, 0))
+        equipment = levelized["equipment"]
+        purchases = levelized["purchases"]
+        chemicals, waste = levelized["chemicals"], levelized["waste"]
+        extra = dict(
+            annual_revenue=0 * pyunits.USD_2023 / pyunits.year,
+            additional_chemicals_cost=levelized["first_fill_usd"] * pyunits.USD_2023,
+        )
+    plant.capacity_factor.set_value(hours / year_h)
+    for name, (account, size, count) in equipment.items():
         unit = UnitModelBlock()
         fs.add_component("plant_" + name, unit)
-        unit.size = Expression(expr=sizes[contact][key] * q * units)
+        unit.size = Expression(expr=size)
         unit.costing = REEUnitModelCostingBlock(
             flowsheet_costing_block=plant,
             costing_method=REECostingData.get_equipment_costing,
             costing_method_arguments={
                 "cost_accounts": [account],
                 "scaled_param": unit.size,
-                "n_equip": counts[contact],
+                "n_equip": count,
+                "scale_down_parallel_equip": False,
                 "CEPCI_year": "2023",
             },
         )
@@ -509,39 +540,50 @@ def add_plant_costing(model, capacity_m3_h):
             unit.costing.bare_erected_cost[account],
             unit.costing.bare_erected_cost_eq[account],
         )
-    a1 = fs.costing
     fs.plant_rates = Block()
-    for (
-        f
-    ) in a1.used_flows:  # each A1 aggregate flow, kg/h at 1 m3/h raw brine, enters once
-        flow = getattr(a1, "aggregate_flow_" + f)
+    for name, (rate, price) in purchases.items():
         fs.plant_rates.add_component(
-            f, Expression(fs.time, rule=lambda b, t, flow=flow: flow * q)
+            name, Expression(fs.time, rule=lambda b, t, rate=rate: rate)
         )
-    kw = sum(s["mixer_power_kw"] + s["pump_power_kw"] for s in sizes.values())
-    # Register price as its own resource: PrOMMiS replaces user prices for its 'power' key.
-    fs.plant_rates.electricity = Expression(
-        fs.time, rule=lambda b, t: kw * q * pyunits.kW
+    production = (
+        a1.li_kg_h * q * LI2CO3_PER_LI
+        if levelized is None
+        else levelized["dry_kg_h"] * kg_h
     )
-    # Li2CO3 after purge at full capacity, kg/y; QGESS applies the capacity factor in cost_of_production.
     fs.plant_production = Expression(
-        expr=pyunits.convert(a1.li_kg_h * q * LI2CO3_PER_LI, pyunits.kg / pyunits.year)
+        expr=pyunits.convert(production, pyunits.kg / pyunits.year)
     )
+    if levelized is None:
+        extra.update(
+            pure_product_output_rates={"Li2CO3": fs.plant_production},
+            sale_prices={"Li2CO3": LI2CO3_SALE_USD_KG * usd_per(pyunits.kg)},
+        )
     plant.build_REE_process_costs(
         production_rate=fs.plant_production,
-        pure_product_output_rates={"Li2CO3": fs.plant_production},
-        sale_prices={"Li2CO3": LI2CO3_SALE_USD_KG * usd_per(pyunits.kg)},
-        resources={
-            f: getattr(fs.plant_rates, f) for f in (*a1.used_flows, "electricity")
-        },
-        resource_prices={f: getattr(a1, f + "_cost") for f in a1.used_flows}
-        | {"electricity": a.electricity_price * usd_per(pyunits.kWh)},
-        chemicals=[f for f in a1.used_flows if f != "sludge"],
-        waste=["sludge"],
+        resources={f: getattr(fs.plant_rates, f) for f in purchases},
+        resource_prices={f: price for f, (_, price) in purchases.items()},
+        chemicals=chemicals,
+        waste=waste,
+        **extra,
     )
+    if levelized is not None:
+        plant.other_plant_costs.unfix()
+        plant.installed_packages = Constraint(
+            expr=plant.other_plant_costs
+            == pyunits.convert(levelized["installed_packages"], plant.CEPCI_units)
+        )
+        calculate_variable_from_constraint(
+            plant.other_plant_costs, plant.installed_packages
+        )
+        plant.maintenance_and_material_cost_eq.set_value(
+            plant.maintenance_and_material_cost
+            == 0.0275 * plant.total_TPC / pyunits.year
+        )
     calculate_variable_from_constraint(plant.total_BEC, plant.total_BEC_eq)
     calculate_variable_from_constraint(plant.total_TPC, plant.total_TPC_eq)
     REECostingData.initialize(plant)
+    if levelized is not None:
+        return plant
     plant.property_taxes_and_insurance_cost_eq.deactivate()  # EXCLUDED under the no-tax scenario
     plant.property_taxes_and_insurance_cost.fix(0)  # after initialize, which resets it
     return plant

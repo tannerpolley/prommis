@@ -673,6 +673,44 @@ def recycle_report(model, result, owner, actual):
     }
 
 
+def carbonation_salt_check(fs, owner, assumptions, constraint_tolerance):
+    """Convert the raw-litre equality tolerance into the independent Ge coordinate."""
+    carbon = fs.carbonation
+    recycle = assumptions["mother_recycle"]
+    purge_fraction = 1 - recycle
+    observed = value(carbon.nacl_mol_kg)
+    expected = owner["mother_nacl_mol_kg"]
+    water = purge_fraction * value(carbon.water_kg)
+    independent = owner["cleanup"]["cleaned_mol"]
+    # For conserved Cl and H2O, (1-r) times reactor outlet equals fresh input
+    # plus the residuals of the concentrate equality, mixer, reactor, inlet
+    # arc, recycle split and recycle arc, and r times the splitter inlet arc.
+    flow_error = (6 + recycle) * constraint_tolerance
+    cl = value(fs.cleanup.liquor["Cl"])
+    fresh_water = value(fs.cleanup.liquor["Li"]) / assumptions["concentrate_li_mol_kg"]
+    chloride_error = abs(cl - independent["Cl"]) + flow_error
+    water_error = (
+        abs(fresh_water - owner["fresh_water_kg"])
+        + flow_error * brines.WATER_MOLAR_MASS_KG
+    )
+    # The salt equality contributes (1-r) times its mol/raw L tolerance.
+    # Subtract m_expected * W from m_connected * W, then divide by W.
+    bound = (
+        chloride_error
+        + purge_fraction * constraint_tolerance
+        + abs(expected) * water_error
+    ) / water
+    bound += math.ulp(observed) + math.ulp(expected)
+    return {
+        "difference_mol_kg": observed - expected,
+        "bound_mol_kg": bound,
+        "connected_net_water_kg_per_raw_l": water,
+        "chloride_error_mol_per_raw_l": chloride_error,
+        "water_error_kg_per_raw_l": water_error,
+        "constraint_tolerance": constraint_tolerance,
+    }
+
+
 def report(model, result):
     """Recompute cleanup closure, strip ligand inventories and independent operating accounts after solve."""
     fs, rc = model.fs, d2_stage.rc
@@ -688,6 +726,7 @@ def report(model, result):
         assumptions,
         model._physical_feed["model_feed"]["Li"],
         aqueous_return=aqueous_return,
+        nacl_coordinate=lambda _: value(fs.carbonation.nacl_mol_kg),
     )
     strip = fs.strip
     actual = {e: value(n) for e, n in strip.metals.items()}
@@ -732,7 +771,16 @@ def report(model, result):
             "carbonation_na2co3_mol": fs.carbonation.carbonate_mol,
         }.items()
     }
-    if max(abs(n) for n in unit_errors.values()) > 1e-12:
+    tau = result["solve"]["options"]["constr_viol_tol"]
+    salt_check = carbonation_salt_check(fs, owner, assumptions, tau)
+    if (
+        not math.isfinite(salt_check["difference_mol_kg"])
+        or abs(salt_check["difference_mol_kg"]) > salt_check["bound_mol_kg"]
+    ):
+        raise RuntimeError(
+            f"Connected carbonation salt differs from arithmetic: {salt_check}"
+        )
+    if max(abs(n) for k, n in unit_errors.items() if k != "mother_nacl_mol_kg") > 1e-12:
         raise RuntimeError(
             f"Connected carbonation differs from arithmetic: {unit_errors}"
         )
@@ -752,7 +800,6 @@ def report(model, result):
     conditioning = None
     if aqueous_return is not None:
         a, b = pairs.pop("mother_conditioning_HCl31")
-        tau = result["solve"]["options"]["constr_viol_tol"]
         # Conditioning stock is proportional to returned C. Propagate the splitter's
         # mol/raw L tolerance and the costing equality's kg/h tolerance at 1,000 raw L/h.
         bound = (
@@ -874,6 +921,7 @@ def report(model, result):
         "strip_proton_closure_mol": proton_error,
         "strip_fraction_difference_mol": differences,
         "owner_differences": unit_errors,
+        "carbonation_salt_reconciliation": salt_check,
         "account_relative_differences": account_differences,
         "carbonation_interval_mol_kg": model._carbonation_interval,
         "downstream_balance_residuals_mol_per_raw_l": balances,

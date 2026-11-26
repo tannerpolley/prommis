@@ -137,7 +137,7 @@ def enumerate_units(
     stripped_li = (1 - assumptions["scrub_li_loss"]) * li * strip_eff
     stripped_na = (1 - assumptions["scrub_na_efficiency"]) * na
     gross = (
-        2.5
+        assumptions.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
         * organic_to_aqueous_ratio
         * v
         * assumptions.get("strip_aqueous_to_organic", 0.10)
@@ -211,6 +211,48 @@ def enumerate_units(
     return candidates
 
 
+def strip_ratio_start(loaded, assumptions, organic_to_aqueous_ratio):
+    """An admissible strip A/O at the entering organic state, per nominal aqueous litre."""
+    li = (
+        (1 - assumptions["scrub_li_loss"])
+        * loaded["li"]
+        * assumptions.get("strip_li_fraction", flowsheet.strip_li_fraction())
+    )
+    na = (1 - assumptions["scrub_na_efficiency"]) * loaded["na"]
+    needed_water = li / assumptions["concentrate_li_mol_kg"]
+    credit = assumptions["acid_recovery"]
+    dose = assumptions.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
+    lo, hi = assumptions["strip_aqueous_to_organic_bounds"]
+    lo = max(
+        lo,
+        needed_water / organic_to_aqueous_ratio,
+        (li + na) / (dose * organic_to_aqueous_ratio),
+    )
+    if credit < 1.0:
+        hi = min(
+            hi,
+            (3 * needed_water - credit * (li + na))
+            / ((1 - credit) * dose * organic_to_aqueous_ratio),
+        )
+    if li > 0 and lo <= hi:
+        return (lo + hi) / 2
+    return None
+
+
+def carbonation_interval_constraint(carbon, assumptions, interval):
+    lo, hi = interval
+    # With zero recovery, fresh chloride is dose times gross strip water.
+    # Available strip water therefore already enforces m >= dose.
+    dose = assumptions.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
+    if (
+        "strip_aqueous_to_organic_bounds" in assumptions
+        and assumptions["acid_recovery"] == 0
+        and lo == dose
+    ):
+        lo = None
+    carbon.interval.set_value((lo, carbon.nacl_mol_kg, hi))
+
+
 def connect_units(model, case, assumptions, candidate, *, initial_accounts=None):
     """Write the owner's algebra with an explicit active scrub bound and fixed Ge interval."""
     washed, v = model._washed, model._washed["feed_l"]
@@ -239,6 +281,7 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
         "case": case,
         "assumptions": assumptions,
         "candidate": candidate,
+        "initial_accounts": owner,
     }
     fs = model.fs
     fs.washed_feed_l_per_raw_l.set_value(v)
@@ -321,7 +364,10 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
             strip.aqueous_to_organic
         )
     strip.gross_water_kg = Expression(expr=ratio * v * strip_ratio)
-    strip.gross_acid_mol = Expression(expr=2.5 * strip.gross_water_kg)
+    strip.gross_acid_mol = Expression(
+        expr=assumptions.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
+        * strip.gross_water_kg
+    )
     strip.acid = Constraint(
         ("hydrogen-cation", "chloride-anion"),
         rule=lambda b, s: strip.unit.mscontactor.aqueous_inlet_state[0].flow_mol_comp[s]
@@ -342,6 +388,9 @@ def connect_units(model, case, assumptions, candidate, *, initial_accounts=None)
     if hasattr(fs, "mother_liquor_return"):
         mother_liquor_return.split(fs)
     carbon = fs.carbonation
+    carbonation_interval_constraint(
+        carbon, assumptions, candidate["carbonation_interval_mol_kg"]
+    )
     _initialize_units(fs, owner, assumptions["mother_recycle"])
     if hasattr(getattr(fs, "design", None), "returned_lithium"):
         # The unit initialization has evaluated the strip outlet at the prepared stage profile.
@@ -472,7 +521,7 @@ def select_units(model, candidate):
     fs.scrub.other_bound.set_value(fs.scrub.acid_mol >= other)
     fs.scrub.other_bound.activate()
     lo, hi = candidate["carbonation_interval_mol_kg"]
-    fs.carbonation.interval.set_value((lo, fs.carbonation.nacl_mol_kg, hi))
+    carbonation_interval_constraint(fs.carbonation, a, (lo, hi))
     fs.carbonation.interval.activate()
     s0, s1 = (
         carbonation.empirical_solubility(a["carbonation_temperature_k"], salt)
@@ -605,6 +654,9 @@ def report(model, result, softening):
     raffinate.update(
         {records.SPECIES_LABELS[s]: final[s] * v for s in model._chemistry.supports[0]}
     )
+    removed_acid = actual["gross_strip_acid_mol"] - actual["fresh_strip_acid_mol"]
+    recovered_acid = removed_acid if data["assumptions"]["acid_recovery"] else 0.0
+    balances["strip acid recovery"] = removed_acid - recovered_acid
     r7 = references.check_r7(
         result["feed"],
         raffinate,
@@ -639,10 +691,7 @@ def report(model, result, softening):
             "H": actual["gross_strip_acid_mol"],
             "Cl": actual["gross_strip_acid_mol"],
         },
-        "recovered unused strip HCl": {
-            "H": actual["gross_strip_acid_mol"] - actual["fresh_strip_acid_mol"],
-            "Cl": actual["gross_strip_acid_mol"] - actual["fresh_strip_acid_mol"],
-        },
+        "recovered unused strip HCl": {"H": recovered_acid, "Cl": recovered_acid},
         "strip liquor before neutralization": stripped
         | {
             "H": actual["neutralization_naoh_mol"],
@@ -785,15 +834,21 @@ def report(model, result, softening):
     )
 
 
-def nominal_water(fs, washed, gross_strip_water, concentrate_water):
+def nominal_water(fs, washed, gross_strip_water, concentrate_water, *, gap_bound=0.0):
     """Named #447 water accounts on the existing HBTA strip and Ge basis."""
     mw = brines.WATER_MOLAR_MASS_KG
     carrier = flowsheet.HCL_MOLAR_MASS_KG * (1 / flowsheet.hcl_stock_fraction() - 1)
     g, c = gross_strip_water, concentrate_water
     s = carrier * value(fs.strip.fresh_acid_mol)
+    projected = c > g and c - g <= gap_bound
+    if projected:
+        c = g
     r, bleed, trim = g - c, max(0.0, s - c), max(0.0, c - s)
     if not 0 <= c <= g or not 0 <= bleed <= r or not 0 <= s < g:
-        raise ValueError("Incompatible nominal HBTA strip water preparation")
+        raise ValueError(
+            f"Incompatible nominal HBTA strip water preparation: gross={g}, Ge={c}, HCl water={s}, "
+            f"gap bound={gap_bound} kg/raw L"
+        )
     neutral = value(fs.neutralization.excluded_reaction_water_kg)
     regeneration = value(fs.saponification.naoh_mol) * mw
     softening_stock = carrier * washed["reagent_mol"]["HCl"]
@@ -830,6 +885,11 @@ def nominal_water(fs, washed, gross_strip_water, concentrate_water):
             )
         ),
     }
+    if projected:
+        numeric["concentrator feed minus concentrate before projection"] = (
+            gross_strip_water - concentrate_water
+        )
+        numeric["concentrator gap numerical bound"] = gap_bound
     symbolic = {
         "fresh scrub dilution": (0.0, "U_s"),
         "scrub wastewater": (scrub_stock, "U_s"),
@@ -939,6 +999,9 @@ def complete_reporting(result, fs):
                 washed,
                 result["water_streams"]["gross strip liquor"]["kg_per_raw_l"],
                 net,
+                gap_bound=result["solve"].get(
+                    "strip_water_gap_bound_kg_per_raw_l", 0.0
+                ),
             )
         )
     feed = result["feed"]

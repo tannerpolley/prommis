@@ -288,6 +288,7 @@ def build_flowsheet(
     chemistry_by_support=None,
     physical_feed=None,
     packet_id=None,
+    maximum_stages=5,
 ):
     if packet_id is not None and (
         packet_id != AQUEOUS_PACKET or chemistry_by_support is not None
@@ -361,7 +362,10 @@ def build_flowsheet(
         * 0.001
     )
     organic["diluent"] = ratio * diluent
-    model = stage.build_stages(declarations, aqueous, organic, stages)
+    model = stage.build_stages(
+        declarations, aqueous, organic, stages, maximum_stages=maximum_stages
+    )
+    model._maximum_stages = maximum_stages
     model.fs.parameters["extractant_mol_l"].fix(c)
     model.fs.parameters["topo_total_mol"].unfix()
     # Total TOPO = O/A x c at the live O/A (the inlet diluent, as `certify` reads it), not the build-time O/A: a
@@ -499,6 +503,7 @@ def solve(
             model._washed,
             stages=len(rows),
             scenario=model._design,
+            maximum_stages=model._maximum_stages,
             direct_cascade={"stages": rows, "start": {"guesses": guesses}},
             chemistry_by_support=model._chemistry_by_support,
             physical_feed=model._physical_feed,

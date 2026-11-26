@@ -123,10 +123,14 @@ def solubility(system, temperature_k, carbonate, salt, solid_mol=10.0):
     }
 
 
+def nacl_rows():
+    with GE_TABLE.open() as stream:
+        return [r for r in csv.DictReader(stream) if r["series"] == "NaCl"]
+
+
 def empirical_solubility(temperature_k, salt):
     """Linear interpolation in Ge's NaCl series at 0.5 mol/kg added Na2CO3; no extrapolation."""
-    with GE_TABLE.open() as stream:
-        rows = [r for r in csv.DictReader(stream) if r["series"] == "NaCl"]
+    rows = nacl_rows()
     temperatures = [303.15, 313.15, 323.15, 333.15, 343.15, 353.15]
     if not temperatures[0] <= temperature_k <= temperatures[-1] or not 0 <= salt <= 3:
         raise ValueError(

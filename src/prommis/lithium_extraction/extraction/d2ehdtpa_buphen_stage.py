@@ -337,10 +337,13 @@ def decisions(model, *, organic_recycle=False):
     b.ligand_totals = Constraint(
         tuple(totals), rule=lambda _, s: fs.parameters[s] == totals[s]
     )
-    if model._raiguel_recipe:
-        b.site_concentration = Constraint(
-            expr=sites == owner.RAIGUEL_SITES_MOL_L * organic_volume
-        )
+    fixed_sites = (
+        owner.RAIGUEL_SITES_MOL_L
+        if model._raiguel_recipe
+        else record.get("fixed_sites_mol_l")
+    )
+    if fixed_sites is not None:
+        b.site_concentration = Constraint(expr=sites == fixed_sites * organic_volume)
         b.site_concentration.deactivate()  # exactly constructed when S and O/A are both fixed
     else:
         low, high = record["sites_mol_l"]
@@ -363,7 +366,7 @@ def release(model, objective, *, minimum_li_extraction=None):
     for variable in model._decisions.values():
         if variable.lb != variable.ub:
             variable.unfix()
-    if model._raiguel_recipe:
+    if hasattr(model.fs.design, "site_concentration"):
         model.fs.design.site_concentration.activate()
     if getattr(model, "_d2_full_process", {}).get("optimize_mother_liquor_return"):
         model.fs.mother_liquor_return.fraction.unfix()

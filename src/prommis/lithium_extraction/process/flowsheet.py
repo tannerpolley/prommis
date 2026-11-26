@@ -41,6 +41,7 @@ MASS_KG_PER_MOL = {
     "TOPO": 0.38663,
     "diluent": 0.17033484,
 }
+STRIP_HCL_MOL_L = 2.5  # historical HBTA strip concentration
 REAGENT_REGISTER = "data/reference/tea/hbta_topo_screening_cost_assumptions.csv"
 PRETREATMENT_REGISTER = "data/reference/tea/pretreatment_cost_assumptions.csv"
 
@@ -457,9 +458,9 @@ def costs_and_balances(
         "Na": 0.0,
     }
     gross_strip_acid = (
-        2.5 * organic_volume / 10
-        if strip_ratio is None
-        else 2.5 * organic_volume * strip_ratio
+        assumptions.get("strip_hcl_mol_l", STRIP_HCL_MOL_L)
+        * organic_volume
+        * (0.10 if strip_ratio is None else strip_ratio)
     )
     bound = sum(stripped.values())
     if gross_strip_acid < bound:

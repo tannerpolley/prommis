@@ -99,7 +99,9 @@ def add_rule(model, objective):
         if hasattr(b, name):
             b.del_component(name)
     kind = objective["kind"]
-    if kind == "affordable":
+    if kind == "levelized_cost":
+        model.rule = Objective(expr=fs.plant_costing.cost_of_production)
+    elif kind == "affordable":
         start = value(
             loss, exception=False
         )  # units may not be initialized before the solve

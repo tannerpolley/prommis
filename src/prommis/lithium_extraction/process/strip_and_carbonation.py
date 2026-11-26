@@ -25,6 +25,7 @@ from prommis.lithium_extraction.process import waters as brines, carbonation
 from prommis.lithium_extraction.extraction import stage
 
 LIQUOR = ("H2O", "Li", "Na", "Cl", "C")
+GE_EXCESS_SODA_ASH_MOL_KG = 0.5
 
 
 def held_liquid_loss(dry_kg, liquor_kg, moisture, wash_volumes):
@@ -51,7 +52,11 @@ def accounts(liquor, assumptions, *, nacl_coordinate=None):
     s = carbonation.empirical_solubility(
         assumptions["carbonation_temperature_k"], evaluated
     )
-    mother = {"Li": 2 * s * water, "Na": (nacl + 1) * water, "C": (0.5 + s) * water}
+    mother = {
+        "Li": 2 * s * water,
+        "Na": (nacl + 1) * water,
+        "C": (GE_EXCESS_SODA_ASH_MOL_KG + s) * water,
+    }
     purge = {e: n * (1 - recycle) for e, n in mother.items()}
     product = (liquor["Li"] - purge["Li"]) / 2
     carbonate = product + purge["C"] - liquor["C"]
@@ -186,7 +191,8 @@ def connect(fs, liquor, assumptions, candidate, owner):
         expr=mother["Li"] == 2 * carbon.solubility_mol_kg * carbon.water_kg
     )
     carbon.excess_carbonate = Constraint(
-        expr=mother["C"] == (0.5 + carbon.solubility_mol_kg) * carbon.water_kg
+        expr=mother["C"]
+        == (GE_EXCESS_SODA_ASH_MOL_KG + carbon.solubility_mol_kg) * carbon.water_kg
     )
     carbon.carbonate_depletion = Constraint(expr=inlet["C"] - mother["C"] == product)
     carbon.product_mol = Expression(expr=product)

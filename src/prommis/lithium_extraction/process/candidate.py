@@ -155,7 +155,72 @@ def unavailable(site):
     )
 
 
-def bound_disposition(job, reference):
+def salt_and_recovery_bounds(job, reference, maximum_return_fraction):
+    """Necessary Ge-domain bounds over the allowed HBTA/TOPO controls."""
+    from prommis.lithium_extraction.process import carbonation, flowsheet
+
+    a = reference["full_process"]["assumptions"] | job.get("process_assumptions", {})
+    washed = reference["softening"][job["case"]]
+    inlet_li = washed["aqueous_mol"]["Li"] / washed["feed_l"]
+    b = records.bounds("C", job["end"], job.get("rule", False))
+    capacity = 0.72 * b["organic_to_aqueous_ratio"][1] * b["extractant_mol_l"][1]
+    transfer = (1 - a["scrub_li_loss"]) * a.get(
+        "strip_li_fraction", flowsheet.strip_li_fraction()
+    )
+    dose = a.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
+    ratio = a.get("strip_aqueous_to_organic", 0.10)
+    minimum_ratio = a.get("strip_aqueous_to_organic_bounds", (ratio, ratio))[0]
+    concentration = a["concentrate_li_mol_kg"]
+    gross_acid = dose * minimum_ratio * b["organic_to_aqueous_ratio"][0]
+    knots = tuple(float(r["nacl_mol_kg"]) for r in carbonation.nacl_rows())
+    maximum_salt = knots[-1]
+
+    def purge_limit(salts):
+        solubility = max(
+            carbonation.empirical_solubility(a["carbonation_temperature_k"], m)
+            for m in salts
+        )
+        return min(maximum_return_fraction, 2 * solubility / concentration)
+
+    def unrecovered_salt(purge):
+        cleaned_li = transfer * min(inlet_li / (1 - purge * transfer), capacity)
+        # Gross strip water must cover the water retained in concentrate.
+        return max(dose, concentration * gross_acid / cleaned_li)
+
+    initial = unrecovered_salt(maximum_return_fraction)
+    lower = initial
+    if lower <= maximum_salt:
+        lower = max(
+            lower,
+            unrecovered_salt(purge_limit((lower, *(m for m in knots if m > lower)))),
+        )
+    intervals = []
+    for lo, hi in itertools.pairwise(
+        (concentration, *(m for m in knots if m > concentration))
+    ):
+        purge = purge_limit((lo, hi))
+        salt = unrecovered_salt(purge)
+        threshold = (salt - hi) / (salt - concentration) if salt > hi else 0.0
+        intervals.append(
+            dict(
+                interval_mol_kg=[lo, hi],
+                purge_li_fraction_upper=purge,
+                salt_without_recovery_lower_mol_kg=salt,
+                acid_recovery_fraction_lower=threshold,
+            )
+        )
+    return dict(
+        no_recovery_salt_lower_mol_kg=lower,
+        unrestricted_salt_lower_mol_kg=initial,
+        maximum_measured_nacl_mol_kg=maximum_salt,
+        recovery_bounds_by_interval=intervals,
+        minimum_acid_recovery_fraction_lower_bound=min(
+            r["acid_recovery_fraction_lower"] for r in intervals
+        ),
+    )
+
+
+def bound_disposition(job, reference, *, maximum_return_fraction=0.0):
     """A cell is infeasible only when a bound proves it over the whole design range (#201 campaign bounds)."""
     from prommis.lithium_extraction.process import flowsheet
 
@@ -173,6 +238,8 @@ def bound_disposition(job, reference):
     capacity = (
         0.72 * bounds["organic_to_aqueous_ratio"][1] * bounds["extractant_mol_l"][1]
     )
+    if job.get("objective", {}).get("kind") == "levelized_cost":
+        target = job.get("exact_extraction")
     if target is not None and capacity < target * inlet_li:
         return dict(
             status="infeasible",
@@ -181,24 +248,52 @@ def bound_disposition(job, reference):
             required_li_mol_per_nominal_l=target * inlet_li,
         )
     if job["scope"] == "full_process":
-        a = reference["full_process"]["assumptions"]
-        li_max = (
-            min(inlet_li, capacity)
-            * (1 - a["scrub_li_loss"])
-            * flowsheet.strip_li_fraction()
+        a = reference["full_process"]["assumptions"] | job.get(
+            "process_assumptions", {}
         )
-        salt_min = a["concentrate_li_mol_kg"] * (
-            a["acid_recovery"]
-            + (1 - a["acid_recovery"])
-            * 0.25
+        transfer = (1 - a["scrub_li_loss"]) * flowsheet.strip_li_fraction()
+        ratio = a.get("strip_aqueous_to_organic", 0.10)
+        minimum_ratio = a.get("strip_aqueous_to_organic_bounds", (ratio, ratio))[0]
+        concentration = a["concentrate_li_mol_kg"]
+        acid_credit = a["acid_recovery"]
+        gross_acid_min = (
+            a.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
+            * minimum_ratio
             * bounds["organic_to_aqueous_ratio"][0]
-            / li_max
         )
+
+        def salt_without_recovery(purge_li_fraction):
+            # Mixed Li <= external Li + returned purge Li. Returned water only dilutes.
+            li_max = (
+                min(inlet_li / (1 - purge_li_fraction * transfer), capacity) * transfer
+            )
+            return concentration * gross_acid_min / li_max
+
+        salt_min = concentration * acid_credit + (
+            1 - acid_credit
+        ) * salt_without_recovery(maximum_return_fraction)
+        evidence = {}
+        if (
+            job["solvent"] == "C"
+            and job.get("objective", {}).get("kind") == "levelized_cost"
+            and maximum_return_fraction > 0
+        ):
+            evidence = salt_and_recovery_bounds(job, reference, maximum_return_fraction)
+            if acid_credit == 0:
+                salt_min = max(salt_min, evidence["no_recovery_salt_lower_mol_kg"])
+            elif evidence["minimum_acid_recovery_fraction_lower_bound"] > acid_credit:
+                return dict(
+                    status="infeasible",
+                    reason="outside the carbonation data range at the acid-recovery target",
+                    minimum_mother_nacl_mol_kg=salt_min,
+                    **evidence,
+                )
         if salt_min > 3:
             return dict(
                 status="infeasible",
                 reason="carbonation outside the measured solubility data throughout decision bounds",
                 minimum_mother_nacl_mol_kg=salt_min,
+                **evidence,
             )
     return None
 
@@ -365,6 +460,8 @@ def build(job, fixed=None, *, pinned_reference=None, fit_constants=None):
                 start=start,
             )
         kwargs = {} if sample is None else {"packet_id": sample["packet"]}
+        if "maximum_stages" in job:
+            kwargs["maximum_stages"] = job["maximum_stages"]
         model = adapter.build_flowsheet(
             washed,
             stages=job["stages"],
@@ -541,7 +638,9 @@ def d2_process_assumptions(job):
     return assumptions
 
 
-def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=None):
+def build_d2(
+    job, *, brine=None, start=None, retained=None, pinned_reference=None, replay=False
+):
     """Build the fixed extraction and strip start, before any process NLP."""
     from prommis.lithium_extraction.process import (
         d2ehdtpa_buphen_whole_process as d2_full_process,
@@ -582,12 +681,27 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
         raise ValueError("Calibration replay requires an attained fixed design")
     constants = aqueous["ln_k"] if aqueous is not None else old["ln_K_Li_Mg_Ca"]
     design = dict(fixed, site_basis_li_mol_l=raw["mol"]["Li"], ln_K_Li_Mg_Ca=constants)
+    anchor = design
+    if (
+        replay
+        and retained
+        and "levelized" in retained
+        and a is not None
+        and "mother_liquor_return" in a
+    ):
+        minimum, maximum = job["design_range"]["sites_mol_l"]
+        once_through_sites = fixed["S"] * raw["mol"]["Li"] / ratio
+        if not minimum <= once_through_sites <= maximum:
+            # Validate and initialize the Engine at the already attained mixed-feed
+            # organic composition. The connected mixer still receives the raw brine.
+            sites = retained["sites_mol_l_organic"]
+            anchor = design | {"site_basis_li_mol_l": sites * ratio / fixed["S"]}
     model = d2.build_flowsheet(
         raw if brine is None else brine,
         solvent=job["solvent"],
         scope=job["scope"],
         stages=job["stages"],
-        scenario=design,
+        scenario=anchor,
         design_range=job.get("design_range"),
         raffinate_entrainment_l=a["entrainment_l_per_l"] if recycle else 0.0,
         packet_id=aqueous["packet"] if aqueous is not None else None,
@@ -595,6 +709,8 @@ def build_d2(job, *, brine=None, start=None, retained=None, pinned_reference=Non
         aqueous_return=a is not None and "mother_liquor_return" in a,
     )
     model._case = job["case"]
+    if anchor is not design:
+        model._design["site_basis_li_mol_l"] = design["site_basis_li_mol_l"]
     if start is not None:
         profiles = start
     elif pinned_reference is not None:

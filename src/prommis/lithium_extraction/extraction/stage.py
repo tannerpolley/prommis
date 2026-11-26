@@ -594,6 +594,10 @@ def solve(
         "mu_init": 1e-6,
         "max_cpu_time": float(wall_seconds),
     }
+    if getattr(model, "_start_at_bound", False):
+        # IPOPT shifts a point at a bound before solving. The fixed replay
+        # starts at an attained state, so keep this shift at primal precision.
+        options["bound_push"] = options["bound_frac"] = options["constr_viol_tol"]
     if len(model.fs.stages) == 1:
         options["expect_infeasible_problem"] = "yes"
     for name in ("dual", "ipopt_zL_out", "ipopt_zU_out"):
@@ -788,6 +792,21 @@ def _bounded_fixed_solve(model, directory, options):
         "washed_feed_l_per_raw_l": value(model.fs.washed_feed_l_per_raw_l),
     }
     if info["status"] != 0:
+        if hasattr(model, "_plant_inputs"):
+            lower, upper = nlp.constraints_lb(), nlp.constraints_ub()
+            amount = np.asarray(info["g"])
+            violation = np.maximum(np.maximum(lower - amount, amount - upper), 0.0)
+            worst = np.argsort(violation)[-8:][::-1]
+            model._solve["largest_constraint_violations"] = {
+                constraints[i].name: float(violation[i])
+                for i in worst
+                if np.isfinite(violation[i])
+            }
+            model._solve["last_state"] = {
+                v.name: float(n)
+                for v, n in zip(variables, x, strict=True)
+                if np.isfinite(n)
+            }
         raise RuntimeError(
             f"IPOPT unresolved: {attempt}; {nlp.evaluations} NLP evaluations"
         )
@@ -815,11 +834,28 @@ def outlet_jacobian(model, nlp, constraint_tolerance):
     from scipy.sparse.linalg import splu
 
     equality = nlp.constraints_lb() == nlp.constraints_ub()
-    jacobian = nlp.evaluate_jacobian().tocsc()[equality, :].tocsc()
-    columns = {id(v): j for j, v in enumerate(nlp.get_pyomo_variables())}
+    variables = nlp.get_pyomo_variables()
+    included = np.ones(len(variables), dtype=bool)
+    if hasattr(model, "_plant_inputs") and hasattr(model, "rule"):
+        # Evaluate state sensitivity conditional on the attained operating settings.
+        controls = {id(v) for v in model._decisions.values()}
+        controls.add(id(model.fs.mother_liquor_return.fraction))
+        if model._plant_inputs["mvr_configuration"] is None and hasattr(
+            model.fs, "concentration"
+        ):
+            controls.discard(id(model.fs.strip.aqueous_to_organic))
+        included = np.array([id(v) not in controls for v in variables])
+        target = getattr(model.fs.design, "li_target", None)
+        equality = equality & np.array(
+            [c is not target for c in nlp.get_pyomo_constraints()]
+        )
+    jacobian = nlp.evaluate_jacobian().tocsc()[equality, :][:, included].tocsc()
+    columns = {id(variables[j]): k for k, j in enumerate(np.flatnonzero(included))}
     factor = value(model.fs.washed_feed_l_per_raw_l)
     propagation = {}
     extraction_bound = None
+    cost_bounds, duty_bounds = {}, {}
+    strip_water_gap_bound = None
     if jacobian.shape[0] == jacobian.shape[1]:
         try:
             lu = splu(jacobian)
@@ -835,6 +871,82 @@ def outlet_jacobian(model, nlp, constraint_tolerance):
                         propagation[f"{k}/{name}"] = (
                             gain * constraint_tolerance * factor
                         )
+            if hasattr(model, "_plant_inputs"):
+                # At fixed settings J dx = dr. For each cost line propagate its own
+                # absolute residual bound using the transposed equality system.
+                from pyomo.core.expr.calculus.derivatives import differentiate
+                from pyomo.core.expr.visitor import identify_variables
+
+                p = model.fs.plant_costing
+                cf = value(p.capacity_factor)
+                terms = {
+                    "capital": 1e6 * p.annualized_cost,
+                    "fixed": 1e6 * p.total_fixed_OM_cost,
+                    "overhead": 1e6 * cf * p.plant_overhead_cost[0],
+                }
+                terms.update(
+                    {
+                        k: 1e6 * cf * v
+                        for (_, k), v in p.variable_operating_costs.items()
+                    }
+                )
+                product = (
+                    model._plant_inputs["dry_kg_h"]
+                    * model._plant_inputs["operating_hours"]
+                    / 1000
+                )
+
+                def bound(expr):
+                    vs = [
+                        v
+                        for v in identify_variables(expr, include_fixed=False)
+                        if id(v) in columns
+                    ]
+                    grad = np.zeros(jacobian.shape[1])
+                    if vs:
+                        for v, g in zip(
+                            vs, differentiate(expr, wrt_list=vs), strict=True
+                        ):
+                            grad[columns[id(v)]] = value(g)
+                    return (
+                        float(np.linalg.norm(lu.solve(grad, trans="T"), ord=1))
+                        * constraint_tolerance
+                    )
+
+                cost_bounds = {
+                    name: bound(expr)
+                    for name, expr in (terms | {"product_t_y": product}).items()
+                }
+                if hasattr(model, "_full_process"):
+                    from prommis.lithium_extraction.process import waters as brines
+
+                    fs = model.fs
+                    gross = fs.strip_liquid.properties_out[0].flow_mol_phase_comp[
+                        "Liq", "H2O"
+                    ]
+                    gap = (
+                        gross * 3600 * brines.WATER_MOLAR_MASS_KG
+                        - fs.concentration.net_water_kg
+                    )
+                    strip_water_gap_bound = bound(gap)
+                inputs = model._plant_inputs
+                if "required_equipment" in inputs:
+                    mvr = inputs["mvr_configuration"]
+                    n_dryer = inputs["dryer_configuration"][0]
+                    dry = inputs["dry_kg_h"]
+                    duties = {
+                        k: s for k, (_, s, _) in inputs["required_equipment"].items()
+                    } | dict(
+                        dryer_vapor_kg_h=dry * (1 / 0.895 - 1 / 0.995) / n_dryer,
+                        dryer_discharge_kg_h=dry / 0.995 / n_dryer,
+                    )
+                    vapor = inputs["mvr_vapor_bound_basis_kg_h"]
+                    if vapor is None:
+                        vapor = inputs["mvr_vapor_kg_h"]
+                    duties["mvr_vapor_kg_h"] = vapor / mvr[0] if mvr else vapor
+                    if mvr:
+                        duties["mvr_liquid_m3_h"] = inputs["mvr_feed_m3_h"] / mvr[0]
+                    duty_bounds = {name: bound(expr) for name, expr in duties.items()}
             final = model.fs.stage[len(model.fs.stages)].outlet
             if "lithium-cation" in final and "lithium-cation" in model.fs.boundary:
                 last = final["lithium-cation"]
@@ -854,6 +966,19 @@ def outlet_jacobian(model, nlp, constraint_tolerance):
                     * constraint_tolerance
                 )
     return {
+        **(
+            {
+                "plant_line_jacobian_bounds": cost_bounds,
+                "plant_duty_jacobian_bounds": duty_bounds,
+            }
+            if hasattr(model, "_plant_inputs")
+            else {}
+        ),
+        **(
+            {"strip_water_gap_bound_kg_per_raw_l": strip_water_gap_bound}
+            if strip_water_gap_bound is not None
+            else {}
+        ),
         "outlet_jacobian_bound_mol_per_raw_l": propagation,
         "extraction_jacobian_bound": extraction_bound,
         "residual_jacobian_shape": list(jacobian.shape),
