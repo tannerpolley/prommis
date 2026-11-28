@@ -121,9 +121,13 @@ def build_flowsheet(
     if "unavailable" in feed:
         raise ValueError(feed["unavailable"])
     basis = records.SOLVENTS[solvent]["ion_basis"]
-    if packet_id is not None:
-        if basis != "packet" or packet_id not in ion_basis.PACKETS:
-            raise ValueError(f"Unsupported explicit packet {packet_id!r} for {solvent}")
+    if packet_id is not None and (
+        basis != "packet"
+        or packet_id not in (*ion_basis.PACKETS, ion_basis.SHARED_AQUEOUS_PACKET)
+    ):
+        raise ValueError(f"Unsupported explicit packet {packet_id!r} for {solvent}")
+    if basis == "packet":
+        packet_id = packet_id or next(iter(ion_basis.PACKETS))
         ion_basis.select(packet_id)
     ion_basis.use(basis)
     cations = {e: feed["model_feed"].get(e, 0) for e in rc.ION if e != "Cl"}
@@ -193,6 +197,13 @@ def build_flowsheet(
             omitted[name] = "dependent on preceding source moiety rows on this support"
 
     def certify(inlet, outlet):
+        if basis == "packet" and ion_basis.PACKET_ID != packet_id:
+            ion_basis.select(packet_id)
+            ion_basis.use(basis)
+        elif rc.HELD_BASIS != (basis != "packet") or ("Sr" in rc.COMPLEX) != (
+            basis == "held_explicit_sr"
+        ):
+            ion_basis.use(basis)
         v = inlet["diluent"] / (organic["diluent"] / ratio)
         aqueous_volume = inlet["water"] / aqueous["water"] if aqueous_return else 1.0
         total_sites = sum(rc.MOIETIES["A"].get(s, 0) * n for s, n in inlet.items()) / v

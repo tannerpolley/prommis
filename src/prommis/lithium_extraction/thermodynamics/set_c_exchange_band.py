@@ -69,6 +69,9 @@ PROGRESS = (
 MORE = 3  # exit status: the step has more units to run
 PH_TOLERANCE = 0.5
 ZHANG2021_RAFFINATE_LI_MG_L = 5.16
+ZHANG2021_FEED_LI_MOL_L = 907.0 / lx.LI_G_MOL / 1000.0
+ZHANG2021_FEED_NA_MOL_L = 5.21e4 / lx.NA_G_MOL / 1000.0
+ZHANG2021_EXTRACTANT_MOL_L = 0.2
 # Cha et al. 2025 section 2.2 and 3.2: 0.4 M + 0.4 M, 80 % saponified, O/A 1, Li 1.85 g/L, Na 31.2 g/L, one contact;
 # 626 mg/L HBTA in the water (0.72 %). Its feed is Zhang 2020's (Cha ref. 53); no feed pH is given, so Fig. 2's.
 CHA = lx.Contact(
@@ -196,7 +199,9 @@ def fit_kex(delta: float) -> dict:
     )
 
 
-def zhang2021(constants: dict[str, float], fraction: float) -> dict:
+def zhang2021(
+    constants: dict[str, float], fraction: float, *, packet_id=mc.AQUEOUS_PACKET
+) -> dict:
     """Zhang 2021 Table 9 Li step: 3-stage countercurrent, O/A 1, 0.2 M + 0.2 M, feed pH 8.52."""
     key = f"zhang2021_{fraction}"
     out = countercurrent(
@@ -204,12 +209,13 @@ def zhang2021(constants: dict[str, float], fraction: float) -> dict:
         reaction_set="C",
         stage_count=3,
         organic_to_aqueous=1.0,
-        extractant=0.2,
+        extractant=ZHANG2021_EXTRACTANT_MOL_L,
         saponification_fraction=fraction,
-        feed_li=907.0 / lx.LI_G_MOL / 1000.0,
-        feed_na=5.21e4 / lx.NA_G_MOL / 1000.0,
+        feed_li=ZHANG2021_FEED_LI_MOL_L,
+        feed_na=ZHANG2021_FEED_NA_MOL_L,
         feed_acidity=acidity_at_ph(lx.FEED_PH),
         start=_CASCADE_START.get(key),
+        packet_id=packet_id,
     )
     _CASCADE_START[key] = out["start"]
     _SOLVES[0] += 3 * out["sweeps"]

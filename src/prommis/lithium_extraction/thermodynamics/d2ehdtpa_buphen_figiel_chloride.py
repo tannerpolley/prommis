@@ -23,6 +23,10 @@ from functools import lru_cache
 
 import numpy as np
 
+from prommis.lithium_extraction.thermodynamics.hbta_topo_aqueous_packet import (
+    SHARED_AQUEOUS_PACKET,
+    shared_packet_directory,
+)
 from prommis.lithium_extraction.thermodynamics.reaction_networks import (
     PRESSURE_RELATIVE_LIMIT,
 )
@@ -47,6 +51,7 @@ PACKETS = {
         "Mg/Ca-water and Mg/Ca-chloride k_ij at bounds (not identified); no Sr2+ parameters (Sr lumped into Ca)",
     ),
 }
+D2_AQUEOUS = ("water", *(aqa.ION[e][0] for e in ("Li", "Na", "K", "Mg", "Ca", "Cl")))
 LABEL = {
     "held": f"Held 2008 control, Sr lumped into Ca where present; {rc.ERROR_LABEL}"
 }
@@ -86,13 +91,11 @@ def fingerprint(root):
 @lru_cache(maxsize=1)
 def packet_payload():
     """Packet water, ions, pairs and model families; #188 organic records and zero organic pairs unchanged."""
-    if fingerprint(PACKET) != FINGERPRINT:
+    if PACKET_ID != SHARED_AQUEOUS_PACKET and fingerprint(PACKET) != FINGERPRINT:
         raise RuntimeError("Packet copy differs from the Engine lock fingerprint")
-    packet, held = (
-        json.loads((PACKET / "parameters/parameters.json").read_text()),
-        HELD(),
-    )
-    aqueous = {"water", *(aqa.ION[e][0] for e in ("Li", "Na", "K", "Mg", "Ca", "Cl"))}
+    packet = json.loads((PACKET / "parameters/parameters.json").read_text())
+    held = HELD()
+    aqueous = set(D2_AQUEOUS)
     held_aqueous = {"water", *(name for name, _, _ in aqa.ION.values())}
     document = deepcopy(packet)
     document["components"] = [
@@ -132,6 +135,10 @@ def packet_payload():
     document["correlations"] = [
         c for c in packet["correlations"] if c["component_id"] in aqueous
     ]
+    if "cation_mixing" in document:
+        document["cation_mixing"] = [
+            r for r in packet["cation_mixing"] if set(r["cations"]) <= aqueous
+        ]
     document["topology"]["sites"] = [
         s for s in packet["topology"]["sites"] if s["component_id"] in aqueous
     ]
@@ -150,19 +157,42 @@ def packet_payload():
     return document
 
 
+def shared_d2_parameters():
+    from epcsaft.parameters import parameter_document
+
+    root = packet_directory(SHARED_AQUEOUS_PACKET)
+    return parameter_document(root.parent.parent, [(SHARED_AQUEOUS_PACKET, D2_AQUEOUS)])
+
+
+def packet_fingerprint(packet_id):
+    if packet_id == SHARED_AQUEOUS_PACKET:
+        projection = shared_d2_parameters()
+        return hashlib.sha256(
+            json.dumps(projection, sort_keys=True).encode()
+        ).hexdigest()
+    return fingerprint(packet_directory(packet_id))
+
+
 def packet_directory(packet_id):
+    if packet_id == SHARED_AQUEOUS_PACKET:
+        return shared_packet_directory()
     return aqa.RESULTS / PACKETS[packet_id][2] / "packet"
 
 
 def select(packet_id):
     """Point the packet basis, its labels and OUT at one named Engine packet."""
     global PACKET_ID, PACKET_COMMIT, FINGERPRINT, OUT, PACKET, DOCUMENT_ID, LIMITS
-    PACKET_ID, (PACKET_COMMIT, FINGERPRINT, _, DOCUMENT_ID, LIMITS) = (
-        packet_id,
-        PACKETS[packet_id],
-    )
+    PACKET_ID = packet_id
     PACKET = packet_directory(packet_id)
-    OUT = PACKET.parent
+    if packet_id == SHARED_AQUEOUS_PACKET:
+        PACKET_COMMIT = None  # The shared packet is owned by this repository.
+        FINGERPRINT = packet_fingerprint(packet_id)
+        DOCUMENT_ID = "lithium-d2ehdtpa-buphen-option-1"
+        LIMITS = "fixed D aqueous subset; Sr lumped into Ca"
+        OUT = aqa.RESULTS / "conditional_figiel_packet"
+    else:
+        PACKET_COMMIT, FINGERPRINT, _, DOCUMENT_ID, LIMITS = PACKETS[packet_id]
+        OUT = PACKET.parent
     LABEL["packet"] = f"CONDITIONAL on {PACKET_ID}: {LIMITS}"
     packet_payload.cache_clear()
 

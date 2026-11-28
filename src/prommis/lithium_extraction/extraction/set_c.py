@@ -11,7 +11,10 @@ from pyomo.environ import Constraint, value
 
 from prommis.lithium_extraction.extraction import countercurrent as cc
 from prommis.lithium_extraction.thermodynamics import mechanism_candidates as mc
-from prommis.lithium_extraction.thermodynamics.reaction_networks import AQUEOUS_PACKET
+from prommis.lithium_extraction.thermodynamics.hbta_topo_aqueous_packet import (
+    AQUEOUS_PACKET,
+    SHARED_AQUEOUS_PACKET,
+)
 from prommis.lithium_extraction.thermodynamics.saponified_stage_chemistry import (
     CONTINUATION,
 )
@@ -105,7 +108,14 @@ def washed_feed(washed):
 
 
 def _chemistry(
-    anchor, direct, constants, ratio, extractant, *, conditional_mass_action=False
+    anchor,
+    direct,
+    constants,
+    ratio,
+    extractant,
+    *,
+    conditional_mass_action=False,
+    aqueous_packet=AQUEOUS_PACKET,
 ):
     """Affine owner inventory on the #216 domain restricted by free-ligand capacity.
 
@@ -118,7 +128,7 @@ def _chemistry(
     names, active = mc.network(
         anchor, "C", dict(aqueous, **organic, diluent=1.0), with_water=with_water
     )
-    mixture = mc.model(names)
+    mixture = mc.model(names, aqueous_packet)
     diluent = (
         mixture.state(
             cc.TEMPERATURE_K,
@@ -177,7 +187,7 @@ def _chemistry(
             temperature_k=cc.TEMPERATURE_K,
             pressure_pa=mc.PRESSURE_PA,
         )
-    offset = mc.offsets(names, cc.TEMPERATURE_K)
+    offset = mc.offsets(names, cc.TEMPERATURE_K, aqueous_packet)
     ln_engine = {
         n: mc.ln_k_at(n, constants.get(n, 0.0), cc.TEMPERATURE_K)
         + math.fsum(c * offset[s] for s, c in nu.items())
@@ -231,7 +241,7 @@ def _chemistry(
     def certify(inlet, outlet):
         current_ratio = inlet["diluent"] / diluent
         state = state_from_inlet(inlet, current_ratio, inlet["extractant_mol_l"])
-        selected = mc.solve(state, "C", constants)
+        selected = mc.solve(state, "C", constants, packet_id=aqueous_packet)
         owner_aq, owner_org = mc.inventory(state)
         owner_feed = dict(owner_aq, **owner_org, diluent=inlet["diluent"])
         values = [inlet[s] for s in controls]
@@ -289,12 +299,15 @@ def build_flowsheet(
     physical_feed=None,
     packet_id=None,
     maximum_stages=5,
+    aqueous_packet=AQUEOUS_PACKET,
 ):
     if packet_id is not None and (
-        packet_id != AQUEOUS_PACKET or chemistry_by_support is not None
+        packet_id not in (AQUEOUS_PACKET, SHARED_AQUEOUS_PACKET)
+        or chemistry_by_support is not None
+        or packet_id != aqueous_packet
     ):
         raise ValueError(
-            f"Explicit HBTA calibration requires packet {AQUEOUS_PACKET!r} and fresh Engine declarations"
+            "Explicit HBTA calibration requires matching aqueous parameters and fresh Engine declarations"
         )
     ratio, c, r = (
         scenario[k]
@@ -330,7 +343,13 @@ def build_flowsheet(
         support = row["water_autoprotolysis_active"]
         if support not in cache:
             if packet_id is None:
-                direct = mc.solve(state, "C", scenario["ln_k"], guess=amounts)
+                direct = mc.solve(
+                    state,
+                    "C",
+                    scenario["ln_k"],
+                    guess=amounts,
+                    packet_id=aqueous_packet,
+                )
             else:
                 # Retained phase amounts initialize the ASL record only. Each solved inlet is
                 # independently checked at the sampled coordinates, including the OH support.
@@ -338,7 +357,9 @@ def build_flowsheet(
                     "phase_amounts_mol": amounts,
                     "active_reactions": ("RW",) if support else (),
                 }
-            cache[support] = _chemistry(state, direct, scenario["ln_k"], ratio, c)
+            cache[support] = _chemistry(
+                state, direct, scenario["ln_k"], ratio, c, aqueous_packet=aqueous_packet
+            )
         declarations.append(cache[support])
     boundary = cc.stage_state(
         "generic set C boundary",
@@ -351,7 +372,7 @@ def build_flowsheet(
     )
     aqueous, organic = mc.inventory(boundary)
     diluent = (
-        mc.model(SPECIES)
+        mc.model(SPECIES, aqueous_packet)
         .state(
             cc.TEMPERATURE_K,
             P=mc.PRESSURE_PA,
@@ -383,6 +404,7 @@ def build_flowsheet(
         washed_feed(washed) if physical_feed is None else physical_feed,
     )
     model._chemistry_by_support = cache
+    model._aqueous_packet = aqueous_packet
     profiles = [
         {s: sum(p.get(s, 0.0) for p in amounts) for s in SPECIES}
         for amounts in direct_cascade["start"]["guesses"]
@@ -507,6 +529,7 @@ def solve(
             direct_cascade={"stages": rows, "start": {"guesses": guesses}},
             chemistry_by_support=model._chemistry_by_support,
             physical_feed=model._physical_feed,
+            aqueous_packet=model._aqueous_packet,
         )
         model.__dict__.update(flags)
     raise AssertionError("unreachable support loop")

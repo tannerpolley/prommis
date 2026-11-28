@@ -33,6 +33,10 @@ from prommis.lithium_extraction.thermodynamics.apparent_reactive_lle import (
 from prommis.lithium_extraction.thermodynamics.hbta_topo_aqueous_packet import (
     AQUEOUS_PACKET as AQUEOUS_PACKET,
 )
+from prommis.lithium_extraction.thermodynamics.hbta_topo_aqueous_packet import (
+    SHARED_AQUEOUS_PACKET,
+    shared_packet_directory,
+)
 
 H_MOLAR_MASS = 0.00100794
 SPECIES = (
@@ -259,9 +263,9 @@ def load_constants(path):
     return document
 
 
-@lru_cache(maxsize=1)
-def load_aqueous_packet() -> dict[str, Any]:
-    """Engine /4 aqueous subset; #363 owner decision, 2026-11-16."""
+@lru_cache(maxsize=None)
+def load_aqueous_packet(packet_id=AQUEOUS_PACKET) -> dict[str, Any]:
+    """Subset for the HBTA/TOPO aqueous inventory on the selected basis."""
     from epcsaft.parameters import parameter_document
 
     names = (
@@ -271,8 +275,13 @@ def load_aqueous_packet() -> dict[str, Any]:
         "hydronium-cation",
         "chloride-anion",
     )
-    packet = aqueous_packet_directory()
-    document = parameter_document(packet.parent.parent, [(AQUEOUS_PACKET, names)])
+    if packet_id == AQUEOUS_PACKET:
+        packet = aqueous_packet_directory()
+    elif packet_id == SHARED_AQUEOUS_PACKET:
+        packet = shared_packet_directory()
+    else:
+        raise ValueError(f"Unknown HBTA/TOPO aqueous packet {packet_id!r}")
+    document = parameter_document(packet.parent.parent, [(packet_id, names)])
     # H+ remains the application's inventory species and consumes no water.
     return json.loads(
         json.dumps(document).replace("hydronium-cation", "hydrogen-cation")
@@ -354,14 +363,18 @@ def independent_priors(
 
 
 def parameter_payload(
-    topology: IndependentTopology, diluent_id: str, carbonate: bool = False
+    topology: IndependentTopology,
+    diluent_id: str,
+    carbonate: bool = False,
+    *,
+    packet_id=AQUEOUS_PACKET,
 ) -> dict[str, Any]:
     """Combine the chloride-mixture packet with the ligand-derived complex priors."""
     payload = independent_priors(topology, diluent_id)
     by_id = {row["component_id"]: row for row in payload["components"]}
     structural = deepcopy(by_id["free-carrier"]["fixed"]["charge_number"]["provenance"])
 
-    aqueous = deepcopy(load_aqueous_packet())
+    aqueous = deepcopy(load_aqueous_packet(packet_id))
     aqueous_ids = set(AQUEOUS_SUPPORT)
     for record in aqueous["components"]:
         identity = record["component_id"]

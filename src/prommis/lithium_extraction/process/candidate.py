@@ -423,13 +423,19 @@ def build(job, fixed=None, *, pinned_reference=None, fit_constants=None):
                     "Explicit HBTA calibration replay requires an attained stage profile and sampled coordinates"
                 )
             fit_constants = sample["ln_k"]
-        constants = (
-            fit_constants
-            if fit_constants is not None
-            else load_constants(REPO_ROOT / job.get("constants", record["constants"]))[
-                "ends"
-            ][job["end"]]["ln_k"]
+        aqueous = job.get("hbta_aqueous")
+        aqueous_packet = (
+            aqueous["packet"] if aqueous is not None else cc.mc.AQUEOUS_PACKET
         )
+        constants = fit_constants
+        if constants is None:
+            constants = (
+                aqueous["ln_k"]
+                if aqueous is not None
+                else load_constants(
+                    REPO_ROOT / job.get("constants", record["constants"])
+                )["ends"][job["end"]]["ln_k"]
+            )
         design["ln_k"] = constants
         if (
             fixed and "stages" in fixed and not job.get("cold_start")
@@ -458,8 +464,11 @@ def build(job, fixed=None, *, pinned_reference=None, fit_constants=None):
                 feed_na=washed["aqueous_mol"]["Na"] / washed["feed_l"],
                 feed_acidity=cc.acidity_at_ph(washed["pH"]),
                 start=start,
+                packet_id=aqueous_packet,
             )
-        kwargs = {} if sample is None else {"packet_id": sample["packet"]}
+        kwargs = {"aqueous_packet": aqueous_packet}
+        if sample is not None:
+            kwargs["packet_id"] = sample["packet"]
         if "maximum_stages" in job:
             kwargs["maximum_stages"] = job["maximum_stages"]
         model = adapter.build_flowsheet(

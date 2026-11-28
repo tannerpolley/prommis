@@ -118,6 +118,7 @@ def countercurrent(
     tolerance: float = 1.0e-11,
     max_sweeps: int = 1000,
     start: dict | None = None,
+    packet_id=mc.AQUEOUS_PACKET,
 ) -> dict:
     """Converged cascade: aqueous enters stage 1, saponified organic (``extractant`` HBTA and TOPO) enters stage N.
 
@@ -145,7 +146,7 @@ def countercurrent(
             hbta=entering["hbta"],
             bta=aqueous["bta"],
         )
-        result = mc.solve(state, reaction_set, ln_k, guess=guess)
+        result = mc.solve(state, reaction_set, ln_k, guess=guess, packet_id=packet_id)
         out_aq, out_org = outlets(result, v, entering["hbta"])
         row = {
             "stage": k + 1,

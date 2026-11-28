@@ -223,9 +223,11 @@ def organic_priors() -> dict:
     }
 
 
-def payload() -> dict:
+def payload(packet_id=AQUEOUS_PACKET) -> dict:
     """The retained carrier payload with HA, T, LiCl.T and BTA- added on the priors named in the module docstring."""
-    document = carrier_payload(TOPOLOGIES["t1_mbta_topo"], "dodecane")
+    document = carrier_payload(
+        TOPOLOGIES["t1_mbta_topo"], "dodecane", packet_id=packet_id
+    )
     by_id = {row["component_id"]: row for row in document["components"]}
     add_extractant_priors(by_id)
     prior = {
@@ -314,16 +316,18 @@ def payload() -> dict:
 
 
 @lru_cache(maxsize=None)
-def model(components: tuple[str, ...]) -> epcsaft.Mixture:
+def model(components: tuple[str, ...], packet_id=AQUEOUS_PACKET) -> epcsaft.Mixture:
     return epcsaft.Mixture(
-        epcsaft.Parameters.from_mapping(payload(), components=components)
+        epcsaft.Parameters.from_mapping(payload(packet_id), components=components)
     )
 
 
 @lru_cache(maxsize=None)
-def offsets(components: tuple[str, ...], temperature_k: float) -> dict[str, float]:
+def offsets(
+    components: tuple[str, ...], temperature_k: float, packet_id=AQUEOUS_PACKET
+) -> dict[str, float]:
     """ln(c_ref) + mu_res(infinite dilution) per species: ln a_i = ln c_i + mu_res_i - offset_i."""
-    mixture, ids = model(components), components
+    mixture, ids = model(components, packet_id), components
     result = {}
     for solvent, members, ln_reference in (
         ("water", AQUEOUS, None),
@@ -564,14 +568,23 @@ def is_strict(result, check: dict, active) -> bool:
     )
 
 
-def solve(state: State, reaction_set: str, ln_k: dict[str, float], guess=None) -> dict:
+def solve(
+    state: State,
+    reaction_set: str,
+    ln_k: dict[str, float],
+    guess=None,
+    *,
+    packet_id=AQUEOUS_PACKET,
+) -> dict:
     """_solve_once without OH- first. If that fails, or the contact is above pH 7, where OH- is not negligible,
     the retained state carries water autoprotolysis (warm-started from the first state when there is one).
     """
     try:
-        result = _solve_once(state, reaction_set, ln_k, guess)
+        result = _solve_once(state, reaction_set, ln_k, guess, packet_id=packet_id)
     except RuntimeError:
-        return _solve_once(state, reaction_set, ln_k, None, with_water=True)
+        return _solve_once(
+            state, reaction_set, ln_k, None, with_water=True, packet_id=packet_id
+        )
     if (
         "RW" in result["active_reactions"]
         or result["ph"] is None
@@ -584,9 +597,13 @@ def solve(state: State, reaction_set: str, ln_k: dict[str, float], guess=None) -
         dict(organic),
     ]
     try:
-        return _solve_once(state, reaction_set, ln_k, start, with_water=True)
+        return _solve_once(
+            state, reaction_set, ln_k, start, with_water=True, packet_id=packet_id
+        )
     except RuntimeError:
-        return _solve_once(state, reaction_set, ln_k, None, with_water=True)
+        return _solve_once(
+            state, reaction_set, ln_k, None, with_water=True, packet_id=packet_id
+        )
 
 
 def _solve_once(
@@ -597,6 +614,7 @@ def _solve_once(
     with_water: bool = False,
     *,
     seeds=SEEDS,
+    packet_id=AQUEOUS_PACKET,
 ) -> dict:
     """Strict Engine state or a RuntimeError; the first strict start is kept.
 
@@ -608,8 +626,8 @@ def _solve_once(
     components, active = network(
         state, reaction_set, {**aqueous, **organic, "diluent": 1.0}, with_water
     )
-    mixture = model(components)
-    offset = offsets(components, state.temperature_k)
+    mixture = model(components, packet_id)
+    offset = offsets(components, state.temperature_k, packet_id)
     ln_k_engine = {}
     for name, nu in active:
         ln_k_engine[name] = ln_k_at(
