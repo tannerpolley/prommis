@@ -13,7 +13,7 @@ import epcsaft
 from epcsaft import equilibrium
 
 from prommis.lithium_extraction.thermodynamics.mechanism_candidates import (
-    payload as ligand_payload,
+    organic_priors,
     is_strict,
     SEEDS,
 )
@@ -62,7 +62,7 @@ MOIETIES.update(
 @lru_cache(maxsize=1)
 def payload():
     document = json.loads((INPUTS / "held_2008_parameters.json").read_text())
-    prior = ligand_payload()
+    prior = organic_priors()
     document["sources"] += [
         r
         for r in prior["sources"]

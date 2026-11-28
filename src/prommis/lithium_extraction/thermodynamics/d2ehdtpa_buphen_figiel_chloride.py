@@ -101,7 +101,7 @@ def packet_payload():
     document["components"] += [
         deepcopy(c) for c in held["components"] if c["component_id"] not in held_aqueous
     ]
-    prior = {c["component_id"]: c for c in rc.ligand_payload()["components"]}
+    prior = {c["component_id"]: c for c in rc.organic_priors()["components"]}
     for record in document["components"][
         len(aqueous) :
     ]:  # Born needs the #158 solvation factor that Held omitted.
@@ -150,15 +150,19 @@ def packet_payload():
     return document
 
 
+def packet_directory(packet_id):
+    return aqa.RESULTS / PACKETS[packet_id][2] / "packet"
+
+
 def select(packet_id):
     """Point the packet basis, its labels and OUT at one named Engine packet."""
     global PACKET_ID, PACKET_COMMIT, FINGERPRINT, OUT, PACKET, DOCUMENT_ID, LIMITS
-    PACKET_ID, (PACKET_COMMIT, FINGERPRINT, folder, DOCUMENT_ID, LIMITS) = (
+    PACKET_ID, (PACKET_COMMIT, FINGERPRINT, _, DOCUMENT_ID, LIMITS) = (
         packet_id,
         PACKETS[packet_id],
     )
-    OUT = aqa.RESULTS / folder
-    PACKET = OUT / "packet"
+    PACKET = packet_directory(packet_id)
+    OUT = PACKET.parent
     LABEL["packet"] = f"CONDITIONAL on {PACKET_ID}: {LIMITS}"
     packet_payload.cache_clear()
 

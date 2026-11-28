@@ -741,6 +741,24 @@ def check_carbonation(checks):
         )
 
 
+def strip_closure_limits(species, metals, tau):
+    rc = d2_stage.rc
+    # Each weighted species contributes one material and one reaction-generation residual.
+    bounds = {
+        name: 2
+        * tau
+        * sum(
+            rc.MOIETIES[name].get(s, 0.0) + (s == "ha" and name == "A") for s in species
+        )
+        for name in ("A", "B")
+    }
+    bounds[
+        "A"
+    ] += tau  # inlet ha is held at zero by the strip.loaded[ha] equality (#466 review)
+    bounds["H"] = tau * (1 + 2 * (1 + sum(rc.ION[e][2] for e in metals)))
+    return bounds
+
+
 def report(model, result):
     """Recompute cleanup closure, strip ligand inventories and independent operating accounts after solve."""
     fs, rc = model.fs, d2_stage.rc
@@ -782,18 +800,7 @@ def report(model, result):
     proton_error = value(strip.acid_mol - strip.aqueous_out["hydrogen-cation"]) - sum(
         rc.ION[e][2] * n for e, n in actual.items()
     )
-    # Each weighted organic species contributes one material and one reaction-generation residual.
-    strip_limits = {
-        name: 2
-        * tau
-        * sum(row.get(s, 0.0) + (s == "ha" and name == "A") for s in strip.organic_out)
-        for name, row in (("A", rc.MOIETIES["A"]), ("B", rc.MOIETIES["B"]))
-    }
-    strip_limits[
-        "A"
-    ] += tau  # inlet ha is held at zero by the strip.loaded[ha] equality (#466 review)
-    # H dosing plus two residuals per aqueous species, weighted by its proton stoichiometry.
-    strip_limits["H"] = tau * (1 + 2 * (1 + sum(rc.ION[e][2] for e in actual)))
+    strip_limits = strip_closure_limits(strip.organic_out, actual, tau)
     strip_errors = inventories | {"H": proton_error}
     if any(
         not math.isfinite(n) or abs(n) > strip_limits[k]

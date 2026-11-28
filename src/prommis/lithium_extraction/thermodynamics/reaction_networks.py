@@ -30,6 +30,9 @@ from prommis.lithium_extraction.thermodynamics.apparent_reactive_lle import (
     Condition,
     parameter_payload as legacy_parameter_payload,
 )
+from prommis.lithium_extraction.thermodynamics.hbta_topo_aqueous_packet import (
+    AQUEOUS_PACKET as AQUEOUS_PACKET,
+)
 
 H_MOLAR_MASS = 0.00100794
 SPECIES = (
@@ -241,7 +244,10 @@ def _pair(
     }
 
 
-AQUEOUS_PACKET = "figiel-2025-chloride-mixture-refit/4"
+def aqueous_packet_directory():
+    from prommis.lithium_extraction.paths import REPO_ROOT
+
+    return REPO_ROOT / "data/reference/hbta_topo_aqueous" / AQUEOUS_PACKET
 
 
 def load_constants(path):
@@ -254,13 +260,10 @@ def load_constants(path):
 
 
 @lru_cache(maxsize=1)
-def _aqueous_packet() -> dict[str, Any]:
+def load_aqueous_packet() -> dict[str, Any]:
     """Engine /4 aqueous subset; #363 owner decision, 2026-11-16."""
     from epcsaft.parameters import parameter_document
 
-    from prommis.lithium_extraction.paths import REPO_ROOT
-
-    root = REPO_ROOT / "data/reference/hbta_topo_aqueous"
     names = (
         "water",
         "lithium-cation",
@@ -268,18 +271,18 @@ def _aqueous_packet() -> dict[str, Any]:
         "hydronium-cation",
         "chloride-anion",
     )
-    document = parameter_document(root, [(AQUEOUS_PACKET, names)])
+    packet = aqueous_packet_directory()
+    document = parameter_document(packet.parent.parent, [(AQUEOUS_PACKET, names)])
     # H+ remains the application's inventory species and consumes no water.
     return json.loads(
         json.dumps(document).replace("hydronium-cation", "hydrogen-cation")
     )
 
 
-def parameter_payload(
-    topology: IndependentTopology, diluent_id: str, carbonate: bool = False
+def independent_priors(
+    topology: IndependentTopology, diluent_id: str
 ) -> dict[str, Any]:
-    """Combine the chloride-mixture packet with the ligand-derived complex priors."""
-
+    """Ligand-derived priors before applying an aqueous packet."""
     legacy = (
         LEGACY_TOPOLOGIES["zhang_apparent_2_1_1"]
         if topology.hbta_per_carrier == 2.0
@@ -346,9 +349,19 @@ def parameter_payload(
         "value": {"magnitude": 0, "unit": "elementary-charge"},
         "provenance": structural,
     }
-    by_id["free-carrier"] = free
+    payload["components"].append(free)
+    return payload
 
-    aqueous = deepcopy(_aqueous_packet())
+
+def parameter_payload(
+    topology: IndependentTopology, diluent_id: str, carbonate: bool = False
+) -> dict[str, Any]:
+    """Combine the chloride-mixture packet with the ligand-derived complex priors."""
+    payload = independent_priors(topology, diluent_id)
+    by_id = {row["component_id"]: row for row in payload["components"]}
+    structural = deepcopy(by_id["free-carrier"]["fixed"]["charge_number"]["provenance"])
+
+    aqueous = deepcopy(load_aqueous_packet())
     aqueous_ids = set(AQUEOUS_SUPPORT)
     for record in aqueous["components"]:
         identity = record["component_id"]

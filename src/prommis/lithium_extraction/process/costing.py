@@ -462,6 +462,36 @@ LI2CO3_PER_LI = 0.07389 / (
 LI2CO3_SALE_USD_KG = 20.9  # upper retained base revenue (flowsheet.costs_and_balances); enters only the 0.5% sales cost
 
 
+def _initialize_plant_om(plant):
+    """Initialize the PrOMMiS flowsheet accounts in dependency order."""
+    for name in (
+        "annual_operating_labor_cost",
+        "annual_technical_labor_cost",
+        "annual_labor_cost",
+        "admin_and_support_labor_cost",
+        "property_taxes_and_insurance_cost",
+        "total_sales_revenue",
+        "custom_fixed_costs",
+        "maintenance_and_material_cost",
+        "quality_assurance_and_control_cost",
+        "sales_patenting_and_research_cost",
+        "total_fixed_OM_cost",
+    ):
+        equation = (
+            "sum_custom_fixed_costs" if name == "custom_fixed_costs" else name + "_eq"
+        )
+        calculate_variable_from_constraint(
+            getattr(plant, name), getattr(plant, equation)
+        )
+    for index, cost in plant.variable_operating_costs.items():
+        calculate_variable_from_constraint(cost, plant.variable_cost_eq[index])
+    for t, cost in plant.total_variable_OM_cost.items():
+        calculate_variable_from_constraint(
+            plant.plant_overhead_cost[t], plant.plant_overhead_cost_eq[t]
+        )
+        calculate_variable_from_constraint(cost, plant.total_variable_cost_eq[t])
+
+
 def add_plant_costing(model, capacity_m3_h, *, levelized=None):
     """Full-process REECosting at `capacity_m3_h` raw brine; requires the A1 block from `full_process.connect_units`."""
     from idaes.core import UnitModelBlock
@@ -581,7 +611,7 @@ def add_plant_costing(model, capacity_m3_h, *, levelized=None):
         )
     calculate_variable_from_constraint(plant.total_BEC, plant.total_BEC_eq)
     calculate_variable_from_constraint(plant.total_TPC, plant.total_TPC_eq)
-    REECostingData.initialize(plant)
+    _initialize_plant_om(plant)
     if levelized is not None:
         return plant
     plant.property_taxes_and_insurance_cost_eq.deactivate()  # EXCLUDED under the no-tax scenario

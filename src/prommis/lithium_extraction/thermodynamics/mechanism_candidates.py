@@ -68,6 +68,7 @@ from prommis.lithium_extraction.thermodynamics.reaction_networks import (
     TOPOLOGIES,
     _pair,
     _rename_component,
+    independent_priors,
 )
 from prommis.lithium_extraction.thermodynamics.reaction_networks import (
     parameter_payload as carrier_payload,
@@ -185,10 +186,7 @@ class State:
     )
 
 
-def payload() -> dict:
-    """The retained carrier payload with HA, T, LiCl.T and BTA- added on the priors named in the module docstring."""
-    document = carrier_payload(TOPOLOGIES["t1_mbta_topo"], "dodecane")
-    by_id = {row["component_id"]: row for row in document["components"]}
+def add_extractant_priors(by_id):
     prior = {
         "source_id": "hbta-topo-independent-network",
         "domain_id": "hbta-topo-independent-network",
@@ -211,6 +209,30 @@ def payload() -> dict:
             "value"
         ]["magnitude"] = SEGMENTS[name]
         by_id[name] = record
+
+
+def organic_priors() -> dict:
+    """The HBTA and diluent priors shared with D2EHDTPA/BuPhen."""
+    document = independent_priors(TOPOLOGIES["t1_mbta_topo"], "dodecane")
+    by_id = {row["component_id"]: row for row in document["components"]}
+    add_extractant_priors(by_id)
+    return {
+        "components": [by_id["diluent"], by_id["hbta"]],
+        "sources": document["sources"],
+        "domains": document["domains"],
+    }
+
+
+def payload() -> dict:
+    """The retained carrier payload with HA, T, LiCl.T and BTA- added on the priors named in the module docstring."""
+    document = carrier_payload(TOPOLOGIES["t1_mbta_topo"], "dodecane")
+    by_id = {row["component_id"]: row for row in document["components"]}
+    add_extractant_priors(by_id)
+    prior = {
+        "source_id": "hbta-topo-independent-network",
+        "domain_id": "hbta-topo-independent-network",
+        "locator": "Lithium #158 provisional: chloride ion parameters",
+    }
     for name in (
         "lithium-carrier",
         "sodium-carrier",
