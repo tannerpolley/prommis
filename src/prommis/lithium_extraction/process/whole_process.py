@@ -211,8 +211,10 @@ def enumerate_units(
     return candidates
 
 
-def strip_ratio_start(loaded, assumptions, organic_to_aqueous_ratio):
-    """An admissible strip A/O at the entering organic state, per nominal aqueous litre."""
+def strip_ratio_interval(
+    loaded, assumptions, organic_to_aqueous_ratio, *, water_tolerance=0.0
+):
+    """Admissible strip A/O at the entering organic state, per nominal aqueous litre."""
     li = (
         (1 - assumptions["scrub_li_loss"])
         * loaded["li"]
@@ -222,21 +224,38 @@ def strip_ratio_start(loaded, assumptions, organic_to_aqueous_ratio):
     needed_water = li / assumptions["concentrate_li_mol_kg"]
     credit = assumptions["acid_recovery"]
     dose = assumptions.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
-    lo, hi = assumptions["strip_aqueous_to_organic_bounds"]
-    lo = max(
-        lo,
-        needed_water / organic_to_aqueous_ratio,
-        (li + na) / (dose * organic_to_aqueous_ratio),
-    )
+    lower, upper = assumptions["strip_aqueous_to_organic_bounds"]
+    acid_and_design_min = max(lower, (li + na) / (dose * organic_to_aqueous_ratio))
+    hi = upper
+    lo = max(acid_and_design_min, needed_water / organic_to_aqueous_ratio)
     if credit < 1.0:
         hi = min(
             hi,
             (3 * needed_water - credit * (li + na))
             / ((1 - credit) * dose * organic_to_aqueous_ratio),
         )
-    if li > 0 and lo <= hi:
-        return (lo + hi) / 2
+    if li <= 0:
+        return None
+    if lo <= hi:
+        return lo, hi
+    # A replayed state can touch the water endpoint within the retained
+    # fixed-control Jacobian bound on water per nominal litre.
+    if (
+        acid_and_design_min <= hi
+        and needed_water - hi * organic_to_aqueous_ratio <= water_tolerance
+    ):
+        return hi, hi
+    # Allow roundoff in the scrub/strip products and divisions at a touching
+    # endpoint. The connected solve still enforces the registered bounds.
+    if math.isfinite(lo + hi) and lo - hi <= 4 * (math.ulp(lo) + math.ulp(hi)):
+        touching = min(upper, max(lower, hi))
+        return touching, touching
     return None
+
+
+def strip_ratio_start(loaded, assumptions, organic_to_aqueous_ratio):
+    interval = strip_ratio_interval(loaded, assumptions, organic_to_aqueous_ratio)
+    return sum(interval) / 2 if interval else None
 
 
 def carbonation_interval_constraint(carbon, assumptions, interval):
@@ -520,17 +539,20 @@ def select_units(model, candidate):
     fs.scrub.active_bound.set_value(fs.scrub.acid_mol == active)
     fs.scrub.other_bound.set_value(fs.scrub.acid_mol >= other)
     fs.scrub.other_bound.activate()
-    lo, hi = candidate["carbonation_interval_mol_kg"]
-    carbonation_interval_constraint(fs.carbonation, a, (lo, hi))
+    interval = candidate["carbonation_interval_mol_kg"]
+    dose = a.get("strip_hcl_mol_l", flowsheet.STRIP_HCL_MOL_L)
+    omit_lower = (
+        "strip_aqueous_to_organic_bounds" in a
+        and a["acid_recovery"] == 0
+        and interval[0] == dose
+    )
+    downstream.set_ge_interval(
+        fs.carbonation,
+        a["carbonation_temperature_k"],
+        interval,
+        lower_bound=not omit_lower,
+    )
     fs.carbonation.interval.activate()
-    s0, s1 = (
-        carbonation.empirical_solubility(a["carbonation_temperature_k"], salt)
-        for salt in (lo, hi)
-    )
-    fs.carbonation.interpolation.set_value(
-        fs.carbonation.solubility_mol_kg
-        == s0 + (s1 - s0) * (fs.carbonation.nacl_mol_kg - lo) / (hi - lo)
-    )
 
 
 def report(model, result, softening):

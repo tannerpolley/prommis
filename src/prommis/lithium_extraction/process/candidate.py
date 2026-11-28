@@ -716,6 +716,7 @@ def build_d2(
         packet_id=aqueous["packet"] if aqueous is not None else None,
         raiguel_recipe=job.get("raiguel_recipe", False),
         aqueous_return=a is not None and "mother_liquor_return" in a,
+        first_order=job.get("d2_first_order", False),
     )
     model._case = job["case"]
     if anchor is not design:

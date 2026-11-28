@@ -63,6 +63,7 @@ def build_flowsheet(
     packet_id=None,
     raiguel_recipe=False,
     aqueous_return=False,
+    first_order=False,
 ):
     """One basis per process; chemistry assembly and direct certificates remain source-owned."""
     if (
@@ -261,6 +262,7 @@ def build_flowsheet(
         maximum_stages=max(design_range["stages"]) if design_range else 5,
         raffinate_diluent_loss=raffinate_entrainment_l * organic["diluent"] / ratio,
         raffinate_water_basis=aqueous["water"] if aqueous_return else None,
+        first_order=first_order,
     )
     model.fs.aqueous_volume = Expression(
         expr=model.fs.boundary["water"] / aqueous["water"] if aqueous_return else 1.0

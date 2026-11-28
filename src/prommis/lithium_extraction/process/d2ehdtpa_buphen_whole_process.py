@@ -245,32 +245,30 @@ def accounts(strip, assumptions, feed_li, *, aqueous_return=None, nacl_coordinat
     )
 
 
-def carbonation_interval(nacl):
-    """The measured Ge 2025 NaCl interval holding `nacl` (enumerated outside the solver), or None outside the data."""
+def carbonation_intervals():
+    """Ordered measured Ge 2025 NaCl interpolation intervals."""
     with downstream.carbonation.GE_TABLE.open() as stream:
         knots = [
             float(r["nacl_mol_kg"])
             for r in csv.DictReader(stream)
             if r["series"] == "NaCl"
         ]
+    return tuple(zip(knots, knots[1:]))
+
+
+def carbonation_interval(nacl):
+    """The measured Ge interval containing a NaCl molality."""
     return next(
-        ([lo, hi] for lo, hi in zip(knots, knots[1:]) if lo <= nacl <= hi), None
+        ([lo, hi] for lo, hi in carbonation_intervals() if lo <= nacl <= hi), None
     )
 
 
 def set_interval(model, interval):
     """Move the connected carbonation to another measured interval (its bounds and linear interpolation)."""
-    carbon, (lo, hi) = model.fs.carbonation, interval
-    s0, s1 = (
-        downstream.carbonation.empirical_solubility(
-            model._d2_full_process["carbonation_temperature_k"], salt
-        )
-        for salt in (lo, hi)
-    )
-    carbon.interval.set_value((lo, carbon.nacl_mol_kg, hi))
-    carbon.interpolation.set_value(
-        carbon.solubility_mol_kg
-        == s0 + (s1 - s0) * (carbon.nacl_mol_kg - lo) / (hi - lo)
+    downstream.set_ge_interval(
+        model.fs.carbonation,
+        model._d2_full_process["carbonation_temperature_k"],
+        interval,
     )
     model._carbonation_interval = list(interval)
 

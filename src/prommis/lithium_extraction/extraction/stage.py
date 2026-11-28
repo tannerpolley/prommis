@@ -30,6 +30,7 @@ from idaes.core import (
 )
 from idaes.core.base.property_meta import HasPropertyClassMetadata
 from idaes.core.util.misc import add_object_reference
+from idaes.core.util.scaling import constraint_scaling_transform
 from pyomo.common.config import ConfigValue
 from pyomo.common.errors import ApplicationError
 from pyomo.environ import (
@@ -50,6 +51,7 @@ from pyomo.environ import (
     units,
     value,
 )
+from pyomo.contrib.pynumero.exceptions import PyNumeroEvaluationError
 from pyomo.contrib.pynumero.interfaces.pyomo_nlp import PyomoNLP
 from pyomo.opt import check_optimal_termination
 from pyomo.util.calc_var_value import calculate_variable_from_constraint
@@ -203,6 +205,7 @@ def build_stages(
     maximum_stages=5,
     raffinate_diluent_loss=0.0,
     raffinate_water_basis=None,
+    first_order=False,
 ):
     """Aqueous flows forward from stage 1, organic backward from stage N; Engine outlets close each stage."""
     if type(stages) is not int or stages not in range(1, maximum_stages + 1):
@@ -312,9 +315,10 @@ def build_stages(
     for s, n in parameters.items():
         fs.parameters[s].fix(n)
     if chemistry.library is not None:
+        function = "epcsaft_equilibrium_phase_component_amount"
         fs.response = ExternalFunction(
             library=str(chemistry.library),
-            function="epcsaft_equilibrium_phase_component_amount",
+            function=function + "_first_order" if first_order else function,
         )
     model._chemistry = chemistry
     model._chemistries = chemistries
@@ -600,6 +604,23 @@ def solve(
         options["bound_push"] = options["bound_frac"] = options["constr_viol_tol"]
     if len(model.fs.stages) == 1:
         options["expect_infeasible_problem"] = "yes"
+    if (
+        getattr(model, "_start_at_bound", False)
+        and hasattr(model, "_full_process")
+        and hasattr(model.fs, "plant_sizing")
+        and not (hasattr(model, "rule") and model.rule.active)
+    ):
+        # Use the circulating chloride flow as the scale of its arc
+        # equality. The unit nominal feed sets the absolute scale near zero.
+        mother = model.fs.carbonation.mother_liquor
+        chloride = [
+            value(port.vars["flow_mol_comp"][0, "Cl"])
+            for port in (mother.source, mother.destination)
+        ]
+        constraint_scaling_transform(
+            mother.expanded_block.flow_mol_comp_equality[0, "Cl"],
+            1 / max(1.0, *map(abs, chloride)),
+        )
     for name in ("dual", "ipopt_zL_out", "ipopt_zU_out"):
         if not hasattr(model, name):
             setattr(model, name, Suffix(direction=Suffix.IMPORT))
@@ -716,6 +737,8 @@ def _bounded_fixed_solve(model, directory, options):
 
     class CountedNLP(PyomoNLP):
         evaluations = 0
+        evaluation_errors = 0
+        last_evaluation_error = None
 
         def __getattribute__(self, name):
             method = super().__getattribute__(name)
@@ -731,7 +754,23 @@ def _bounded_fixed_solve(model, directory, options):
                     if self.evaluations >= 512:
                         raise RuntimeError("IPOPT exhausted 512 NLP evaluations")
                     self.evaluations += 1
-                    return method(*args, **kwargs)
+                    try:
+                        return method(*args, **kwargs)
+                    except PyNumeroEvaluationError as error:
+                        self.evaluation_errors += 1
+                        self.last_evaluation_error = dict(
+                            method=name,
+                            message=str(error),
+                            primals={
+                                key: float(v) if np.isfinite(v) else str(v)
+                                for key, v in zip(
+                                    self.primals_names(),
+                                    self.get_primals(),
+                                    strict=True,
+                                )
+                            },
+                        )
+                        raise
 
                 return counted
             return method
@@ -745,11 +784,11 @@ def _bounded_fixed_solve(model, directory, options):
     directory.mkdir(parents=True, exist_ok=True)
     log = directory.resolve() / "ipopt.log"
     nlp = CountedNLP(model)
-    problem = UnscaledCyIpoptNLP(nlp, halt_on_evaluation_error=True)
     name = "unscaled" if options["nlp_scaling_method"] == "none" else "scaled"
     try:
+        problem = UnscaledCyIpoptNLP(nlp, halt_on_evaluation_error=False)
         x, info = CyIpoptSolver(problem, options | {"output_file": str(log)}).solve()
-    except RuntimeError as error:
+    except (RuntimeError, PyNumeroEvaluationError) as error:
         progress = (
             re.findall(
                 r"^\s*\d+r?\s+-?[0-9.e+-]+\s+[0-9.e+-]+\s+[0-9.e+-]+.*$",
@@ -767,6 +806,8 @@ def _bounded_fixed_solve(model, directory, options):
             "last_iteration": progress[-1].strip() if progress else None,
             "reason": str(error),
             "options": options,
+            "evaluation_errors": nlp.evaluation_errors,
+            "last_evaluation_error": nlp.last_evaluation_error,
         }
         raise
     variables, constraints = nlp.get_pyomo_variables(), nlp.get_pyomo_constraints()
@@ -788,25 +829,40 @@ def _bounded_fixed_solve(model, directory, options):
         "attempts": [attempt],
         "full_nlp_evaluations": nlp.evaluations,
         "full_nlp_evaluation_limit": 512,
+        "evaluation_errors": nlp.evaluation_errors,
+        "last_evaluation_error": nlp.last_evaluation_error,
         "ipopt_version": ".".join(map(str, cyipopt.IPOPT_VERSION)),
         "washed_feed_l_per_raw_l": value(model.fs.washed_feed_l_per_raw_l),
     }
     if info["status"] != 0:
         if hasattr(model, "_plant_inputs"):
-            lower, upper = nlp.constraints_lb(), nlp.constraints_ub()
-            amount = np.asarray(info["g"])
-            violation = np.maximum(np.maximum(lower - amount, amount - upper), 0.0)
-            worst = np.argsort(violation)[-8:][::-1]
-            model._solve["largest_constraint_violations"] = {
-                constraints[i].name: float(violation[i])
-                for i in worst
-                if np.isfinite(violation[i])
-            }
             model._solve["last_state"] = {
                 v.name: float(n)
                 for v, n in zip(variables, x, strict=True)
                 if np.isfinite(n)
             }
+            # On a CPU stop the callback wrapper can return a zero-filled g.
+            # Evaluate the actual returned primal before interpreting capacity or flow bounds.
+            nlp.set_primals(x)
+            try:
+                amount = nlp.evaluate_constraints()
+            except (RuntimeError, PyNumeroEvaluationError) as error:
+                model._solve["returned_constraint_evaluation"] = str(error)
+                model._solve.update(
+                    evaluation_errors=nlp.evaluation_errors,
+                    last_evaluation_error=nlp.last_evaluation_error,
+                )
+            else:
+                lower, upper = nlp.constraints_lb(), nlp.constraints_ub()
+                violation = np.maximum(np.maximum(lower - amount, amount - upper), 0.0)
+                worst = sorted(
+                    np.flatnonzero(np.isfinite(violation)),
+                    key=lambda i: violation[i],
+                    reverse=True,
+                )[:8]
+                model._solve["largest_constraint_violations"] = {
+                    constraints[i].name: float(violation[i]) for i in worst
+                }
         raise RuntimeError(
             f"IPOPT unresolved: {attempt}; {nlp.evaluations} NLP evaluations"
         )
@@ -823,7 +879,15 @@ def _bounded_fixed_solve(model, directory, options):
     ):
         raise RuntimeError(f"KKT limits failed: {diagnostics}")
     nlp.set_primals(x)
-    model._solve.update(outlet_jacobian(model, nlp, options["constr_viol_tol"]))
+    try:
+        model._solve.update(outlet_jacobian(model, nlp, options["constr_viol_tol"]))
+    except PyNumeroEvaluationError:
+        model._solve.update(
+            termination="unresolved",
+            evaluation_errors=nlp.evaluation_errors,
+            last_evaluation_error=nlp.last_evaluation_error,
+        )
+        raise
     model._solve["full_nlp_evaluations"] = nlp.evaluations
     model._solved_values = solved_values(model)
     return model._solve

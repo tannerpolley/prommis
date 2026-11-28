@@ -11,6 +11,7 @@ from pyomo.environ import (
     Constraint,
     Expression,
     NonNegativeReals,
+    Param,
     Reference,
     Set,
     TransformationFactory,
@@ -26,6 +27,29 @@ from prommis.lithium_extraction.extraction import stage
 
 LIQUOR = ("H2O", "Li", "Na", "Cl", "C")
 GE_EXCESS_SODA_ASH_MOL_KG = 0.5
+
+
+def set_ge_interval(carbon, temperature, interval, *, lower_bound=True):
+    lo, hi = interval
+    s0, s1 = (carbonation.empirical_solubility(temperature, salt) for salt in interval)
+    if not hasattr(carbon, "ge_lower"):
+        carbon.ge_lower = Param(mutable=True, initialize=lo)
+        carbon.ge_upper = Param(mutable=True, initialize=hi)
+        carbon.ge_at_lower = Param(mutable=True, initialize=s0)
+        carbon.ge_slope = Param(mutable=True, initialize=(s1 - s0) / (hi - lo))
+        carbon.interpolation.set_value(
+            carbon.solubility_mol_kg
+            == carbon.ge_at_lower
+            + carbon.ge_slope * (carbon.nacl_mol_kg - carbon.ge_lower)
+        )
+    else:
+        carbon.ge_lower.set_value(lo)
+        carbon.ge_upper.set_value(hi)
+        carbon.ge_at_lower.set_value(s0)
+        carbon.ge_slope.set_value((s1 - s0) / (hi - lo))
+    carbon.interval.set_value(
+        (carbon.ge_lower if lower_bound else None, carbon.nacl_mol_kg, carbon.ge_upper)
+    )
 
 
 def held_liquid_loss(dry_kg, liquor_kg, moisture, wash_volumes):
@@ -201,9 +225,6 @@ def connect(fs, liquor, assumptions, candidate, owner):
     carbon.purge = Expression(
         ("Li", "Na", "C"),
         rule=lambda b, e: carbon.splitter.purge_state[0].flow_mol_comp[e],
-    )
-    carbon.recovered_li_nonnegative = Constraint(
-        expr=liquor["Li"] - carbon.purge["Li"] >= 0
     )
     TransformationFactory("network.expand_arcs").apply_to(fs)
 

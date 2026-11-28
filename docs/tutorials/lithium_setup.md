@@ -21,7 +21,7 @@ The Engine's conda packages exist for Python 3.13 only, so make a new environmen
 root of this PrOMMiS checkout:
 
 ```sh
-conda create -n prommis-lithium -c conda-forge -c tannerwpolley python=3.13 epcsaft=1.3.1 reaktoro=2.13.0
+conda create -n prommis-lithium -c conda-forge -c tannerwpolley/label/legacy python=3.13 epcsaft=1.3.1 reaktoro=2.13.0
 conda env config vars set -n prommis-lithium PYTHONUTF8=1
 conda activate prommis-lithium
 pip install -e . "watertap>=1.8,<1.9" "ipywidgets>=8,<9" jupyterlab
@@ -30,7 +30,7 @@ idaes get-extensions
 
 The Miniforge installer refuses a folder whose path contains a space; if your Windows user name has one, install
 Miniforge to `C:\miniforge3`. Clone the repository with git rather than downloading a zip: PrOMMiS reads its version
-from the git history. `PYTHONUTF8=1` makes Python read the retained data files as UTF-8 on Windows. `tannerwpolley` is
+from the git history. `PYTHONUTF8=1` makes Python read the retained data files as UTF-8 on Windows. The `legacy` label of the `tannerwpolley` channel holds Engine 1.3.1; that channel is
 an interim channel for the Engine until its conda-forge package is published; after that, `-c conda-forge` alone is
 enough.
 
