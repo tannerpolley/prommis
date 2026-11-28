@@ -673,42 +673,72 @@ def recycle_report(model, result, owner, actual):
     }
 
 
-def carbonation_salt_check(fs, owner, assumptions, constraint_tolerance):
-    """Convert the raw-litre equality tolerance into the independent Ge coordinate."""
-    carbon = fs.carbonation
-    recycle = assumptions["mother_recycle"]
-    purge_fraction = 1 - recycle
-    observed = value(carbon.nacl_mol_kg)
-    expected = owner["mother_nacl_mol_kg"]
-    water = purge_fraction * value(carbon.water_kg)
-    independent = owner["cleanup"]["cleaned_mol"]
-    # For conserved Cl and H2O, (1-r) times reactor outlet equals fresh input
-    # plus the residuals of the concentrate equality, mixer, reactor, inlet
-    # arc, recycle split and recycle arc, and r times the splitter inlet arc.
-    flow_error = (6 + recycle) * constraint_tolerance
-    cl = value(fs.cleanup.liquor["Cl"])
-    fresh_water = value(fs.cleanup.liquor["Li"]) / assumptions["concentrate_li_mol_kg"]
-    chloride_error = abs(cl - independent["Cl"]) + flow_error
-    water_error = (
-        abs(fresh_water - owner["fresh_water_kg"])
-        + flow_error * brines.WATER_MOLAR_MASS_KG
+def carbonation_checks(
+    observed, owner, cleanup, reactor_water, interval, assumptions, tau
+):
+    """Propagate the unscaled equality tolerance on the common raw-litre basis."""
+    r = assumptions["mother_recycle"]
+    purge = 1 - r
+    water = purge * reactor_water
+    mw = brines.WATER_MOLAR_MASS_KG
+    # Concentrate, mixer, feed arc, recycle split, recycle arc and r times the splitter inlet arc.
+    flow = (5 + r) * tau
+    w = owner["fresh_water_kg"]
+    delta_water = abs(cleanup["Li"] / assumptions["concentrate_li_mol_kg"] - w)
+    water_error = delta_water + (flow + tau) * mw
+    salt = owner["mother_nacl_mol_kg"]
+    cl_error = abs(cleanup["Cl"] - owner["cleanup"]["cleaned_mol"]["Cl"])
+    cl_error += flow + tau / (
+        brines.MOLAR_MASS["Cl"] / 1000
+    )  # Precipitator Cl depletion is in kg/raw L.
+    lo, hi = interval
+    s0, s1 = (
+        downstream.carbonation.empirical_solubility(
+            assumptions["carbonation_temperature_k"], m
+        )
+        for m in (lo, hi)
     )
-    # The salt equality contributes (1-r) times its mol/raw L tolerance.
-    # Subtract m_expected * W from m_connected * W, then divide by W.
-    bound = (
-        chloride_error
-        + purge_fraction * constraint_tolerance
-        + abs(expected) * water_error
-    ) / water
-    bound += math.ulp(observed) + math.ulp(expected)
-    return {
-        "difference_mol_kg": observed - expected,
-        "bound_mol_kg": bound,
-        "connected_net_water_kg_per_raw_l": water,
-        "chloride_error_mol_per_raw_l": chloride_error,
-        "water_error_kg_per_raw_l": water_error,
-        "constraint_tolerance": constraint_tolerance,
+    s = owner["ge_li2co3_mol_kg"]
+    ge = s0 + (s1 - s0) * (observed["mother_nacl_mol_kg"] - lo) / (hi - lo)
+    ds = abs(ge - s) + tau  # Ge interpolation equality, mol/kg.
+    li_error = abs(cleanup["Li"] - owner["cleanup"]["cleaned_mol"]["Li"])
+    # Li generation has its own molar residual and a 2:1 stoichiometry for dissolved Li.
+    product = (
+        tau + (li_error + flow + purge * tau) / 2 + water * ds + abs(s) * water_error
+    )
+    bounds = {
+        "product_li2co3_mol": product,
+        # Salt balance in mol/raw L, divided by the net reactor water mass.
+        "mother_nacl_mol_kg": (cl_error + purge * tau + abs(salt) * water_error)
+        / water,
+        # The concentrate water equation is in mol H2O/raw L.
+        "fresh_water_kg": delta_water + tau * mw,
+        # C depletion and excess-carbonate equalities, plus the product and water terms.
+        "carbonation_na2co3_mol": product
+        + flow
+        + (1 + purge) * tau
+        + water * ds
+        + abs(downstream.GE_EXCESS_SODA_ASH_MOL_KG + s) * water_error,
     }
+    return {
+        k: {
+            "difference": n - owner[k],
+            "bound": bounds[k] + math.ulp(n) + math.ulp(owner[k]),
+        }
+        for k, n in observed.items()
+    }
+
+
+def check_carbonation(checks):
+    if any(
+        not math.isfinite(row["difference"])
+        or not math.isfinite(row["bound"])
+        or abs(row["difference"]) > row["bound"]
+        for row in checks.values()
+    ):
+        raise RuntimeError(
+            f"Connected carbonation comparison exceeds propagated limits: {checks}"
+        )
 
 
 def report(model, result):
@@ -734,10 +764,14 @@ def report(model, result):
     for e, n in differences.items():
         if abs(n) > 1e-12:
             raise RuntimeError(f"Strip fraction differs by {n} mol/raw L for {e}")
+    tau = result["solve"]["options"]["constr_viol_tol"]
     incoming = strip.unit.mscontactor.organic_inlet_state[0].flow_mol_comp
     inventories = {
         name: value(
-            sum(row.get(s, 0.0) * n for s, n in incoming.items())
+            sum(
+                (row.get(s, 0.0) + (s == "ha" and name == "A")) * n
+                for s, n in incoming.items()
+            )
             - sum(
                 (row.get(s, 0.0) + (s == "ha" and name == "A")) * n
                 for s, n in strip.organic_out.items()
@@ -748,9 +782,25 @@ def report(model, result):
     proton_error = value(strip.acid_mol - strip.aqueous_out["hydrogen-cation"]) - sum(
         rc.ION[e][2] * n for e, n in actual.items()
     )
-    if max(abs(n) for n in (*inventories.values(), proton_error)) > 1e-12:
+    # Each weighted organic species contributes one material and one reaction-generation residual.
+    strip_limits = {
+        name: 2
+        * tau
+        * sum(row.get(s, 0.0) + (s == "ha" and name == "A") for s in strip.organic_out)
+        for name, row in (("A", rc.MOIETIES["A"]), ("B", rc.MOIETIES["B"]))
+    }
+    strip_limits[
+        "A"
+    ] += tau  # inlet ha is held at zero by the strip.loaded[ha] equality (#466 review)
+    # H dosing plus two residuals per aqueous species, weighted by its proton stoichiometry.
+    strip_limits["H"] = tau * (1 + 2 * (1 + sum(rc.ION[e][2] for e in actual)))
+    strip_errors = inventories | {"H": proton_error}
+    if any(
+        not math.isfinite(n) or abs(n) > strip_limits[k]
+        for k, n in strip_errors.items()
+    ):
         raise RuntimeError(
-            f"Strip ligand/proton closure exceeds 1e-12 mol/raw L: {inventories}; {proton_error}"
+            f"Strip ligand/proton closure exceeds propagated limits: {strip_errors}; {strip_limits}"
         )
     reconciliation = costing.reconcile(
         fs.costing,
@@ -759,8 +809,8 @@ def report(model, result):
         owner["li_product_kg_m3"],
         owner["mass_kg_per_l"],
     )
-    unit_errors = {
-        k: value(n) - owner[k]
+    observed = {
+        k: value(n)
         for k, n in {
             "product_li2co3_mol": fs.carbonation.product_mol,
             "mother_nacl_mol_kg": fs.carbonation.nacl_mol_kg,
@@ -771,19 +821,26 @@ def report(model, result):
             "carbonation_na2co3_mol": fs.carbonation.carbonate_mol,
         }.items()
     }
-    tau = result["solve"]["options"]["constr_viol_tol"]
-    salt_check = carbonation_salt_check(fs, owner, assumptions, tau)
-    if (
-        not math.isfinite(salt_check["difference_mol_kg"])
-        or abs(salt_check["difference_mol_kg"]) > salt_check["bound_mol_kg"]
-    ):
-        raise RuntimeError(
-            f"Connected carbonation salt differs from arithmetic: {salt_check}"
-        )
-    if max(abs(n) for k, n in unit_errors.items() if k != "mother_nacl_mol_kg") > 1e-12:
-        raise RuntimeError(
-            f"Connected carbonation differs from arithmetic: {unit_errors}"
-        )
+    # Both paths use the same Engine stage outlets, so Engine replay error does not enter this comparison.
+    checks = carbonation_checks(
+        observed,
+        owner,
+        {k: value(n) for k, n in fs.cleanup.liquor.items()},
+        value(fs.carbonation.water_kg),
+        model._carbonation_interval,
+        assumptions,
+        tau,
+    )
+    check_carbonation(checks)
+    salt = checks["mother_nacl_mol_kg"]
+    salt_check = {
+        "difference_mol_kg": salt["difference"],
+        "bound_mol_kg": salt["bound"],
+        "connected_net_water_kg_per_raw_l": (1 - assumptions["mother_recycle"])
+        * value(fs.carbonation.water_kg),
+        "constraint_tolerance": tau,
+    }
+    unit_errors = {k: row["difference"] for k, row in checks.items()}
     # #339 check 8: every reagent, loss and product account of the connected model against the independent
     # recomputation from the solved stage outlets at the solved design, relative.
     pairs = {
@@ -922,6 +979,8 @@ def report(model, result):
         "strip_fraction_difference_mol": differences,
         "owner_differences": unit_errors,
         "carbonation_salt_reconciliation": salt_check,
+        "carbonation_checks": checks,
+        "strip_closure_limits_mol_per_raw_l": strip_limits,
         "account_relative_differences": account_differences,
         "carbonation_interval_mol_kg": model._carbonation_interval,
         "downstream_balance_residuals_mol_per_raw_l": balances,

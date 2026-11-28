@@ -5,15 +5,14 @@ closing every stage with ePC-SAFT phase and chemical equilibrium from the
 [epcsaft](https://github.com/tannerpolley/epcsaft) Engine. It follows the paper it accompanies:
 
 - a three-stage countercurrent extraction of softened Smackover MS-2 brine, comparing four solvent systems;
-- the whole sodium-saponified HBTA/TOPO process from raw produced water to lithium carbonate (softening, extraction,
-  scrub, strip, acid recovery, carbonation and operating cost) for two waters;
-- the paper's screen of 14 produced waters, read from its result files;
+- the paper's whole-process comparison on 14 produced waters, including both calibrations of each solvent,
+  annual cost accounts and levelized cost with equipment and initial solvent fill;
 - an optional appendix with a design optimization and widgets for trying other stage designs.
 
 The models are in `prommis.lithium_extraction`, with the source data, fitted parameters and retained results they read
-under its `data/` folder. The notebook checks every number it reproduces against those retained results, which come
-from the [Lithium_Extraction](https://github.com/tannerpolley/Lithium_Extraction) project, and stops with an error if
-one is outside its limit. That project owns the models and data; this copy is written by its
+under its `data/` folder. The notebook checks its stage results and annual-cost reconciliations against those retained
+results, which come from the [Lithium_Extraction](https://github.com/tannerpolley/Lithium_Extraction) project,
+and stops with an error if one is outside its limit. That project owns the models and data; this copy is written by its
 `scripts/export_prommis.py`.
 
 ## Environment (64-bit Windows or Linux)
@@ -34,9 +33,6 @@ Miniforge to `C:\miniforge3`. Clone the repository with git rather than download
 from the git history. `PYTHONUTF8=1` makes Python read the retained data files as UTF-8 on Windows. `tannerwpolley` is
 an interim channel for the Engine until its conda-forge package is published; after that, `-c conda-forge` alone is
 enough.
-
-The notebook reads the target-dose Reaktoro feeds bundled with the campaign, then solves the whole-process designs on
-those feeds.
 
 ## Run
 
